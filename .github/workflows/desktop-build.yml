@@ -1,0 +1,58 @@
+name: desktop-build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master", "001-desktop-shell"]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Run Rust tests
+        working-directory: src-tauri
+        run: cargo test
+
+      - name: Build desktop application
+        run: npm run tauri:build
+
+      - name: Write build metadata
+        shell: bash
+        run: |
+          mkdir -p artifacts/build-metadata
+          cat <<EOF > artifacts/build-metadata/${{ matrix.os }}-${{ github.run_id }}.json
+          {
+            "os": "${{ matrix.os }}",
+            "runId": "${{ github.run_id }}",
+            "status": "success",
+            "completedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-usage-${{ matrix.os }}
+          path: |
+            src-tauri/target/release/bundle/**
+            dist/**
+            artifacts/build-metadata/*.json
