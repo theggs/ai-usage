@@ -4,24 +4,151 @@ use tauri::{
     AppHandle, Manager, Wry,
 };
 
-pub fn format_summary(display_mode: &str, items: &[PanelPlaceholderItem]) -> Option<String> {
-    match display_mode {
-        "icon-only" => None,
-        "icon-plus-percent" => items
-            .first()
-            .and_then(|item| item.quota_dimensions.first())
-            .map(|dimension| format!("{}%", dimension.remaining_percent)),
-        _ => {
-            let values = items
-                .iter()
-                .filter_map(|item| item.quota_dimensions.first())
-                .map(|dimension| format!("{}%", dimension.remaining_percent))
-                .collect::<Vec<_>>();
+fn all_dimensions(items: &[PanelPlaceholderItem]) -> Vec<crate::state::QuotaDimension> {
+    items
+        .iter()
+        .flat_map(|item| item.quota_dimensions.clone())
+        .collect::<Vec<_>>()
+}
 
-            if values.is_empty() {
+fn sort_by_remaining_percent(
+    dimensions: Vec<crate::state::QuotaDimension>,
+) -> Vec<crate::state::QuotaDimension> {
+    let mut sorted = dimensions
+        .into_iter()
+        .filter(|dimension| dimension.remaining_percent.is_some())
+        .collect::<Vec<_>>();
+    sorted.sort_by_key(|dimension| dimension.remaining_percent.unwrap_or(101));
+    sorted
+}
+
+fn matches_5h(label: &str) -> bool {
+    let normalized = label.to_ascii_lowercase();
+    normalized.contains("5h")
+}
+
+fn matches_week(label: &str) -> bool {
+    let normalized = label.to_ascii_lowercase();
+    normalized.contains("week") || normalized.contains("7d")
+}
+
+fn infer_window_minutes(label: &str) -> u64 {
+    let normalized = label.to_ascii_lowercase();
+    if normalized.contains("5h") {
+        return 300;
+    }
+    if normalized.contains("week") || normalized.contains("7d") {
+        return 10_080;
+    }
+
+    if let Some(index) = normalized.find('h') {
+        if let Some(value) = normalized[..index]
+            .chars()
+            .rev()
+            .take_while(|ch| ch.is_ascii_digit())
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>()
+            .parse::<u64>()
+            .ok()
+        {
+            return value * 60;
+        }
+    }
+
+    if let Some(index) = normalized.find('d') {
+        if let Some(value) = normalized[..index]
+            .chars()
+            .rev()
+            .take_while(|ch| ch.is_ascii_digit())
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>()
+            .parse::<u64>()
+            .ok()
+        {
+            return value * 1_440;
+        }
+    }
+
+    if let Some(index) = normalized.find('m') {
+        if let Some(value) = normalized[..index]
+            .chars()
+            .rev()
+            .take_while(|ch| ch.is_ascii_digit())
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>()
+            .parse::<u64>()
+            .ok()
+        {
+            return value;
+        }
+    }
+
+    u64::MAX
+}
+
+fn sort_by_window_duration(
+    dimensions: Vec<crate::state::QuotaDimension>,
+) -> Vec<crate::state::QuotaDimension> {
+    let mut sorted = dimensions
+        .into_iter()
+        .filter(|dimension| dimension.remaining_percent.is_some())
+        .collect::<Vec<_>>();
+    sorted.sort_by_key(|dimension| infer_window_minutes(&dimension.label));
+    sorted
+}
+
+fn to_summary_value(dimension: &crate::state::QuotaDimension) -> String {
+    dimension
+        .remaining_percent
+        .map(|percent| format!("{percent}%"))
+        .unwrap_or_else(|| dimension.remaining_absolute.clone())
+}
+
+pub fn format_summary(summary_mode: &str, items: &[PanelPlaceholderItem]) -> Option<String> {
+    let dimensions = all_dimensions(items);
+    let sorted = sort_by_remaining_percent(dimensions.clone());
+
+    match summary_mode {
+        "icon-only" => None,
+        "lowest-remaining" => sorted.first().map(to_summary_value),
+        "window-5h" => sort_by_remaining_percent(
+            dimensions
+                .iter()
+                .filter(|dimension| matches_5h(&dimension.label))
+                .cloned()
+                .collect::<Vec<_>>(),
+        )
+        .first()
+        .or_else(|| sorted.first())
+        .map(to_summary_value),
+        "window-week" => sort_by_remaining_percent(
+            dimensions
+                .iter()
+                .filter(|dimension| matches_week(&dimension.label))
+                .cloned()
+                .collect::<Vec<_>>(),
+        )
+        .first()
+        .or_else(|| sorted.first())
+        .map(to_summary_value),
+        _ => {
+            let ordered = sort_by_window_duration(dimensions);
+            if ordered.is_empty() {
                 None
             } else {
-                Some(values.join(" / "))
+                Some(
+                    ordered
+                        .iter()
+                        .map(to_summary_value)
+                        .collect::<Vec<_>>()
+                        .join(" / "),
+                )
             }
         }
     }
@@ -33,7 +160,7 @@ pub fn apply_display_mode(
     items: &[PanelPlaceholderItem],
 ) {
     if let Some(tray) = app.tray_by_id("main-tray") {
-        let summary = format_summary(&preferences.display_mode, items);
+        let summary = format_summary(&preferences.tray_summary_mode, items);
         let tooltip = summary
             .clone()
             .map(|value| format!("AIUsage · {value}"))
@@ -56,7 +183,11 @@ pub fn apply_display_mode(
     }
 }
 
-pub fn initialize_tray(app: &AppHandle, preferences: &UserPreferences, items: &[PanelPlaceholderItem]) {
+pub fn initialize_tray(
+    app: &AppHandle,
+    preferences: &UserPreferences,
+    items: &[PanelPlaceholderItem],
+) {
     if app.tray_by_id("main-tray").is_some() {
         apply_display_mode(app, preferences, items);
         return;
@@ -67,7 +198,7 @@ pub fn initialize_tray(app: &AppHandle, preferences: &UserPreferences, items: &[
         builder = builder.icon(icon.clone());
     }
 
-    let summary = format_summary(&preferences.display_mode, items);
+    let summary = format_summary(&preferences.tray_summary_mode, items);
     if let Some(text) = summary.clone() {
         builder = builder.title(text);
     }
@@ -114,11 +245,30 @@ mod tests {
             icon_key: "icon".into(),
             quota_dimensions: vec![QuotaDimension {
                 label: "Window".into(),
-                remaining_percent: percent,
+                remaining_percent: Some(percent),
                 remaining_absolute: format!("{percent}%"),
                 reset_hint: None,
             }],
-            status_label: "demo".into(),
+            status_label: "refreshing".into(),
+            badge_label: Some("Live".into()),
+            last_refreshed_at: "0".into(),
+        }
+    }
+
+    fn item_with_label(label: &str, percent: u8) -> PanelPlaceholderItem {
+        PanelPlaceholderItem {
+            service_id: "service".into(),
+            service_name: "Service".into(),
+            account_label: None,
+            icon_key: "icon".into(),
+            quota_dimensions: vec![QuotaDimension {
+                label: label.into(),
+                remaining_percent: Some(percent),
+                remaining_absolute: format!("{percent}%"),
+                reset_hint: None,
+            }],
+            status_label: "refreshing".into(),
+            badge_label: Some("Live".into()),
             last_refreshed_at: "0".into(),
         }
     }
@@ -130,14 +280,31 @@ mod tests {
 
     #[test]
     fn formats_single_dimension_summary() {
-        assert_eq!(format_summary("icon-plus-percent", &[item(64)]), Some("64%".into()));
+        assert_eq!(
+            format_summary("lowest-remaining", &[item(64)]),
+            Some("64%".into())
+        );
     }
 
     #[test]
     fn formats_multi_dimension_summary() {
         assert_eq!(
-            format_summary("multi-dimension", &[item(64), item(48)]),
+            format_summary(
+                "multi-dimension",
+                &[item_with_label("codex / week", 48), item_with_label("codex / 5h", 64)]
+            ),
             Some("64% / 48%".into())
         );
+    }
+
+    #[test]
+    fn formats_window_specific_summaries() {
+        let items = [
+            item_with_label("codex / 5h", 52),
+            item_with_label("codex / week", 6),
+        ];
+
+        assert_eq!(format_summary("window-5h", &items), Some("52%".into()));
+        assert_eq!(format_summary("window-week", &items), Some("6%".into()));
     }
 }

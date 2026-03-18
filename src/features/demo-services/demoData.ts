@@ -1,60 +1,93 @@
-import type { DemoPanelState } from "../../lib/tauri/contracts";
+import type { ActiveCodexSession, CodexPanelState } from "../../lib/tauri/contracts";
 import { formatTraySummary } from "../../lib/tauri/summary";
 
 const now = () => new Date().toISOString();
 
-export const createDemoPanelState = (
-  summaryMode: "icon-only" | "single-dimension" | "multi-dimension" = "multi-dimension"
-): DemoPanelState => {
-  const items: DemoPanelState["items"] = [
+type FallbackSessionMode = "connected" | "disconnected" | "pending" | "failed";
+
+const sessionMode = (): FallbackSessionMode => {
+  if (typeof localStorage === "undefined") {
+    return "pending";
+  }
+
+  const value = localStorage.getItem("ai-usage.codex-session-mode");
+  if (value === "connected" || value === "disconnected" || value === "pending" || value === "failed") {
+    return value;
+  }
+  return "connected";
+};
+
+const buildItems = (mode: FallbackSessionMode): CodexPanelState["items"] => {
+  if (mode !== "connected") {
+    return [];
+  }
+  return [
     {
-      serviceId: "openai-demo",
-      serviceName: "OpenAI",
-      accountLabel: "Personal Sandbox",
-      iconKey: "openai",
-      statusLabel: "demo",
+      serviceId: "codex-active-session",
+      serviceName: "Codex",
+      iconKey: "codex",
+      statusLabel: "refreshing",
+      badgeLabel: "Live",
       lastRefreshedAt: now(),
       quotaDimensions: [
         {
-          label: "5h window",
+          label: "Local Messages / 5h",
           remainingPercent: 64,
-          remainingAbsolute: "64% left",
+          remainingAbsolute: "64% remaining",
           resetHint: "Resets in 2h"
         },
         {
-          label: "7d window",
+          label: "Code Reviews / week",
           remainingPercent: 82,
-          remainingAbsolute: "82% left",
+          remainingAbsolute: "82% remaining",
           resetHint: "Resets in 4d"
-        }
-      ]
-    },
-    {
-      serviceId: "claude-demo",
-      serviceName: "Claude",
-      accountLabel: "Team Seat",
-      iconKey: "claude",
-      statusLabel: "demo",
-      lastRefreshedAt: now(),
-      quotaDimensions: [
-        {
-          label: "Daily quota",
-          remainingPercent: 48,
-          remainingAbsolute: "48% left",
-          resetHint: "Resets tomorrow"
         }
       ]
     }
   ];
+};
+
+export const createDemoPanelState = (
+  summaryMode: "icon-only" | "lowest-remaining" | "window-5h" | "window-week" | "multi-dimension" = "multi-dimension"
+): CodexPanelState => {
+  const mode = sessionMode();
+  const items = buildItems(mode);
+  const activeSession: ActiveCodexSession | undefined =
+    mode === "connected"
+      ? {
+          sessionId: "fallback-codex-session",
+          sessionLabel: "Local Codex CLI",
+          connectionState: "connected",
+          lastCheckedAt: now(),
+          source: "fallback-client"
+        }
+      : undefined;
+
+  const snapshotState =
+    mode === "pending" ? "pending" :
+    mode === "failed" ? "failed" :
+    mode === "disconnected" ? "stale" :
+    "fresh";
+
+  const statusMessage =
+    mode === "pending" ? "Open a readable local Codex CLI session to sync live limits." :
+    mode === "failed" ? "Failed to read live Codex CLI limits." :
+    mode === "disconnected" ? "The local Codex CLI is installed, but no readable logged-in session is available." :
+    "Live Codex limits available.";
 
   return {
     desktopSurface: {
       platform: "macos",
-      iconState: "offline-demo",
+      iconState: items.length ? "idle" : "attention",
       summaryMode,
       summaryText: formatTraySummary(summaryMode, items),
       panelVisible: false
     },
+    configuredAccountCount: 0,
+    enabledAccountCount: 0,
+    snapshotState,
+    statusMessage,
+    activeSession,
     updatedAt: now(),
     items
   };

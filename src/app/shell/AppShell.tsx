@@ -11,7 +11,7 @@ import {
   persistPreferences
 } from "../../features/preferences/preferencesController";
 import type {
-  DemoPanelState,
+  CodexPanelState,
   NotificationCheckResult,
   PreferencePatch,
   UserPreferences
@@ -19,7 +19,7 @@ import type {
 import { formatTraySummary } from "../../lib/tauri/summary";
 
 export const AppShell = () => {
-  const [panelState, setPanelState] = useState<DemoPanelState | null>(null);
+  const [panelState, setPanelState] = useState<CodexPanelState | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [notificationResult, setNotificationResult] = useState<NotificationCheckResult | null>(null);
   const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
@@ -29,7 +29,10 @@ export const AppShell = () => {
   useEffect(() => {
     void (async () => {
       try {
-        const [panel, prefs] = await Promise.all([loadPanelState(), getPreferences()]);
+        const [panel, prefs] = await Promise.all([
+          loadPanelState(),
+          getPreferences()
+        ]);
         setPanelState(panel);
         setPreferences(prefs);
       } catch (loadError) {
@@ -63,18 +66,9 @@ export const AppShell = () => {
               ...current,
               desktopSurface: {
                 ...current.desktopSurface,
-                summaryMode:
-                  nextPreferences.displayMode === "icon-only"
-                    ? "icon-only"
-                    : nextPreferences.displayMode === "icon-plus-percent"
-                      ? "single-dimension"
-                      : "multi-dimension",
+                summaryMode: nextPreferences.traySummaryMode,
                 summaryText: formatTraySummary(
-                  nextPreferences.displayMode === "icon-only"
-                    ? "icon-only"
-                    : nextPreferences.displayMode === "icon-plus-percent"
-                      ? "single-dimension"
-                      : "multi-dimension",
+                  nextPreferences.traySummaryMode,
                   current.items
                 )
               }

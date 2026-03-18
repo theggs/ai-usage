@@ -1,13 +1,13 @@
 import { createContext, useContext } from "react";
 import type {
-  DemoPanelState,
+  CodexPanelState,
   NotificationCheckResult,
   PreferencePatch,
   UserPreferences
 } from "../../lib/tauri/contracts";
 
 export interface AppStateValue {
-  panelState: DemoPanelState | null;
+  panelState: CodexPanelState | null;
   preferences: UserPreferences | null;
   notificationResult: NotificationCheckResult | null;
   currentView: "panel" | "settings";

@@ -3,11 +3,19 @@ import {
 } from "../../features/demo-services/demoData";
 import { defaultPreferences } from "../../features/preferences/defaultPreferences";
 import {
+  loadCodexAccounts,
+  removeCodexAccount,
+  saveCodexAccount,
+  setCodexAccountEnabled
+} from "../persistence/codexAccountStore";
+import {
   loadPreferences,
   savePreferences as saveLocalPreferences
 } from "../persistence/preferencesStore";
 import type {
-  DemoPanelState,
+  CodexAccount,
+  CodexAccountDraft,
+  CodexPanelState,
   NotificationCheckResult,
   PreferencePatch,
   UserPreferences
@@ -22,20 +30,13 @@ declare global {
 
 const hasTauriRuntime = () => typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
 
-const withSummary = (panelState: DemoPanelState, preferences: UserPreferences): DemoPanelState => {
-  const summaryMode =
-    preferences.displayMode === "icon-only"
-      ? "icon-only"
-      : preferences.displayMode === "icon-plus-percent"
-        ? "single-dimension"
-        : "multi-dimension";
-
+const withSummary = (panelState: CodexPanelState, preferences: UserPreferences): CodexPanelState => {
   return {
     ...panelState,
     desktopSurface: {
       ...panelState.desktopSurface,
-      summaryMode,
-      summaryText: formatTraySummary(summaryMode, panelState.items)
+      summaryMode: preferences.traySummaryMode,
+      summaryText: formatTraySummary(preferences.traySummaryMode, panelState.items)
     }
   };
 };
@@ -50,14 +51,21 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
     case "get_demo_panel_state":
     case "refresh_demo_panel_state": {
       const preferences = loadPreferences();
-      const summaryMode =
-        preferences.displayMode === "icon-only"
-          ? "icon-only"
-          : preferences.displayMode === "icon-plus-percent"
-            ? "single-dimension"
-            : "multi-dimension";
-      return createDemoPanelState(summaryMode) as T;
+      return createDemoPanelState(preferences.traySummaryMode) as T;
     }
+    case "get_codex_panel_state":
+    case "refresh_codex_panel_state": {
+      const preferences = loadPreferences();
+      return createDemoPanelState(preferences.traySummaryMode) as T;
+    }
+    case "get_codex_accounts":
+      return loadCodexAccounts() as T;
+    case "save_codex_account":
+      return saveCodexAccount((args?.draft ?? {}) as CodexAccountDraft) as T;
+    case "remove_codex_account":
+      return removeCodexAccount(String(args?.accountId ?? "")) as T;
+    case "set_codex_account_enabled":
+      return setCodexAccountEnabled(String(args?.accountId ?? ""), !!args?.enabled) as T;
     case "get_preferences":
       return loadPreferences() as T;
     case "save_preferences":
@@ -77,20 +85,28 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
 };
 
 export const tauriClient = {
-  getDemoPanelState: async () => {
+  getCodexPanelState: async () => {
     const [panelState, preferences] = await Promise.all([
-      invoke<DemoPanelState>("get_demo_panel_state"),
+      invoke<CodexPanelState>("get_codex_panel_state"),
       tauriClient.getPreferences()
     ]);
     return withSummary(panelState, preferences);
   },
-  refreshDemoPanelState: async () => {
+  refreshCodexPanelState: async () => {
     const [panelState, preferences] = await Promise.all([
-      invoke<DemoPanelState>("refresh_demo_panel_state"),
+      invoke<CodexPanelState>("refresh_codex_panel_state"),
       tauriClient.getPreferences()
     ]);
     return withSummary(panelState, preferences);
   },
+  getCodexAccounts: () =>
+    invoke<CodexAccount[]>("get_codex_accounts"),
+  saveCodexAccount: (draft: CodexAccountDraft) =>
+    invoke<CodexAccount[]>("save_codex_account", { draft }),
+  removeCodexAccount: (accountId: string) =>
+    invoke<CodexAccount[]>("remove_codex_account", { accountId }),
+  setCodexAccountEnabled: (accountId: string, enabled: boolean) =>
+    invoke<CodexAccount[]>("set_codex_account_enabled", { accountId, enabled }),
   getPreferences: async (): Promise<UserPreferences> => {
     const preferences = await invoke<UserPreferences>("get_preferences");
     return preferences ?? defaultPreferences;
@@ -102,3 +118,8 @@ export const tauriClient = {
   sendTestNotification: (message?: string) =>
     invoke<NotificationCheckResult>("send_test_notification", { message })
 };
+
+Object.assign(tauriClient, {
+  getDemoPanelState: tauriClient.getCodexPanelState,
+  refreshDemoPanelState: tauriClient.refreshCodexPanelState
+});

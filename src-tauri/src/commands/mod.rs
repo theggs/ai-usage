@@ -1,10 +1,12 @@
 use crate::autostart::set_autostart_status;
+use crate::codex::{load_snapshot, save_accounts, save_preferences as persist_preferences_file};
 use crate::notifications::send_demo_notification;
 use crate::state::{
-    AppState, DemoPanelState, DesktopSurfaceState, NotificationCheckResult, PanelPlaceholderItem,
-    PreferencePatch, QuotaDimension, UserPreferences,
+    ActiveCodexSession, AppState, CodexAccount, CodexAccountDraft, CodexPanelState,
+    DesktopSurfaceState, NotificationCheckResult, PanelPlaceholderItem, PreferencePatch,
+    UserPreferences,
 };
-use crate::tray::{apply_display_mode, format_summary};
+use crate::tray::apply_display_mode;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, State};
 
@@ -16,62 +18,83 @@ fn now_iso() -> String {
     format!("{now}")
 }
 
-fn demo_panel_state(preferences: &UserPreferences) -> DemoPanelState {
-    let refreshed_at = now_iso();
-    let items = vec![
-            PanelPlaceholderItem {
-                service_id: "openai-demo".into(),
-                service_name: "OpenAI".into(),
-                account_label: Some("Personal Sandbox".into()),
-                icon_key: "openai".into(),
-                status_label: "demo".into(),
-                last_refreshed_at: refreshed_at.clone(),
-                quota_dimensions: vec![
-                    QuotaDimension {
-                        label: "5h window".into(),
-                        remaining_percent: 64,
-                        remaining_absolute: "64% left".into(),
-                        reset_hint: Some("Resets in 2h".into()),
-                    },
-                    QuotaDimension {
-                        label: "7d window".into(),
-                        remaining_percent: 82,
-                        remaining_absolute: "82% left".into(),
-                        reset_hint: Some("Resets in 4d".into()),
-                    },
-                ],
-            },
-            PanelPlaceholderItem {
-                service_id: "claude-demo".into(),
-                service_name: "Claude".into(),
-                account_label: Some("Team Seat".into()),
-                icon_key: "claude".into(),
-                status_label: "demo".into(),
-                last_refreshed_at: refreshed_at.clone(),
-                quota_dimensions: vec![QuotaDimension {
-                    label: "Daily quota".into(),
-                    remaining_percent: 48,
-                    remaining_absolute: "48% left".into(),
-                    reset_hint: Some("Resets tomorrow".into()),
-                }],
-            },
-        ];
+fn normalize_summary_mode(summary_mode: &str) -> String {
+    summary_mode.to_string()
+}
 
-    DemoPanelState {
+fn normalize_icon_state(snapshot_state: &str) -> String {
+    match snapshot_state {
+        "fresh" => "idle".into(),
+        _ => "attention".into(),
+    }
+}
+
+fn build_panel_state(
+    preferences: &UserPreferences,
+    accounts: &[CodexAccount],
+    refreshed_at: &str,
+) -> CodexPanelState {
+    let configured_account_count = accounts.len();
+    let enabled_accounts = accounts
+        .iter()
+        .filter(|account| account.enabled)
+        .cloned()
+        .collect::<Vec<_>>();
+    let enabled_account_count = enabled_accounts.len();
+
+    let snapshot = load_snapshot();
+    let active_session = if snapshot.connection_state == "connected" {
+        Some(ActiveCodexSession {
+            session_id: "local-codex-session".into(),
+            account_id: None,
+            session_label: "Local Codex CLI".into(),
+            connection_state: snapshot.connection_state.clone(),
+            last_checked_at: refreshed_at.into(),
+            source: snapshot.source.clone(),
+        })
+    } else {
+        None
+    };
+
+    let items = if snapshot.dimensions.is_empty() {
+        Vec::new()
+    } else {
+        vec![PanelPlaceholderItem {
+            service_id: "codex-active-session".into(),
+            service_name: "Codex".into(),
+            account_label: None,
+            icon_key: "codex".into(),
+            quota_dimensions: snapshot.dimensions.clone(),
+            status_label: "refreshing".into(),
+            badge_label: Some(if snapshot.snapshot_state == "fresh" {
+                "Live".into()
+            } else {
+                snapshot.snapshot_state.clone()
+            }),
+            last_refreshed_at: refreshed_at.into(),
+        }]
+    };
+
+    CodexPanelState {
         desktop_surface: DesktopSurfaceState {
             platform: if cfg!(target_os = "macos") {
                 "macos".into()
             } else {
                 "windows".into()
             },
-            icon_state: "offline-demo".into(),
-            summary_mode: preferences.display_mode.clone(),
-            summary_text: format_summary(&preferences.display_mode, &items),
+            icon_state: normalize_icon_state(&snapshot.snapshot_state),
+            summary_mode: normalize_summary_mode(&preferences.tray_summary_mode),
+            summary_text: None,
             panel_visible: false,
             last_opened_at: None,
         },
-        updated_at: refreshed_at,
         items,
+        configured_account_count,
+        enabled_account_count,
+        snapshot_state: snapshot.snapshot_state,
+        status_message: snapshot.status_message,
+        active_session,
+        updated_at: refreshed_at.into(),
     }
 }
 
@@ -82,8 +105,8 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
     if let Some(interval) = patch.refresh_interval_minutes {
         current.refresh_interval_minutes = interval.max(5);
     }
-    if let Some(display_mode) = patch.display_mode {
-        current.display_mode = display_mode;
+    if let Some(tray_summary_mode) = patch.tray_summary_mode {
+        current.tray_summary_mode = tray_summary_mode;
     }
     if let Some(autostart_enabled) = patch.autostart_enabled {
         current.autostart_enabled = autostart_enabled;
@@ -95,16 +118,114 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
     current
 }
 
-#[tauri::command]
-pub fn get_demo_panel_state(state: State<'_, AppState>) -> DemoPanelState {
-    let preferences = state.preferences.lock().unwrap().clone();
-    demo_panel_state(&preferences)
+fn persist_accounts(accounts: &[CodexAccount]) {
+    if let Err(error) = save_accounts(accounts) {
+        eprintln!("{error}");
+    }
+}
+
+fn persist_preferences(preferences: &UserPreferences) {
+    if let Err(error) = persist_preferences_file(preferences) {
+        eprintln!("{error}");
+    }
+}
+
+fn normalize_text(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn normalize_optional_text(value: Option<String>) -> Option<String> {
+    value
+        .map(|part| normalize_text(&part))
+        .filter(|part| !part.is_empty())
+}
+
+fn next_account_id(alias: &str) -> String {
+    let base = alias
+        .to_ascii_lowercase()
+        .chars()
+        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '-' })
+        .collect::<String>()
+        .trim_matches('-')
+        .to_string();
+    if base.is_empty() {
+        format!("codex-account-{}", now_iso())
+    } else {
+        format!("codex-{base}-{}", now_iso())
+    }
+}
+
+fn build_account(draft: CodexAccountDraft) -> CodexAccount {
+    let alias = normalize_text(&draft.alias);
+    let credential_label = normalize_text(&draft.credential_label);
+    let organization_label = normalize_optional_text(draft.organization_label);
+    let timestamp = now_iso();
+
+    CodexAccount {
+        id: next_account_id(&alias),
+        alias,
+        credential_label,
+        organization_label,
+        enabled: true,
+        status: "reserved".into(),
+        created_at: timestamp.clone(),
+        updated_at: timestamp,
+    }
 }
 
 #[tauri::command]
-pub fn refresh_demo_panel_state(state: State<'_, AppState>) -> DemoPanelState {
+pub fn get_codex_panel_state(state: State<'_, AppState>) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
-    demo_panel_state(&preferences)
+    let accounts = state.codex_accounts.lock().unwrap().clone();
+    build_panel_state(&preferences, &accounts, &now_iso())
+}
+
+#[tauri::command]
+pub fn refresh_codex_panel_state(state: State<'_, AppState>) -> CodexPanelState {
+    let preferences = state.preferences.lock().unwrap().clone();
+    let accounts = state.codex_accounts.lock().unwrap().clone();
+    build_panel_state(&preferences, &accounts, &now_iso())
+}
+
+#[tauri::command]
+pub fn get_codex_accounts(state: State<'_, AppState>) -> Vec<CodexAccount> {
+    state.codex_accounts.lock().unwrap().clone()
+}
+
+#[tauri::command]
+pub fn save_codex_account(
+    state: State<'_, AppState>,
+    draft: CodexAccountDraft,
+) -> Vec<CodexAccount> {
+    let mut accounts = state.codex_accounts.lock().unwrap();
+    accounts.push(build_account(draft));
+    persist_accounts(&accounts);
+    accounts.clone()
+}
+
+#[tauri::command]
+pub fn remove_codex_account(state: State<'_, AppState>, account_id: String) -> Vec<CodexAccount> {
+    let mut accounts = state.codex_accounts.lock().unwrap();
+    accounts.retain(|account| account.id != account_id);
+    persist_accounts(&accounts);
+    accounts.clone()
+}
+
+#[tauri::command]
+pub fn set_codex_account_enabled(
+    state: State<'_, AppState>,
+    account_id: String,
+    enabled: bool,
+) -> Vec<CodexAccount> {
+    let mut accounts = state.codex_accounts.lock().unwrap();
+    for account in accounts.iter_mut() {
+        if account.id == account_id {
+            account.enabled = enabled;
+            account.updated_at = now_iso();
+        }
+    }
+    persist_accounts(&accounts);
+    accounts.clone()
 }
 
 #[tauri::command]
@@ -120,8 +241,12 @@ pub fn save_preferences(
 ) -> UserPreferences {
     let current = state.preferences.lock().unwrap().clone();
     let next = merge_preferences(patch, current);
-    let panel_state = demo_panel_state(&next);
+    let panel_state = {
+        let accounts = state.codex_accounts.lock().unwrap().clone();
+        build_panel_state(&next, &accounts, &now_iso())
+    };
     apply_display_mode(&app, &next, &panel_state.items);
+    persist_preferences(&next);
     *state.preferences.lock().unwrap() = next.clone();
     next
 }
@@ -130,8 +255,12 @@ pub fn save_preferences(
 pub fn set_autostart(app: AppHandle, state: State<'_, AppState>, enabled: bool) -> UserPreferences {
     let current = state.preferences.lock().unwrap().clone();
     let next = set_autostart_status(enabled, current);
-    let panel_state = demo_panel_state(&next);
+    let panel_state = {
+        let accounts = state.codex_accounts.lock().unwrap().clone();
+        build_panel_state(&next, &accounts, &now_iso())
+    };
     apply_display_mode(&app, &next, &panel_state.items);
+    persist_preferences(&next);
     *state.preferences.lock().unwrap() = next.clone();
     next
 }

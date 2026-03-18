@@ -4,13 +4,35 @@ import type { PreferencePatch, UserPreferences } from "../tauri/contracts";
 const STORAGE_KEY = "ai-usage.preferences";
 const MIN_REFRESH_INTERVAL = 5;
 
+const normalizeLegacyTraySummaryMode = (value?: string): UserPreferences["traySummaryMode"] => {
+  switch (value) {
+    case "icon-only":
+      return "icon-only";
+    case "icon-plus-percent":
+      return "lowest-remaining";
+    case "multi-dimension":
+      return "multi-dimension";
+    case "lowest-remaining":
+    case "window-5h":
+    case "window-week":
+      return value;
+    default:
+      return defaultPreferences.traySummaryMode;
+  }
+};
+
 export const normalizePreferences = (
-  patch: PreferencePatch = {},
+  patch: PreferencePatch & { displayMode?: string } = {},
   current: UserPreferences = defaultPreferences
 ): UserPreferences => {
+  const traySummaryMode = normalizeLegacyTraySummaryMode(
+    patch.traySummaryMode ?? patch.displayMode ?? current.traySummaryMode
+  );
+
   const next: UserPreferences = {
     ...current,
     ...patch,
+    traySummaryMode,
     refreshIntervalMinutes: Math.max(
       MIN_REFRESH_INTERVAL,
       patch.refreshIntervalMinutes ?? current.refreshIntervalMinutes
@@ -22,8 +44,12 @@ export const normalizePreferences = (
     throw new Error("Unsupported language");
   }
 
-  if (!["icon-only", "icon-plus-percent", "multi-dimension"].includes(next.displayMode)) {
-    throw new Error("Unsupported display mode");
+  if (
+    !["icon-only", "lowest-remaining", "window-5h", "window-week", "multi-dimension"].includes(
+      next.traySummaryMode
+    )
+  ) {
+    throw new Error("Unsupported tray summary mode");
   }
 
   return next;

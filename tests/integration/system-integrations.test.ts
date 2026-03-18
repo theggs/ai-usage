@@ -11,4 +11,15 @@ describe("system integrations", () => {
     const result = await tauriClient.sendTestNotification();
     expect(["sent", "blocked", "failed"]).toContain(result.result);
   });
+
+  it("returns a disconnected-style fallback when no live Codex session is available", async () => {
+    localStorage.clear();
+    localStorage.setItem("ai-usage.codex-session-mode", "disconnected");
+
+    const state = await tauriClient.getCodexPanelState();
+
+    expect(state.snapshotState).toBe("stale");
+    expect(state.statusMessage).toContain("Codex CLI");
+    expect(state.activeSession).toBeUndefined();
+  });
 });
