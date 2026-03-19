@@ -664,11 +664,65 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        env::temp_dir().join(format!("ai-usage-{name}-{nanos}.sh"))
+        let extension = if cfg!(windows) { "cmd" } else { "sh" };
+        env::temp_dir().join(format!("ai-usage-{name}-{nanos}.{extension}"))
     }
 
-    fn write_mock_codex(script_body: &str) -> PathBuf {
+    fn write_mock_codex(app_server_stdout: &[&str], app_server_stderr: &[&str], app_server_exit: i32, login_stdout: &[&str], login_stderr: &[&str], login_exit: i32) -> PathBuf {
         let path = unique_temp_path("mock-codex");
+        let script_body = if cfg!(windows) {
+            let mut body = String::from("@echo off\n");
+            body.push_str("if \"%~1\"==\"--version\" (\n");
+            body.push_str("  echo codex 0.0.0\n");
+            body.push_str("  exit /b 0\n");
+            body.push_str(")\n");
+            body.push_str("if \"%~1\"==\"app-server\" (\n");
+            for line in app_server_stdout {
+                body.push_str(&format!("  echo {line}\n"));
+            }
+            for line in app_server_stderr {
+                body.push_str(&format!("  echo {line} 1>&2\n"));
+            }
+            body.push_str(&format!("  exit /b {app_server_exit}\n"));
+            body.push_str(")\n");
+            body.push_str("if \"%~1\"==\"login\" if \"%~2\"==\"status\" (\n");
+            for line in login_stdout {
+                body.push_str(&format!("  echo {line}\n"));
+            }
+            for line in login_stderr {
+                body.push_str(&format!("  echo {line} 1>&2\n"));
+            }
+            body.push_str(&format!("  exit /b {login_exit}\n"));
+            body.push_str(")\n");
+            body.push_str("exit /b 1\n");
+            body
+        } else {
+            let mut body = String::from("#!/bin/sh\n");
+            body.push_str("if [ \"$1\" = \"--version\" ]; then\n");
+            body.push_str("  printf 'codex 0.0.0\\n'\n");
+            body.push_str("  exit 0\n");
+            body.push_str("fi\n");
+            body.push_str("if [ \"$1\" = \"app-server\" ]; then\n");
+            for line in app_server_stdout {
+                body.push_str(&format!("  printf '%s\\n' '{}'\n", line.replace('\'', "'\\''")));
+            }
+            for line in app_server_stderr {
+                body.push_str(&format!("  printf '%s\\n' '{}' >&2\n", line.replace('\'', "'\\''")));
+            }
+            body.push_str(&format!("  exit {app_server_exit}\n"));
+            body.push_str("fi\n");
+            body.push_str("if [ \"$1\" = \"login\" ] && [ \"$2\" = \"status\" ]; then\n");
+            for line in login_stdout {
+                body.push_str(&format!("  printf '%s\\n' '{}'\n", line.replace('\'', "'\\''")));
+            }
+            for line in login_stderr {
+                body.push_str(&format!("  printf '%s\\n' '{}' >&2\n", line.replace('\'', "'\\''")));
+            }
+            body.push_str(&format!("  exit {login_exit}\n"));
+            body.push_str("fi\n");
+            body.push_str("exit 1\n");
+            body
+        };
         fs::write(&path, script_body).expect("script should write");
         #[cfg(unix)]
         {
@@ -740,25 +794,15 @@ mod tests {
             "Local Messages / 5h: 64% remaining",
         );
         let script = write_mock_codex(
-            r#"#!/bin/sh
-if [ "$1" = "--version" ]; then
-  printf 'codex 0.0.0\n'
-  exit 0
-fi
-if [ "$1" = "app-server" ]; then
-  IFS= read -r _
-  IFS= read -r _
-  IFS= read -r _
-  printf '%s\n' '{"id":1,"result":{"platformFamily":"unix"}}'
-  printf '%s\n' '{"id":2,"result":{"rateLimits":{"limitId":"codex","limitName":"Codex","primary":{"usedPercent":36,"windowDurationMins":300,"resetsAt":4102444800},"secondary":{"usedPercent":18,"windowDurationMins":10080,"resetsAt":4103049600}},"rateLimitsByLimitId":null}}'
-  exit 0
-fi
-if [ "$1" = "login" ] && [ "$2" = "status" ]; then
-  printf 'Logged in using ChatGPT\n'
-  exit 0
-fi
-exit 1
-"#,
+            &[
+                r#"{"id":1,"result":{"platformFamily":"unix"}}"#,
+                r#"{"id":2,"result":{"rateLimits":{"limitId":"codex","limitName":"Codex","primary":{"usedPercent":36,"windowDurationMins":300,"resetsAt":4102444800},"secondary":{"usedPercent":18,"windowDurationMins":10080,"resetsAt":4103049600}},"rateLimitsByLimitId":null}}"#,
+            ],
+            &[],
+            0,
+            &["Logged in using ChatGPT"],
+            &[],
+            0,
         );
         env::set_var("AI_USAGE_CODEX_BIN", &script);
 
@@ -779,26 +823,7 @@ exit 1
     fn reports_disconnected_when_cli_exists_but_login_is_missing() {
         let _guard = env_lock().lock().unwrap_or_else(|error| error.into_inner());
         clear_snapshot_env();
-        let script = write_mock_codex(
-            r#"#!/bin/sh
-if [ "$1" = "--version" ]; then
-  printf 'codex 0.0.0\n'
-  exit 0
-fi
-if [ "$1" = "app-server" ]; then
-  IFS= read -r _
-  IFS= read -r _
-  IFS= read -r _
-  printf 'session missing\n' >&2
-  exit 1
-fi
-if [ "$1" = "login" ] && [ "$2" = "status" ]; then
-  printf 'Not logged in\n'
-  exit 1
-fi
-exit 1
-"#,
-        );
+        let script = write_mock_codex(&[], &["session missing"], 1, &["Not logged in"], &[], 1);
         env::set_var("AI_USAGE_CODEX_BIN", &script);
 
         let snapshot = load_snapshot();
@@ -816,24 +841,12 @@ exit 1
         let _guard = env_lock().lock().unwrap_or_else(|error| error.into_inner());
         clear_snapshot_env();
         let script = write_mock_codex(
-            r#"#!/bin/sh
-if [ "$1" = "--version" ]; then
-  printf 'codex 0.0.0\n'
-  exit 0
-fi
-if [ "$1" = "app-server" ]; then
-  IFS= read -r _
-  IFS= read -r _
-  IFS= read -r _
-  printf 'app-server panic\n' >&2
-  exit 1
-fi
-if [ "$1" = "login" ] && [ "$2" = "status" ]; then
-  printf 'Logged in using ChatGPT\n'
-  exit 0
-fi
-exit 1
-"#,
+            &[],
+            &["app-server panic"],
+            1,
+            &["Logged in using ChatGPT"],
+            &[],
+            0,
         );
         env::set_var("AI_USAGE_CODEX_BIN", &script);
 
