@@ -18,6 +18,17 @@ pub fn run() {
         ))
         .manage(AppState::default())
         .setup(|app| {
+            // Hide from Dock and Cmd+Tab on macOS (menu-bar-only agent).
+            // Info.plist LSUIElement alone is insufficient because Tauri's
+            // internal init may override the activation policy.
+            #[cfg(target_os = "macos")]
+            {
+                use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
+                let mtm = objc2::MainThreadMarker::new()
+                    .expect("setup runs on main thread");
+                let ns_app = NSApplication::sharedApplication(mtm);
+                ns_app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+            }
             let loaded_accounts = codex::load_accounts();
             let loaded_preferences = codex::load_preferences();
             let app_state = app.state::<AppState>();

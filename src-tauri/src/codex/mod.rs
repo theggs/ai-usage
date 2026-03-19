@@ -79,7 +79,27 @@ struct CommandOutput {
 }
 
 fn codex_bin() -> String {
-    env::var("AI_USAGE_CODEX_BIN").unwrap_or_else(|_| "codex".into())
+    if let Ok(explicit) = env::var("AI_USAGE_CODEX_BIN") {
+        return explicit;
+    }
+
+    // macOS .app bundles launch with a minimal PATH (/usr/bin:/bin:/usr/sbin:/sbin),
+    // so user-installed CLIs are not discoverable by bare name. Probe common locations.
+    let home = env::var("HOME").unwrap_or_default();
+    let candidates = [
+        format!("{home}/.local/bin/codex"),
+        "/opt/homebrew/bin/codex".into(),
+        "/usr/local/bin/codex".into(),
+        format!("{home}/.cargo/bin/codex"),
+    ];
+    for path in &candidates {
+        if std::path::Path::new(path).exists() {
+            return path.clone();
+        }
+    }
+
+    // Fallback: rely on PATH (works in dev mode / terminal launches)
+    "codex".into()
 }
 
 fn trim_wrapping_punctuation(value: &str) -> String {
