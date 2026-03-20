@@ -32,11 +32,13 @@ describe("PanelView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(screen.getAllByText("实时").length).toBeGreaterThan(0);
     expect(screen.queryByText(/托盘摘要预览:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/同步状态:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/数据来源:/)).not.toBeInTheDocument();
-    expect(container.querySelector("div.rounded-xl.border")?.className).toContain("rounded-xl");
+    expect(screen.queryByText("上次刷新:")).not.toBeInTheDocument();
+    expect(container.querySelector("section")?.className).toContain("gap-4");
+    expect(screen.getByRole("button", { name: "手动刷新" }).className).toContain("h-8");
+    expect(screen.getByRole("button", { name: "设置" }).className).toContain("w-8");
 
     await userEvent.click(screen.getByRole("button", { name: "手动刷新" }));
     expect(state.refreshPanel).toHaveBeenCalled();
@@ -56,7 +58,7 @@ describe("PanelView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(screen.getByText("等待同步")).toBeInTheDocument();
+    expect(screen.queryByText("等待同步")).not.toBeInTheDocument();
     expect(screen.getByText("请确保本地 Codex CLI 会话可读取，以便同步真实额度。")).toBeInTheDocument();
   });
 

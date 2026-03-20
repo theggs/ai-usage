@@ -9,6 +9,15 @@ const toneClasses: Record<QuotaDimension["progressTone"], string> = {
   muted: "bg-slate-300"
 };
 
+const formatDisplayLabel = (label: string) => {
+  const match = label.match(/^(.+?)\s*\/\s*(.+)$/);
+  if (!match) {
+    return label;
+  }
+
+  return match[2].trim() || label;
+};
+
 export const QuotaSummary = ({
   dimension,
   copy
@@ -19,11 +28,12 @@ export const QuotaSummary = ({
   const { label, remainingPercent, remainingAbsolute, resetHint, progressTone } = dimension;
   const localizedRemaining = localizeRemaining(copy, remainingPercent, remainingAbsolute);
   const localizedResetHint = localizeResetHint(copy, resetHint);
+  const displayLabel = formatDisplayLabel(label);
 
   return (
     <div className="grid gap-2 rounded-xl bg-slate-50 px-3 py-3">
-      <div className="flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-        <span>{label}</span>
+      <div className="flex items-center justify-between gap-3 text-xs font-medium tracking-[0.08em] text-slate-500">
+        <span>{displayLabel}</span>
         <span>{remainingPercent !== undefined ? `${remainingPercent}%` : "--"}</span>
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-slate-200" data-testid={`progress-track-${label}`}>

@@ -15,29 +15,32 @@ export const ServiceCard = ({
 }: {
   service: PanelPlaceholderItem;
   copy: CopyTree;
-}) => (
-  <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <div className="text-xs uppercase tracking-[0.16em] text-slate-500">
-          {service.statusLabel === "refreshing" ? copy.quotaStatusRefreshing : service.statusLabel}
+}) => {
+  const badgeLabel = service.badgeLabel ? localizeBadgeLabel(copy, service.badgeLabel) : null;
+
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-slate-950">{service.serviceName}</h3>
+          {service.accountLabel ? (
+            <p className="mt-1 text-sm text-slate-500">{service.accountLabel}</p>
+          ) : null}
         </div>
-        <h3 className="mt-1 text-base font-semibold text-slate-950">{service.serviceName}</h3>
-        {service.accountLabel ? (
-          <p className="text-sm text-slate-500">{service.accountLabel}</p>
+        {badgeLabel ? (
+          <div className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+            {badgeLabel}
+          </div>
         ) : null}
       </div>
-      <div className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-        {localizeBadgeLabel(copy, service.badgeLabel)}
+      <div className="mt-3 grid gap-2">
+        {service.quotaDimensions.map((dimension) => (
+          <QuotaSummary key={dimension.label} dimension={dimension} copy={copy} />
+        ))}
       </div>
-    </div>
-    <div className="mt-3 grid gap-2">
-      {service.quotaDimensions.map((dimension) => (
-        <QuotaSummary key={dimension.label} dimension={dimension} copy={copy} />
-      ))}
-    </div>
-    <p className="mt-3 text-xs text-slate-500">
-      {copy.lastRefreshedAt}: {formatCardTime(service.lastRefreshedAt)}
-    </p>
-  </article>
-);
+      <p className="mt-3 text-xs text-slate-500">
+        {copy.lastRefreshedAt}: {formatCardTime(service.lastRefreshedAt)}
+      </p>
+    </article>
+  );
+};

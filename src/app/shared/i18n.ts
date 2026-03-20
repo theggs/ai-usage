@@ -1,4 +1,4 @@
-import type { UserPreferences } from "../../lib/tauri/contracts";
+import type { CodexSnapshotState, UserPreferences } from "../../lib/tauri/contracts";
 
 export type CopyTree = {
   title: string;
@@ -76,7 +76,7 @@ export type CopyTree = {
 
 const baseCopy: CopyTree = {
   title: "AIUsage",
-  subtitle: "Codex usage limits",
+  subtitle: "Usage Panel",
   settings: "Settings",
   preferences: "Preferences",
   notifications: "Notifications",
@@ -151,7 +151,7 @@ const baseCopy: CopyTree = {
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
   "zh-CN": {
     title: "AIUsage",
-    subtitle: "Codex 额度面板",
+    subtitle: "额度面板",
     settings: "设置",
     preferences: "偏好设置",
     notifications: "通知",
@@ -231,8 +231,28 @@ export const resolveCopyTree = (overrides?: Partial<CopyTree>): CopyTree => ({
   ...(overrides ?? {})
 });
 
+const normalizeSnapshotState = (value?: string | null): CodexSnapshotState | undefined => {
+  if (!value) return undefined;
+
+  switch (value.toLowerCase()) {
+    case "live":
+    case "fresh":
+      return "fresh";
+    case "pending":
+      return "pending";
+    case "stale":
+      return "stale";
+    case "empty":
+      return "empty";
+    case "failed":
+      return "failed";
+    default:
+      return undefined;
+  }
+};
+
 export const getSnapshotTag = (copy: CopyTree, snapshotState?: string | null) => {
-  switch (snapshotState) {
+  switch (normalizeSnapshotState(snapshotState)) {
     case "fresh":
       return copy.snapshotFresh;
     case "pending":
@@ -253,7 +273,7 @@ export const getSnapshotMessage = (
   snapshotState?: string | null,
   hasEnabledAccounts = false
 ) => {
-  switch (snapshotState) {
+  switch (normalizeSnapshotState(snapshotState)) {
     case "fresh":
       return copy.liveState;
     case "pending":
@@ -306,7 +326,15 @@ export const localizeResetHint = (copy: CopyTree, backendValue?: string | null):
  */
 export const localizeBadgeLabel = (copy: CopyTree, backendValue?: string | null): string => {
   if (!backendValue) return copy.quotaStatusLive;
-  if (backendValue === "Live") return copy.quotaStatusLive;
-  if (backendValue === "Refreshing" || backendValue === "refreshing") return copy.quotaStatusRefreshing;
+
+  if (backendValue === "Refreshing" || backendValue === "refreshing") {
+    return copy.quotaStatusRefreshing;
+  }
+
+  const normalizedSnapshotState = normalizeSnapshotState(backendValue);
+  if (normalizedSnapshotState) {
+    return getSnapshotTag(copy, normalizedSnapshotState);
+  }
+
   return backendValue;
 };
