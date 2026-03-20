@@ -49,6 +49,18 @@ export const AppShell = () => {
     })();
   }, []);
 
+  // Auto-refresh panel on the configured interval.
+  // Re-starts whenever the interval preference changes.
+  useEffect(() => {
+    if (!preferences) return;
+    const intervalMs = preferences.refreshIntervalMinutes * 60 * 1000;
+    const id = setInterval(() => { void refreshPanel(); }, intervalMs);
+    return () => clearInterval(id);
+    // refreshPanel is intentionally omitted from deps — it is recreated each
+    // render but the panelController dedup guard prevents concurrent calls.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferences?.refreshIntervalMinutes]);
+
   const refreshPanel = async () => {
     if (isRefreshing) {
       return;
