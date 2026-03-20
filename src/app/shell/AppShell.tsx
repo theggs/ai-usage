@@ -3,7 +3,7 @@ import { PanelView } from "../panel/PanelView";
 import { SettingsView } from "../settings/SettingsView";
 import { AppStateContext } from "../shared/appState";
 import { getCopy } from "../shared/i18n";
-import { loadPanelState, refreshPanelState } from "../../features/demo-services/panelController";
+import { loadPanelState, refreshPanelState, loadClaudeCodePanelState, refreshClaudeCodePanelState } from "../../features/demo-services/panelController";
 import { sendDemoNotification } from "../../features/notifications/notificationController";
 import {
   applyAutostart,
@@ -20,6 +20,7 @@ import { formatTraySummary } from "../../lib/tauri/summary";
 
 export const AppShell = () => {
   const [panelState, setPanelState] = useState<CodexPanelState | null>(null);
+  const [claudeCodePanelState, setClaudeCodePanelState] = useState<CodexPanelState | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [notificationResult, setNotificationResult] = useState<NotificationCheckResult | null>(null);
   const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
@@ -31,12 +32,14 @@ export const AppShell = () => {
   useEffect(() => {
     void (async () => {
       try {
-        const [panel, prefs] = await Promise.all([
+        const [panel, claudeCodePanel, prefs] = await Promise.all([
           loadPanelState(),
+          loadClaudeCodePanelState(),
           getPreferences()
         ]);
         setPanelState(panel);
         lastStablePanelState.current = panel;
+        setClaudeCodePanelState(claudeCodePanel);
         setPreferences(prefs);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to initialize app");
@@ -53,9 +56,13 @@ export const AppShell = () => {
     setIsRefreshing(true);
     setError(null);
     try {
-      const nextPanel = await refreshPanelState();
+      const [nextPanel, nextClaudeCodePanel] = await Promise.all([
+        refreshPanelState(),
+        refreshClaudeCodePanelState()
+      ]);
       setPanelState(nextPanel);
       lastStablePanelState.current = nextPanel;
+      setClaudeCodePanelState(nextClaudeCodePanel);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Refresh failed");
     } finally {
@@ -121,6 +128,7 @@ export const AppShell = () => {
     <AppStateContext.Provider
       value={{
         panelState: visiblePanelState,
+        claudeCodePanelState,
         preferences,
         notificationResult,
         currentView,

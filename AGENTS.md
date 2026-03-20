@@ -58,6 +58,8 @@ npm run tauri:build            # Production build
 - **i18n**: Frontend-only localization via `src/app/shared/i18n.ts`. Backend returns English strings; frontend maps via `localizeRemaining`, `localizeResetHint`, `localizeBadgeLabel`
 - **Quota visualization**: Progress bars with threshold-based coloring (`>50%` green, `20-50%` amber, `<20%` red, `undefined` gray). Logic in `src/lib/tauri/summary.ts`
 - **macOS menu bar mode**: `NSApplicationActivationPolicy::Accessory` for dock/Cmd+Tab hiding
+- **Outbound HTTP proxy**: `src-tauri/src/claude_code/mod.rs` auto-detects system proxy via env vars (`HTTPS_PROXY` etc.) then `scutil --proxy` (macOS). GUI apps don't inherit shell proxy env vars, so `scutil` fallback is essential for users behind a proxy.
+- **Claude Code credentials**: Keychain stores plain JSON (`{"claudeAiOauth":{"accessToken":"…"}}`). Fall back to hex-decode for older Claude Code versions that stored hex-encoded JSON. Priority: env var → keychain → `~/.claude/.credentials.json`.
 
 ## Feature History
 
@@ -65,3 +67,4 @@ npm run tauri:build            # Production build
 - 002-openai-codex-support: Codex CLI usage limits integration
 - 003-macos-menubar-agent: macOS menu bar agent mode
 - 004-menubar-ui-overhaul: Compact UI, progress bars, i18n, popover lifecycle
+- 005-claude-code-support: Claude Code quota display, menubar service selection, panel display order

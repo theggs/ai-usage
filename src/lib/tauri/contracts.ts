@@ -63,6 +63,8 @@ export interface UserPreferences {
   autostartEnabled: boolean;
   notificationTestEnabled: boolean;
   lastSavedAt: string;
+  menubarService: string;
+  serviceOrder: string[];
 }
 
 export interface PreferencePatch {
@@ -71,6 +73,8 @@ export interface PreferencePatch {
   traySummaryMode?: UserPreferences["traySummaryMode"];
   autostartEnabled?: boolean;
   notificationTestEnabled?: boolean;
+  menubarService?: string;
+  serviceOrder?: string[];
 }
 
 export interface NotificationCheckResult {

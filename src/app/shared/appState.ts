@@ -8,6 +8,7 @@ import type {
 
 export interface AppStateValue {
   panelState: CodexPanelState | null;
+  claudeCodePanelState: CodexPanelState | null;
   preferences: UserPreferences | null;
   notificationResult: NotificationCheckResult | null;
   currentView: "panel" | "settings";

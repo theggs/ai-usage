@@ -8,6 +8,7 @@ import type { CodexPanelState } from "../../lib/tauri/contracts";
 
 const createState = (panelState: CodexPanelState = createDemoPanelState()): AppStateValue => ({
   panelState,
+  claudeCodePanelState: null,
   preferences: defaultPreferences,
   notificationResult: null,
   currentView: "panel",

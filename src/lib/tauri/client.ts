@@ -58,6 +58,11 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
       const preferences = loadPreferences();
       return createDemoPanelState(preferences.traySummaryMode) as T;
     }
+    case "get_claude_code_panel_state":
+    case "refresh_claude_code_panel_state": {
+      const preferences = loadPreferences();
+      return createDemoPanelState(preferences.traySummaryMode) as T;
+    }
     case "get_codex_accounts":
       return loadCodexAccounts() as T;
     case "save_codex_account":
@@ -95,6 +100,20 @@ export const tauriClient = {
   refreshCodexPanelState: async () => {
     const [panelState, preferences] = await Promise.all([
       invoke<CodexPanelState>("refresh_codex_panel_state"),
+      tauriClient.getPreferences()
+    ]);
+    return withSummary(panelState, preferences);
+  },
+  getClaudeCodePanelState: async () => {
+    const [panelState, preferences] = await Promise.all([
+      invoke<CodexPanelState>("get_claude_code_panel_state"),
+      tauriClient.getPreferences()
+    ]);
+    return withSummary(panelState, preferences);
+  },
+  refreshClaudeCodePanelState: async () => {
+    const [panelState, preferences] = await Promise.all([
+      invoke<CodexPanelState>("refresh_claude_code_panel_state"),
       tauriClient.getPreferences()
     ]);
     return withSummary(panelState, preferences);

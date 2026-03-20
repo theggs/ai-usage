@@ -13,3 +13,17 @@ export const refreshPanelState = () => {
 
   return pendingRefresh;
 };
+
+export const loadClaudeCodePanelState = () => tauriClient.getClaudeCodePanelState();
+
+let pendingClaudeCodeRefresh: Promise<Awaited<ReturnType<typeof tauriClient.refreshClaudeCodePanelState>>> | null = null;
+
+export const refreshClaudeCodePanelState = () => {
+  if (!pendingClaudeCodeRefresh) {
+    pendingClaudeCodeRefresh = tauriClient.refreshClaudeCodePanelState().finally(() => {
+      pendingClaudeCodeRefresh = null;
+    });
+  }
+
+  return pendingClaudeCodeRefresh;
+};

@@ -6,5 +6,7 @@ export const defaultPreferences: UserPreferences = {
   traySummaryMode: "lowest-remaining",
   autostartEnabled: true,
   notificationTestEnabled: true,
-  lastSavedAt: new Date(0).toISOString()
+  lastSavedAt: new Date(0).toISOString(),
+  menubarService: "codex",
+  serviceOrder: ["codex", "claude-code"]
 };

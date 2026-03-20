@@ -67,6 +67,11 @@ export type CopyTree = {
   hourShort: string;
   dayShort: string;
   weekShort: string;
+  menubarService: string;
+  serviceOrder: string;
+  claudeCodeLabel: string;
+  codexLabel: string;
+  claudeCodeNotConnected: string;
 };
 
 const baseCopy: CopyTree = {
@@ -135,7 +140,12 @@ const baseCopy: CopyTree = {
   minuteShort: "m",
   hourShort: "h",
   dayShort: "d",
-  weekShort: "week"
+  weekShort: "week",
+  menubarService: "Menubar service",
+  serviceOrder: "Panel order",
+  claudeCodeLabel: "Claude Code",
+  codexLabel: "Codex",
+  claudeCodeNotConnected: "Claude Code not connected. Install Claude Code CLI and log in."
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
@@ -205,7 +215,12 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     minuteShort: " 分钟",
     hourShort: " 小时",
     dayShort: " 天",
-    weekShort: "周"
+    weekShort: "周",
+    menubarService: "菜单栏服务",
+    serviceOrder: "面板顺序",
+    claudeCodeLabel: "Claude Code",
+    codexLabel: "Codex",
+    claudeCodeNotConnected: "Claude Code 未连接。请安装 Claude Code CLI 并登录。"
   }
   ,
   "en-US": baseCopy

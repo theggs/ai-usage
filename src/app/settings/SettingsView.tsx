@@ -131,6 +131,65 @@ export const SettingsView = () => {
             />
           </button>
         </PreferenceField>
+
+        <PreferenceField label={copy.menubarService}>
+          <select
+            aria-label={copy.menubarService}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+            value={draft.menubarService}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, menubarService: event.target.value }))
+            }
+          >
+            <option value="codex">{copy.codexLabel}</option>
+            <option value="claude-code">{copy.claudeCodeLabel}</option>
+          </select>
+        </PreferenceField>
+
+        <PreferenceField label={copy.serviceOrder}>
+          <div className="grid gap-1">
+            {draft.serviceOrder.map((serviceId, index) => {
+              const label = serviceId === "claude-code" ? copy.claudeCodeLabel : copy.codexLabel;
+              return (
+                <div key={serviceId} className="flex items-center gap-2">
+                  <span className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    {label}
+                  </span>
+                  <button
+                    aria-label="Move up"
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 disabled:opacity-30"
+                    disabled={index === 0}
+                    onClick={() =>
+                      setDraft((current) => {
+                        const next = [...current.serviceOrder];
+                        [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                        return { ...current, serviceOrder: next };
+                      })
+                    }
+                    type="button"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    aria-label="Move down"
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 disabled:opacity-30"
+                    disabled={index === draft.serviceOrder.length - 1}
+                    onClick={() =>
+                      setDraft((current) => {
+                        const next = [...current.serviceOrder];
+                        [next[index], next[index + 1]] = [next[index + 1], next[index]];
+                        return { ...current, serviceOrder: next };
+                      })
+                    }
+                    type="button"
+                  >
+                    ↓
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </PreferenceField>
       </PreferenceSection>
 
       <PreferenceSection title={copy.actions}>

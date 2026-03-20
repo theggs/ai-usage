@@ -160,7 +160,13 @@ pub fn apply_display_mode(
     items: &[PanelPlaceholderItem],
 ) {
     if let Some(tray) = app.tray_by_id("main-tray") {
-        let summary = format_summary(&preferences.tray_summary_mode, items);
+        // Filter items to only the selected menubar service before computing summary.
+        let filtered: Vec<PanelPlaceholderItem> = items
+            .iter()
+            .filter(|item| item.service_id == preferences.menubar_service)
+            .cloned()
+            .collect();
+        let summary = format_summary(&preferences.tray_summary_mode, &filtered);
         let tooltip = summary
             .clone()
             .map(|value| format!("AIUsage · {value}"))
@@ -320,5 +326,71 @@ mod tests {
     fn hides_when_focus_is_lost() {
         assert!(should_hide_on_focus_change(false));
         assert!(!should_hide_on_focus_change(true));
+    }
+
+    fn item_for_service(service_id: &str, label: &str, percent: u8) -> PanelPlaceholderItem {
+        PanelPlaceholderItem {
+            service_id: service_id.into(),
+            service_name: service_id.into(),
+            account_label: None,
+            icon_key: service_id.into(),
+            quota_dimensions: vec![QuotaDimension {
+                label: label.into(),
+                remaining_percent: Some(percent),
+                remaining_absolute: format!("{percent}%"),
+                reset_hint: None,
+                status: "healthy".into(),
+                progress_tone: "success".into(),
+            }],
+            status_label: "refreshing".into(),
+            badge_label: Some("Live".into()),
+            last_refreshed_at: "0".into(),
+        }
+    }
+
+    #[test]
+    fn filters_to_selected_service_for_summary() {
+        let codex_item = item_for_service("codex", "Codex / 5h", 70);
+        let claude_item = item_for_service("claude-code", "Claude Code / 5h", 30);
+        let items = [codex_item, claude_item];
+
+        // When menubar_service is "claude-code", summary reflects Claude Code only.
+        let mut prefs = crate::state::default_preferences();
+        prefs.menubar_service = "claude-code".into();
+        let filtered: Vec<PanelPlaceholderItem> = items
+            .iter()
+            .filter(|item| item.service_id == prefs.menubar_service)
+            .cloned()
+            .collect();
+        assert_eq!(
+            format_summary("lowest-remaining", &filtered),
+            Some("30%".into())
+        );
+
+        // When menubar_service is "codex", summary reflects Codex only.
+        prefs.menubar_service = "codex".into();
+        let filtered: Vec<PanelPlaceholderItem> = items
+            .iter()
+            .filter(|item| item.service_id == prefs.menubar_service)
+            .cloned()
+            .collect();
+        assert_eq!(
+            format_summary("lowest-remaining", &filtered),
+            Some("70%".into())
+        );
+    }
+
+    #[test]
+    fn returns_none_when_filtered_items_list_is_empty() {
+        let codex_item = item_for_service("codex", "Codex / 5h", 50);
+        let items = [codex_item];
+
+        // menubar_service doesn't match any item → empty filtered list → None summary.
+        let filtered: Vec<PanelPlaceholderItem> = items
+            .iter()
+            .filter(|item| item.service_id == "claude-code")
+            .cloned()
+            .collect();
+        assert_eq!(format_summary("lowest-remaining", &filtered), None);
     }
 }

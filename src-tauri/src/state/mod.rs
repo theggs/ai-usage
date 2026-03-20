@@ -5,6 +5,14 @@ fn default_tray_summary_mode() -> String {
     "lowest-remaining".into()
 }
 
+fn default_menubar_service() -> String {
+    "codex".into()
+}
+
+fn default_service_order() -> Vec<String> {
+    vec!["codex".into(), "claude-code".into()]
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaDimension {
@@ -74,6 +82,10 @@ pub struct UserPreferences {
     pub autostart_enabled: bool,
     pub notification_test_enabled: bool,
     pub last_saved_at: String,
+    #[serde(default = "default_menubar_service")]
+    pub menubar_service: String,
+    #[serde(default = "default_service_order")]
+    pub service_order: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +97,8 @@ pub struct PreferencePatch {
     pub tray_summary_mode: Option<String>,
     pub autostart_enabled: Option<bool>,
     pub notification_test_enabled: Option<bool>,
+    pub menubar_service: Option<String>,
+    pub service_order: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,6 +139,8 @@ pub fn default_preferences() -> UserPreferences {
         autostart_enabled: true,
         notification_test_enabled: true,
         last_saved_at: "1970-01-01T00:00:00.000Z".into(),
+        menubar_service: default_menubar_service(),
+        service_order: default_service_order(),
     }
 }
 
@@ -139,5 +155,34 @@ impl Default for AppState {
             preferences: Mutex::new(default_preferences()),
             codex_accounts: Mutex::new(Vec::new()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UserPreferences;
+
+    // T022: Backward-compatibility gate — existing preference files without
+    // the new fields must deserialize cleanly and pick up defaults.
+    #[test]
+    fn deserializes_legacy_preferences_with_defaults() {
+        // A minimal preferences JSON that omits menubarService and serviceOrder
+        // (as would be saved by an older version of the app).
+        let json = r#"{
+            "language": "zh-CN",
+            "refreshIntervalMinutes": 20,
+            "traySummaryMode": "window-5h",
+            "autostartEnabled": false,
+            "notificationTestEnabled": true,
+            "lastSavedAt": "2025-01-01T00:00:00.000Z"
+        }"#;
+
+        let prefs: UserPreferences = serde_json::from_str(json)
+            .expect("legacy preferences should deserialize without new fields");
+
+        assert_eq!(prefs.menubar_service, "codex");
+        assert_eq!(prefs.service_order, vec!["codex", "claude-code"]);
+        assert_eq!(prefs.refresh_interval_minutes, 20);
+        assert_eq!(prefs.tray_summary_mode, "window-5h");
     }
 }

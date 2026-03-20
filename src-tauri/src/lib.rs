@@ -1,4 +1,5 @@
 pub mod autostart;
+pub mod claude_code;
 pub mod codex;
 pub mod commands;
 pub mod notifications;
@@ -64,6 +65,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_codex_panel_state,
             commands::refresh_codex_panel_state,
+            commands::get_claude_code_panel_state,
+            commands::refresh_claude_code_panel_state,
             commands::get_codex_accounts,
             commands::save_codex_account,
             commands::remove_codex_account,
