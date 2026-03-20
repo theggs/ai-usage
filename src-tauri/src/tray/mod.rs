@@ -4,6 +4,17 @@ use tauri::{
     AppHandle, Manager, Wry,
 };
 
+fn items_for_menubar_service(
+    preferences: &UserPreferences,
+    items: &[PanelPlaceholderItem],
+) -> Vec<PanelPlaceholderItem> {
+    items
+        .iter()
+        .filter(|item| item.service_id == preferences.menubar_service)
+        .cloned()
+        .collect()
+}
+
 fn all_dimensions(items: &[PanelPlaceholderItem]) -> Vec<crate::state::QuotaDimension> {
     items
         .iter()
@@ -160,12 +171,7 @@ pub fn apply_display_mode(
     items: &[PanelPlaceholderItem],
 ) {
     if let Some(tray) = app.tray_by_id("main-tray") {
-        // Filter items to only the selected menubar service before computing summary.
-        let filtered: Vec<PanelPlaceholderItem> = items
-            .iter()
-            .filter(|item| item.service_id == preferences.menubar_service)
-            .cloned()
-            .collect();
+        let filtered = items_for_menubar_service(preferences, items);
         let summary = format_summary(&preferences.tray_summary_mode, &filtered);
         let tooltip = summary
             .clone()
@@ -204,7 +210,8 @@ pub fn initialize_tray(
         builder = builder.icon(icon.clone());
     }
 
-    let summary = format_summary(&preferences.tray_summary_mode, items);
+    let filtered = items_for_menubar_service(preferences, items);
+    let summary = format_summary(&preferences.tray_summary_mode, &filtered);
     if let Some(text) = summary.clone() {
         builder = builder.title(text);
     }
@@ -244,7 +251,7 @@ pub fn should_hide_on_focus_change(is_focused: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_summary, should_hide_on_focus_change};
+    use super::{format_summary, items_for_menubar_service, should_hide_on_focus_change};
     use crate::state::{PanelPlaceholderItem, QuotaDimension};
 
     fn item(percent: u8) -> PanelPlaceholderItem {
@@ -357,11 +364,7 @@ mod tests {
         // When menubar_service is "claude-code", summary reflects Claude Code only.
         let mut prefs = crate::state::default_preferences();
         prefs.menubar_service = "claude-code".into();
-        let filtered: Vec<PanelPlaceholderItem> = items
-            .iter()
-            .filter(|item| item.service_id == prefs.menubar_service)
-            .cloned()
-            .collect();
+        let filtered = items_for_menubar_service(&prefs, &items);
         assert_eq!(
             format_summary("lowest-remaining", &filtered),
             Some("30%".into())
@@ -369,11 +372,7 @@ mod tests {
 
         // When menubar_service is "codex", summary reflects Codex only.
         prefs.menubar_service = "codex".into();
-        let filtered: Vec<PanelPlaceholderItem> = items
-            .iter()
-            .filter(|item| item.service_id == prefs.menubar_service)
-            .cloned()
-            .collect();
+        let filtered = items_for_menubar_service(&prefs, &items);
         assert_eq!(
             format_summary("lowest-remaining", &filtered),
             Some("70%".into())
@@ -386,11 +385,35 @@ mod tests {
         let items = [codex_item];
 
         // menubar_service doesn't match any item → empty filtered list → None summary.
-        let filtered: Vec<PanelPlaceholderItem> = items
-            .iter()
-            .filter(|item| item.service_id == "claude-code")
-            .cloned()
-            .collect();
+        let mut prefs = crate::state::default_preferences();
+        prefs.menubar_service = "claude-code".into();
+        let filtered = items_for_menubar_service(&prefs, &items);
         assert_eq!(format_summary("lowest-remaining", &filtered), None);
+    }
+
+    #[test]
+    fn startup_filtering_uses_selected_service_for_initial_summary() {
+        let items = [
+            item_for_service("codex", "Codex / 5h", 72),
+            item_for_service("claude-code", "Claude Code / 5h", 28),
+        ];
+        let mut prefs = crate::state::default_preferences();
+        prefs.menubar_service = "claude-code".into();
+
+        let filtered = items_for_menubar_service(&prefs, &items);
+
+        assert_eq!(format_summary("lowest-remaining", &filtered), Some("28%".into()));
+    }
+
+    #[test]
+    fn codex_service_id_matches_saved_menubar_preference_value() {
+        let items = [item_for_service("codex", "Codex / 5h", 55)];
+        let mut prefs = crate::state::default_preferences();
+        prefs.menubar_service = "codex".into();
+
+        let filtered = items_for_menubar_service(&prefs, &items);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(format_summary("lowest-remaining", &filtered), Some("55%".into()));
     }
 }

@@ -42,8 +42,9 @@ pub fn run() {
                 *preferences = loaded_preferences;
             }
             let preferences = app_state.preferences.lock().unwrap().clone();
-            let panel_state = commands::get_codex_panel_state(app_state);
-            tray::initialize_tray(app.handle(), &preferences, &panel_state.items);
+            let accounts = app_state.codex_accounts.lock().unwrap().clone();
+            let tray_items = commands::build_tray_items(&preferences, &accounts, "startup");
+            tray::initialize_tray(app.handle(), &preferences, &tray_items);
             if let Some(window) = app.get_webview_window("main") {
                 let window_handle = window.clone();
                 window.on_window_event(move |event| match event {

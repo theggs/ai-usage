@@ -93,7 +93,7 @@ fn build_panel_state(
         Vec::new()
     } else {
         vec![PanelPlaceholderItem {
-            service_id: "codex-active-session".into(),
+            service_id: "codex".into(),
             service_name: "Codex".into(),
             account_label: None,
             icon_key: "codex".into(),
@@ -129,6 +129,16 @@ fn build_panel_state(
         active_session,
         updated_at: refreshed_at.into(),
     }
+}
+
+pub fn build_tray_items(
+    preferences: &UserPreferences,
+    accounts: &[CodexAccount],
+    refreshed_at: &str,
+) -> Vec<PanelPlaceholderItem> {
+    let mut items = build_panel_state(preferences, accounts, refreshed_at).items;
+    items.extend(build_claude_code_items(refreshed_at));
+    items
 }
 
 pub fn build_claude_code_items(refreshed_at: &str) -> Vec<PanelPlaceholderItem> {
@@ -346,11 +356,10 @@ pub fn save_preferences(
     let current = state.preferences.lock().unwrap().clone();
     let next = merge_preferences(patch, current);
     let refreshed_at = now_iso();
-    let mut merged_items = {
+    let merged_items = {
         let accounts = state.codex_accounts.lock().unwrap().clone();
-        build_panel_state(&next, &accounts, &refreshed_at).items
+        build_tray_items(&next, &accounts, &refreshed_at)
     };
-    merged_items.extend(build_claude_code_items(&refreshed_at));
     apply_display_mode(&app, &next, &merged_items);
     persist_preferences(&next);
     *state.preferences.lock().unwrap() = next.clone();
@@ -362,11 +371,10 @@ pub fn set_autostart(app: AppHandle, state: State<'_, AppState>, enabled: bool) 
     let current = state.preferences.lock().unwrap().clone();
     let next = set_autostart_status(enabled, current);
     let refreshed_at = now_iso();
-    let mut merged_items = {
+    let merged_items = {
         let accounts = state.codex_accounts.lock().unwrap().clone();
-        build_panel_state(&next, &accounts, &refreshed_at).items
+        build_tray_items(&next, &accounts, &refreshed_at)
     };
-    merged_items.extend(build_claude_code_items(&refreshed_at));
     apply_display_mode(&app, &next, &merged_items);
     persist_preferences(&next);
     *state.preferences.lock().unwrap() = next.clone();
