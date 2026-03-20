@@ -6,7 +6,7 @@ export const PreferenceField = ({
   hint,
   children
 }: PropsWithChildren<{ label: string; description?: ReactNode; hint?: ReactNode }>) => (
-  <label className="grid gap-2 rounded-3xl bg-white/80 p-4 shadow-sm shadow-emerald-950/5">
+  <label className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
     <div>
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-semibold text-slate-900">{label}</div>

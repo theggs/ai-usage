@@ -14,12 +14,15 @@ export type CodexConnectionState = "connected" | "disconnected" | "unavailable" 
 export type CodexSnapshotState = "fresh" | "stale" | "empty" | "failed" | "pending";
 export type CodexWindowKind = "rolling-hours" | "weekly" | "other";
 export type CodexLimitStatus = "healthy" | "warning" | "exhausted" | "unknown";
+export type QuotaProgressTone = "success" | "warning" | "danger" | "muted";
 
 export interface QuotaDimension {
   label: string;
   remainingPercent?: number;
   remainingAbsolute: string;
   resetHint?: string;
+  status: CodexLimitStatus;
+  progressTone: QuotaProgressTone;
 }
 
 export interface PanelPlaceholderItem {

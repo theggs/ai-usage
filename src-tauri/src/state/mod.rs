@@ -12,6 +12,8 @@ pub struct QuotaDimension {
     pub remaining_percent: Option<u8>,
     pub remaining_absolute: String,
     pub reset_hint: Option<String>,
+    pub status: String,
+    pub progress_tone: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

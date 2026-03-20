@@ -13,21 +13,39 @@ const formatPanelTime = (updatedAt?: string) => {
 };
 
 export const PanelView = () => {
-  const { panelState, preferences, refreshPanel, openSettings, isLoading, error } = useAppState();
+  const { panelState, preferences, refreshPanel, openSettings, isRefreshing, error } = useAppState();
   const copy = getCopy(preferences?.language ?? "zh-CN");
   const statusMessage = getSnapshotMessage(copy, panelState?.snapshotState, true);
   const statusDetail = panelState?.statusMessage?.trim();
   const snapshotLabel = getSnapshotTag(copy, panelState?.snapshotState);
+  const inlineStatus =
+    panelState?.snapshotState === "fresh"
+      ? ""
+      : statusDetail && statusDetail !== statusMessage
+        ? statusDetail
+        : statusMessage;
+  const statusTone =
+    panelState?.snapshotState === "failed"
+      ? "text-rose-600"
+      : panelState?.snapshotState === "stale"
+        ? "text-amber-600"
+        : panelState?.snapshotState === "pending"
+          ? "text-sky-600"
+          : "text-slate-500";
 
   return (
     <section className="grid gap-4">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-950">{copy.title}</h1>
-          <p className="mt-1 text-sm text-slate-500">{copy.subtitle}</p>
-        </div>
+      <header className="flex items-center justify-end gap-2">
         <button
-          className="rounded-full border border-emerald-200 bg-white/70 px-4 py-2 text-sm font-medium text-emerald-700"
+          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
+          disabled={isRefreshing}
+          onClick={() => void refreshPanel()}
+          type="button"
+        >
+          {isRefreshing ? copy.refreshing : copy.refresh}
+        </button>
+        <button
+          className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-sm font-medium text-emerald-700"
           onClick={openSettings}
           type="button"
         >
@@ -35,46 +53,21 @@ export const PanelView = () => {
         </button>
       </header>
 
-      <div className="flex items-center justify-between rounded-3xl bg-emerald-950 px-4 py-3 text-white shadow-lg shadow-emerald-950/25">
-        <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-emerald-200">
-            {snapshotLabel}
-          </div>
-          <div className="mt-1 text-sm">{copy.lastRefresh}: {formatPanelTime(panelState?.updatedAt)}</div>
-          <div className="mt-1 text-xs text-emerald-100">
-            {copy.trayPreview}: {panelState?.desktopSurface.summaryText ?? copy.summaryHidden}
-          </div>
-        </div>
-        <button
-          className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950"
-          onClick={() => void refreshPanel()}
-          type="button"
-        >
-          {isLoading ? "..." : copy.refresh}
-        </button>
-      </div>
-
-      <div className="rounded-3xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-        <div className="font-semibold">{copy.syncStatus}: {snapshotLabel}</div>
-        <div className="mt-1 text-sky-800">{statusMessage}</div>
-        {statusDetail && statusDetail !== statusMessage ? (
-          <div className="mt-1 text-xs text-sky-700">{statusDetail}</div>
-        ) : null}
-        <div className="mt-2 text-xs text-sky-700">
-          {copy.activeSession}: {panelState?.activeSession?.sessionLabel ?? copy.noActiveSession}
-        </div>
-        <div className="mt-1 text-xs text-sky-700">
-          {copy.dataSource}: {panelState?.activeSession?.source ?? copy.localCodexCli}
+      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+        <div className="text-xs uppercase tracking-[0.16em] text-slate-500">{snapshotLabel}</div>
+        <div className={`text-sm ${statusTone}`}>
+          {copy.lastRefresh}: {formatPanelTime(panelState?.updatedAt)}
+          {inlineStatus ? ` · ${inlineStatus}` : ""}
         </div>
       </div>
 
-      {error ? <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
+      {error ? <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
 
       <div className="grid gap-3">
         {panelState?.items.length ? (
-          panelState.items.map((service) => <ServiceCard key={service.serviceId} service={service} />)
+          panelState.items.map((service) => <ServiceCard key={service.serviceId} copy={copy} service={service} />)
         ) : (
-          <div className="rounded-3xl bg-white/70 p-6 text-center text-sm text-slate-500">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
             {statusMessage}
           </div>
         )}

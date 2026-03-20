@@ -22,4 +22,16 @@ describe("system integrations", () => {
     expect(state.statusMessage).toContain("Codex CLI");
     expect(state.activeSession).toBeUndefined();
   });
+
+  it("preserves the latest known snapshot shape when a refresh is requested", async () => {
+    localStorage.clear();
+    localStorage.setItem("ai-usage.codex-session-mode", "connected");
+
+    const initial = await tauriClient.getCodexPanelState();
+    const refreshed = await tauriClient.refreshCodexPanelState();
+
+    expect(initial.items.length).toBeGreaterThan(0);
+    expect(refreshed.items.length).toBeGreaterThan(0);
+    expect(refreshed.items[0]?.quotaDimensions[0]?.progressTone).toBeDefined();
+  });
 });

@@ -1,5 +1,7 @@
 import type { PanelPlaceholderItem } from "../../lib/tauri/contracts";
 import { QuotaSummary } from "./QuotaSummary";
+import type { CopyTree } from "../../app/shared/i18n";
+import { localizeBadgeLabel } from "../../app/shared/i18n";
 
 const formatCardTime = (value: string) => {
   const timestamp = /^\d+$/.test(value) ? Number(value) * 1000 : Date.parse(value);
@@ -7,25 +9,35 @@ const formatCardTime = (value: string) => {
   return Number.isNaN(date.getTime()) ? "--" : date.toLocaleString();
 };
 
-export const ServiceCard = ({ service }: { service: PanelPlaceholderItem }) => (
-  <article className="rounded-[28px] border border-white/60 bg-white/80 p-4 shadow-lg shadow-emerald-950/8 backdrop-blur">
+export const ServiceCard = ({
+  service,
+  copy
+}: {
+  service: PanelPlaceholderItem;
+  copy: CopyTree;
+}) => (
+  <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
     <div className="flex items-start justify-between gap-3">
       <div>
-        <div className="text-sm uppercase tracking-[0.2em] text-emerald-700">{service.statusLabel}</div>
-        <h3 className="mt-2 text-lg font-semibold text-slate-950">{service.serviceName}</h3>
+        <div className="text-xs uppercase tracking-[0.16em] text-slate-500">
+          {service.statusLabel === "refreshing" ? copy.quotaStatusRefreshing : service.statusLabel}
+        </div>
+        <h3 className="mt-1 text-base font-semibold text-slate-950">{service.serviceName}</h3>
         {service.accountLabel ? (
           <p className="text-sm text-slate-500">{service.accountLabel}</p>
         ) : null}
       </div>
-      <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-        {service.badgeLabel ?? "Live"}
+      <div className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+        {localizeBadgeLabel(copy, service.badgeLabel)}
       </div>
     </div>
-    <div className="mt-4 grid gap-2">
+    <div className="mt-3 grid gap-2">
       {service.quotaDimensions.map((dimension) => (
-        <QuotaSummary key={dimension.label} {...dimension} />
+        <QuotaSummary key={dimension.label} dimension={dimension} copy={copy} />
       ))}
     </div>
-    <p className="mt-4 text-xs text-slate-500">Last refreshed: {formatCardTime(service.lastRefreshedAt)}</p>
+    <p className="mt-3 text-xs text-slate-500">
+      {copy.lastRefreshedAt}: {formatCardTime(service.lastRefreshedAt)}
+    </p>
   </article>
 );

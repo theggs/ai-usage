@@ -147,6 +147,8 @@ fn parse_dimension(line: &str) -> Option<QuotaDimension> {
         remaining_percent: parse_percent(&remaining_absolute),
         remaining_absolute,
         reset_hint,
+        status: "unknown".into(),
+        progress_tone: "muted".into(),
     })
 }
 
@@ -452,6 +454,8 @@ fn to_quota_dimension(
         remaining_percent: Some(remaining as u8),
         remaining_absolute: format!("{remaining}% remaining"),
         reset_hint: format_reset_hint(window.resets_at),
+        status: "unknown".into(),
+        progress_tone: "muted".into(),
     }
 }
 

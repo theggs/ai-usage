@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PreferenceField } from "../../components/settings/PreferenceField";
 import { PreferenceSection } from "../../components/settings/PreferenceSection";
 import type { UserPreferences } from "../../lib/tauri/contracts";
@@ -15,31 +15,37 @@ export const SettingsView = () => {
     sendTestNotification,
     setAutostart,
     panelState,
-    notificationResult,
+    isRefreshing,
     error
   } = useAppState();
   const base = preferences!;
   const [draft, setDraft] = useState<UserPreferences>(() => clonePreferences(base));
-  const [saved, setSaved] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [notificationState, setNotificationState] = useState<"idle" | "pending" | "sent" | "blocked" | "failed">("idle");
   const copy = getCopy(base.language);
   const activeSessionMessage = getSnapshotMessage(copy, panelState?.snapshotState, true);
   const activeSessionDetail = panelState?.statusMessage?.trim();
   const snapshotTag = getSnapshotTag(copy, panelState?.snapshotState);
 
+  useEffect(() => {
+    setDraft(clonePreferences(base));
+  }, [base]);
+
   const notificationText = useMemo(() => {
-    if (!notificationResult) return null;
-    return copy[notificationResult.result];
-  }, [copy, notificationResult]);
+    if (notificationState === "idle") return null;
+    if (notificationState === "pending") return copy.refreshing;
+    return copy[notificationState];
+  }, [copy, notificationState]);
 
   return (
     <section className="grid gap-4">
       <header className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-950">{copy.settings}</h2>
+          <h2 className="text-xl font-semibold text-slate-950">{copy.settings}</h2>
           <p className="mt-1 text-sm text-slate-500">{copy.demoConfiguration}</p>
         </div>
         <button
-          className="rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700"
+          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
           onClick={closeSettings}
           type="button"
         >
@@ -47,10 +53,11 @@ export const SettingsView = () => {
         </button>
       </header>
 
-      <PreferenceSection title="Preferences">
-        <PreferenceField label="Language">
+      <PreferenceSection title={copy.preferences}>
+        <PreferenceField label={copy.language}>
           <select
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-2"
+            aria-label={copy.language}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2"
             value={draft.language}
             onChange={(event) =>
               setDraft((current) => ({ ...current, language: event.target.value as UserPreferences["language"] }))
@@ -61,9 +68,10 @@ export const SettingsView = () => {
           </select>
         </PreferenceField>
 
-        <PreferenceField label="Refresh interval" description="Minimum 5 minutes">
+        <PreferenceField label={copy.refreshInterval} description={copy.refreshIntervalHint}>
           <input
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-2"
+            aria-label={copy.refreshInterval}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2"
             min={5}
             step={5}
             type="number"
@@ -79,7 +87,8 @@ export const SettingsView = () => {
 
         <PreferenceField label={copy.traySummaryMode}>
           <select
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-2"
+            aria-label={copy.traySummaryMode}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2"
             value={draft.traySummaryMode}
             onChange={(event) =>
               setDraft((current) => ({
@@ -96,38 +105,69 @@ export const SettingsView = () => {
           </select>
         </PreferenceField>
 
-        <PreferenceField label="Autostart">
-          <input
-            checked={draft.autostartEnabled}
-            type="checkbox"
-            onChange={async (event) => {
-              const next = event.target.checked;
+        <PreferenceField label={copy.autostart}>
+          <button
+            aria-checked={draft.autostartEnabled}
+            className={`inline-flex w-14 items-center rounded-full p-1 transition-colors ${
+              draft.autostartEnabled ? "bg-emerald-500" : "bg-slate-300"
+            }`}
+            onClick={async () => {
+              const next = !draft.autostartEnabled;
               setDraft((current) => ({ ...current, autostartEnabled: next }));
-              await setAutostart(next);
+              const updated = await setAutostart(next);
+              if (updated) {
+                setDraft(updated);
+              } else {
+                setDraft((current) => ({ ...current, autostartEnabled: base.autostartEnabled }));
+              }
             }}
-          />
+            role="switch"
+            type="button"
+          >
+            <span
+              className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                draft.autostartEnabled ? "translate-x-7" : "translate-x-0"
+              }`}
+            />
+          </button>
         </PreferenceField>
       </PreferenceSection>
 
-      <PreferenceSection title="Actions">
+      <PreferenceSection title={copy.actions}>
         <button
-          className="rounded-2xl bg-emerald-950 px-4 py-3 text-sm font-semibold text-white"
+          className="rounded-xl bg-emerald-950 px-4 py-3 text-sm font-semibold text-white"
           onClick={async () => {
-            await savePreferences(draft);
-            setSaved(true);
+            setSaveState("saving");
+            const updated = await savePreferences(draft);
+            if (updated) {
+              setDraft(updated);
+            }
+            setSaveState("saved");
           }}
           type="button"
         >
-          {copy.save}
+          {saveState === "saving" ? copy.saving : saveState === "saved" ? copy.savedInline : copy.savePreferences}
         </button>
+        {saveState === "saved" ? (
+          <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{copy.saved}</div>
+        ) : null}
+      </PreferenceSection>
 
+      <PreferenceSection title={copy.notificationActions}>
         <button
-          className="rounded-2xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950"
-          onClick={() => void sendTestNotification()}
+          className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950"
+          onClick={async () => {
+            setNotificationState("pending");
+            const result = await sendTestNotification();
+            setNotificationState(result?.result ?? "failed");
+          }}
           type="button"
         >
           {copy.notificationTest}
         </button>
+        {notificationText ? (
+          <div className="rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-700">{notificationText}</div>
+        ) : null}
       </PreferenceSection>
 
       <PreferenceSection title={copy.codexCli} description={copy.codexCliHint}>
@@ -137,7 +177,7 @@ export const SettingsView = () => {
           description={activeSessionMessage}
           hint={snapshotTag}
         >
-          <div className="rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          <div className="rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900">
             <div>{panelState?.activeSession?.sessionLabel ?? copy.noActiveSession}</div>
             {activeSessionDetail && activeSessionDetail !== activeSessionMessage ? (
               <div className="mt-2 text-xs text-sky-700">{activeSessionDetail}</div>
@@ -145,7 +185,7 @@ export const SettingsView = () => {
           </div>
         </PreferenceField>
 
-        <div className="rounded-2xl bg-white/80 px-4 py-4 text-sm text-slate-700 shadow-sm shadow-emerald-950/5">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
           <div className="font-semibold text-slate-900">{copy.dataSource}</div>
           <div className="mt-1">{panelState?.activeSession?.source ?? copy.localCodexCli}</div>
           <div className="mt-3 font-semibold text-slate-900">{copy.setupHintTitle}</div>
@@ -153,9 +193,8 @@ export const SettingsView = () => {
         </div>
       </PreferenceSection>
 
-      {saved ? <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{copy.saved}</div> : null}
-      {notificationText ? <div className="rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-700">{notificationText}</div> : null}
-      {error ? <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
+      {isRefreshing ? <div className="text-xs text-slate-500">{copy.refreshing}</div> : null}
+      {error ? <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
     </section>
   );
 };

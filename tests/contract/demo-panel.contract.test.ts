@@ -21,5 +21,11 @@ describe("codex panel contract", () => {
     expect(state.activeSession?.sessionLabel).toBe("Local Codex CLI");
     expect(state.items[0]?.quotaDimensions.length).toBeGreaterThan(0);
     expect(state.items[0]?.serviceName).toBe("Codex");
+    expect(state.items[0]?.quotaDimensions[0]).toEqual(
+      expect.objectContaining({
+        status: expect.any(String),
+        progressTone: expect.any(String)
+      })
+    );
   });
 });

@@ -1,5 +1,5 @@
 import type { ActiveCodexSession, CodexPanelState } from "../../lib/tauri/contracts";
-import { formatTraySummary } from "../../lib/tauri/summary";
+import { decorateQuotaDimension, formatTraySummary } from "../../lib/tauri/summary";
 
 const now = () => new Date().toISOString();
 
@@ -41,8 +41,19 @@ const buildItems = (mode: FallbackSessionMode): CodexPanelState["items"] => {
           remainingPercent: 82,
           remainingAbsolute: "82% remaining",
           resetHint: "Resets in 4d"
+        },
+        {
+          label: "Bug Bash / day",
+          remainingPercent: 20,
+          remainingAbsolute: "20% remaining",
+          resetHint: "Resets in 12h"
+        },
+        {
+          label: "Spec Reviews / month",
+          remainingAbsolute: "--",
+          resetHint: "Waiting for snapshot"
         }
-      ]
+      ].map(decorateQuotaDimension)
     }
   ];
 };

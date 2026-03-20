@@ -29,6 +29,38 @@ fn normalize_icon_state(snapshot_state: &str) -> String {
     }
 }
 
+fn quota_status(remaining_percent: Option<u8>) -> String {
+    match remaining_percent {
+        Some(percent) if percent > 50 => "healthy".into(),
+        Some(percent) if percent >= 20 => "warning".into(),
+        Some(_) => "exhausted".into(),
+        None => "unknown".into(),
+    }
+}
+
+fn quota_progress_tone(remaining_percent: Option<u8>) -> String {
+    match remaining_percent {
+        Some(percent) if percent > 50 => "success".into(),
+        Some(percent) if percent >= 20 => "warning".into(),
+        Some(_) => "danger".into(),
+        None => "muted".into(),
+    }
+}
+
+fn normalize_dimensions(
+    dimensions: &[crate::state::QuotaDimension],
+) -> Vec<crate::state::QuotaDimension> {
+    dimensions
+        .iter()
+        .cloned()
+        .map(|mut dimension| {
+            dimension.status = quota_status(dimension.remaining_percent);
+            dimension.progress_tone = quota_progress_tone(dimension.remaining_percent);
+            dimension
+        })
+        .collect()
+}
+
 fn build_panel_state(
     preferences: &UserPreferences,
     accounts: &[CodexAccount],
@@ -64,7 +96,7 @@ fn build_panel_state(
             service_name: "Codex".into(),
             account_label: None,
             icon_key: "codex".into(),
-            quota_dimensions: snapshot.dimensions.clone(),
+            quota_dimensions: normalize_dimensions(&snapshot.dimensions),
             status_label: "refreshing".into(),
             badge_label: Some(if snapshot.snapshot_state == "fresh" {
                 "Live".into()

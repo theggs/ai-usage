@@ -232,9 +232,13 @@ pub fn toggle_main_window(app: &AppHandle) {
     }
 }
 
+pub fn should_hide_on_focus_change(is_focused: bool) -> bool {
+    !is_focused
+}
+
 #[cfg(test)]
 mod tests {
-    use super::format_summary;
+    use super::{format_summary, should_hide_on_focus_change};
     use crate::state::{PanelPlaceholderItem, QuotaDimension};
 
     fn item(percent: u8) -> PanelPlaceholderItem {
@@ -248,6 +252,8 @@ mod tests {
                 remaining_percent: Some(percent),
                 remaining_absolute: format!("{percent}%"),
                 reset_hint: None,
+                status: "healthy".into(),
+                progress_tone: "success".into(),
             }],
             status_label: "refreshing".into(),
             badge_label: Some("Live".into()),
@@ -266,6 +272,8 @@ mod tests {
                 remaining_percent: Some(percent),
                 remaining_absolute: format!("{percent}%"),
                 reset_hint: None,
+                status: "healthy".into(),
+                progress_tone: "success".into(),
             }],
             status_label: "refreshing".into(),
             badge_label: Some("Live".into()),
@@ -306,5 +314,11 @@ mod tests {
 
         assert_eq!(format_summary("window-5h", &items), Some("52%".into()));
         assert_eq!(format_summary("window-week", &items), Some("6%".into()));
+    }
+
+    #[test]
+    fn hides_when_focus_is_lost() {
+        assert!(should_hide_on_focus_change(false));
+        assert!(!should_hide_on_focus_change(true));
     }
 }

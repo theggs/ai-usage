@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTraySummary } from "./summary";
+import { decorateQuotaDimension, formatTraySummary, getQuotaProgressTone, getQuotaStatus } from "./summary";
 import type { PanelPlaceholderItem } from "./contracts";
 
 const items: PanelPlaceholderItem[] = [
@@ -14,13 +14,17 @@ const items: PanelPlaceholderItem[] = [
         label: "codex / 5h",
         remainingPercent: 52,
         remainingAbsolute: "52% remaining",
-        resetHint: "Resets in 2h"
+        resetHint: "Resets in 2h",
+        status: "healthy",
+        progressTone: "success"
       },
       {
         label: "codex / week",
         remainingPercent: 6,
         remainingAbsolute: "6% remaining",
-        resetHint: "Resets in 34h"
+        resetHint: "Resets in 34h",
+        status: "exhausted",
+        progressTone: "danger"
       }
     ]
   }
@@ -41,5 +45,18 @@ describe("formatTraySummary", () => {
 
   it("orders multi-dimension summaries from shorter to longer windows", () => {
     expect(formatTraySummary("multi-dimension", items)).toBe("52% / 6%");
+  });
+
+  it("maps quota thresholds to normalized status and tone", () => {
+    expect(getQuotaStatus(80)).toBe("healthy");
+    expect(getQuotaStatus(50)).toBe("warning");
+    expect(getQuotaStatus(2)).toBe("exhausted");
+    expect(getQuotaStatus(undefined)).toBe("unknown");
+    expect(getQuotaProgressTone(undefined)).toBe("muted");
+    expect(decorateQuotaDimension({
+      label: "codex / 5h",
+      remainingPercent: 20,
+      remainingAbsolute: "20% remaining"
+    }).progressTone).toBe("warning");
   });
 });

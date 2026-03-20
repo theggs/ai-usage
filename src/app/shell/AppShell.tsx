@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PanelView } from "../panel/PanelView";
 import { SettingsView } from "../settings/SettingsView";
 import { AppStateContext } from "../shared/appState";
@@ -24,7 +24,9 @@ export const AppShell = () => {
   const [notificationResult, setNotificationResult] = useState<NotificationCheckResult | null>(null);
   const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const lastStablePanelState = useRef<CodexPanelState | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -34,6 +36,7 @@ export const AppShell = () => {
           getPreferences()
         ]);
         setPanelState(panel);
+        lastStablePanelState.current = panel;
         setPreferences(prefs);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to initialize app");
@@ -44,14 +47,19 @@ export const AppShell = () => {
   }, []);
 
   const refreshPanel = async () => {
-    setIsLoading(true);
+    if (isRefreshing) {
+      return;
+    }
+    setIsRefreshing(true);
     setError(null);
     try {
-      setPanelState(await refreshPanelState());
+      const nextPanel = await refreshPanelState();
+      setPanelState(nextPanel);
+      lastStablePanelState.current = nextPanel;
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Refresh failed");
     } finally {
-      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -75,39 +83,49 @@ export const AppShell = () => {
             }
           : current
       );
+      return nextPreferences;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Save failed");
+      return null;
     }
   };
 
   const sendTestNotification = async () => {
     setError(null);
     try {
-      setNotificationResult(await sendDemoNotification());
+      const result = await sendDemoNotification();
+      setNotificationResult(result);
+      return result;
     } catch (notifyError) {
       setError(notifyError instanceof Error ? notifyError.message : "Notification failed");
+      return null;
     }
   };
 
   const setAutostart = async (enabled: boolean) => {
     setError(null);
     try {
-      setPreferences(await applyAutostart(enabled));
+      const next = await applyAutostart(enabled);
+      setPreferences(next);
+      return next;
     } catch (autostartError) {
       setError(autostartError instanceof Error ? autostartError.message : "Autostart failed");
+      return null;
     }
   };
 
   const copy = getCopy(preferences?.language ?? "zh-CN");
+  const visiblePanelState = panelState ?? lastStablePanelState.current;
 
   return (
     <AppStateContext.Provider
       value={{
-        panelState,
+        panelState: visiblePanelState,
         preferences,
         notificationResult,
         currentView,
         isLoading,
+        isRefreshing,
         error,
         refreshPanel,
         savePreferences,
@@ -117,14 +135,14 @@ export const AppShell = () => {
         closeSettings: () => setCurrentView("panel")
       }}
     >
-      <main className="min-h-screen bg-transparent p-4 text-slate-900">
-        <div className="mx-auto grid max-w-xl gap-4 rounded-[32px] border border-white/60 bg-white/45 p-4 shadow-2xl shadow-emerald-950/10 backdrop-blur-xl">
-          <div className="flex items-center justify-between rounded-full bg-white/70 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+      <main className="min-h-screen bg-transparent p-3 text-slate-900">
+        <div className="mx-auto grid w-full max-w-[380px] gap-3 rounded-2xl border border-white/70 bg-white/90 p-3 shadow-sm">
+          <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-slate-500">
             <span>{copy.title}</span>
             <span>{currentView === "panel" ? copy.subtitle : copy.settings}</span>
           </div>
           {isLoading && !panelState && !preferences ? (
-            <div className="rounded-3xl bg-white/70 p-8 text-center text-sm text-slate-500">{copy.loading}</div>
+            <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">{copy.loading}</div>
           ) : currentView === "panel" ? (
             <PanelView />
           ) : preferences ? (

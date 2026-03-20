@@ -11,11 +11,17 @@ const state: AppStateValue = {
   notificationResult: null,
   currentView: "settings",
   isLoading: false,
+  isRefreshing: false,
   error: null,
   refreshPanel: vi.fn(async () => {}),
-  savePreferences: vi.fn(async () => {}),
-  sendTestNotification: vi.fn(async () => {}),
-  setAutostart: vi.fn(async () => {}),
+  savePreferences: vi.fn(async (patch) => ({ ...defaultPreferences, ...patch, lastSavedAt: new Date().toISOString() })),
+  sendTestNotification: vi.fn(async () => ({
+    notificationId: "notification",
+    triggeredAt: new Date().toISOString(),
+    result: "sent",
+    messagePreview: "preview"
+  })),
+  setAutostart: vi.fn(async (enabled) => ({ ...defaultPreferences, autostartEnabled: enabled, lastSavedAt: new Date().toISOString() })),
   openSettings: vi.fn(),
   closeSettings: vi.fn()
 };
@@ -31,9 +37,10 @@ describe("SettingsView", () => {
     await userEvent.clear(screen.getByRole("spinbutton"));
     await userEvent.type(screen.getByRole("spinbutton"), "30");
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "托盘摘要规则" }), "window-week");
-    await userEvent.click(screen.getByRole("button", { name: "保存设置" }));
+    await userEvent.click(screen.getByRole("button", { name: "保存偏好" }));
     expect(state.savePreferences).toHaveBeenCalled();
     expect(state.savePreferences).toHaveBeenCalledWith(expect.objectContaining({ traySummaryMode: "window-week" }));
+    expect(screen.getByText("设置已保存")).toBeInTheDocument();
   });
 
   it("shows local Codex CLI guidance instead of account fields", async () => {
@@ -69,5 +76,29 @@ describe("SettingsView", () => {
     );
 
     expect(screen.getByText("Local Codex CLI")).toBeInTheDocument();
+  });
+
+  it("uses localized settings labels in Chinese mode", () => {
+    render(
+      <AppStateContext.Provider value={state}>
+        <SettingsView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByText("偏好设置")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "语言" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "开机自启" })).toBeInTheDocument();
+    expect(screen.getByText("通知测试")).toBeInTheDocument();
+  });
+
+  it("shows local notification feedback near the action area", async () => {
+    render(
+      <AppStateContext.Provider value={state}>
+        <SettingsView />
+      </AppStateContext.Provider>
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "发送测试通知" }));
+    expect(screen.getByText("测试通知已发送")).toBeInTheDocument();
   });
 });

@@ -12,11 +12,12 @@ export interface AppStateValue {
   notificationResult: NotificationCheckResult | null;
   currentView: "panel" | "settings";
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   refreshPanel: () => Promise<void>;
-  savePreferences: (patch: PreferencePatch) => Promise<void>;
-  sendTestNotification: () => Promise<void>;
-  setAutostart: (enabled: boolean) => Promise<void>;
+  savePreferences: (patch: PreferencePatch) => Promise<UserPreferences | null>;
+  sendTestNotification: () => Promise<NotificationCheckResult | null>;
+  setAutostart: (enabled: boolean) => Promise<UserPreferences | null>;
   openSettings: () => void;
   closeSettings: () => void;
 }

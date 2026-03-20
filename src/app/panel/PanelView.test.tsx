@@ -12,11 +12,12 @@ const createState = (panelState: CodexPanelState = createDemoPanelState()): AppS
   notificationResult: null,
   currentView: "panel",
   isLoading: false,
+  isRefreshing: false,
   error: null,
   refreshPanel: vi.fn(async () => {}),
-  savePreferences: vi.fn(async () => {}),
-  sendTestNotification: vi.fn(async () => {}),
-  setAutostart: vi.fn(async () => {}),
+  savePreferences: vi.fn(async () => null),
+  sendTestNotification: vi.fn(async () => null),
+  setAutostart: vi.fn(async () => null),
   openSettings: vi.fn(),
   closeSettings: vi.fn()
 });
@@ -24,15 +25,17 @@ const createState = (panelState: CodexPanelState = createDemoPanelState()): AppS
 describe("PanelView", () => {
   it("renders codex summary and allows refresh", async () => {
     const state = createState();
-    render(
+    const { container } = render(
       <AppStateContext.Provider value={state}>
         <PanelView />
       </AppStateContext.Provider>
     );
 
-    expect(screen.getByText("AIUsage")).toBeInTheDocument();
-    expect(screen.getByText("同步状态: 实时")).toBeInTheDocument();
-    expect(screen.getByText("数据来源: fallback-client")).toBeInTheDocument();
+    expect(screen.getAllByText("实时").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/托盘摘要预览:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/同步状态:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/数据来源:/)).not.toBeInTheDocument();
+    expect(container.querySelector("div.rounded-xl.border")?.className).toContain("rounded-xl");
 
     await userEvent.click(screen.getByRole("button", { name: "手动刷新" }));
     expect(state.refreshPanel).toHaveBeenCalled();
@@ -52,6 +55,20 @@ describe("PanelView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(screen.getAllByText("请确保本地 Codex CLI 会话可读取，以便同步真实额度。")).toHaveLength(2);
+    expect(screen.getByText("等待同步")).toBeInTheDocument();
+    expect(screen.getByText("请确保本地 Codex CLI 会话可读取，以便同步真实额度。")).toBeInTheDocument();
+  });
+
+  it("disables refresh while a refresh is in progress", () => {
+    const state = createState();
+    state.isRefreshing = true;
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByRole("button", { name: "刷新中..." })).toBeDisabled();
   });
 });

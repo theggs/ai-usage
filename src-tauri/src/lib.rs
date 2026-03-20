@@ -6,7 +6,7 @@ pub mod state;
 pub mod tray;
 
 use state::AppState;
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -44,6 +44,19 @@ pub fn run() {
             let panel_state = commands::get_codex_panel_state(app_state);
             tray::initialize_tray(app.handle(), &preferences, &panel_state.items);
             if let Some(window) = app.get_webview_window("main") {
+                let window_handle = window.clone();
+                window.on_window_event(move |event| match event {
+                    WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        let _ = window_handle.hide();
+                    }
+                    WindowEvent::Focused(is_focused)
+                        if tray::should_hide_on_focus_change(*is_focused) =>
+                    {
+                        let _ = window_handle.hide();
+                    }
+                    _ => {}
+                });
                 let _ = window.hide();
             }
             Ok(())

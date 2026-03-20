@@ -1,4 +1,47 @@
-import type { PanelPlaceholderItem, QuotaDimension, SummaryMode } from "./contracts";
+import type {
+  CodexLimitStatus,
+  PanelPlaceholderItem,
+  QuotaDimension,
+  QuotaProgressTone,
+  SummaryMode
+} from "./contracts";
+
+export const getQuotaStatus = (remainingPercent?: number): CodexLimitStatus => {
+  if (remainingPercent === undefined) {
+    return "unknown";
+  }
+
+  if (remainingPercent > 50) {
+    return "healthy";
+  }
+
+  if (remainingPercent >= 20) {
+    return "warning";
+  }
+
+  return "exhausted";
+};
+
+export const getQuotaProgressTone = (remainingPercent?: number): QuotaProgressTone => {
+  switch (getQuotaStatus(remainingPercent)) {
+    case "healthy":
+      return "success";
+    case "warning":
+      return "warning";
+    case "exhausted":
+      return "danger";
+    default:
+      return "muted";
+  }
+};
+
+export const decorateQuotaDimension = (
+  dimension: Omit<QuotaDimension, "status" | "progressTone">
+): QuotaDimension => ({
+  ...dimension,
+  status: getQuotaStatus(dimension.remainingPercent),
+  progressTone: getQuotaProgressTone(dimension.remainingPercent)
+});
 
 const allDimensions = (items: PanelPlaceholderItem[]) => items.flatMap((item) => item.quotaDimensions);
 
