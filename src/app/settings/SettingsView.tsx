@@ -11,7 +11,6 @@ export const SettingsView = () => {
   const {
     preferences,
     savePreferences,
-    closeSettings,
     sendTestNotification,
     setAutostart,
     panelState,
@@ -39,20 +38,6 @@ export const SettingsView = () => {
 
   return (
     <section className="grid gap-4">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-950">{copy.settings}</h2>
-          <p className="mt-1 text-sm text-slate-500">{copy.demoConfiguration}</p>
-        </div>
-        <button
-          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-          onClick={closeSettings}
-          type="button"
-        >
-          {copy.back}
-        </button>
-      </header>
-
       <PreferenceSection title={copy.preferences}>
         <PreferenceField label={copy.language}>
           <select
