@@ -83,6 +83,8 @@ export type CopyTree = {
   claudeCodeAccessPaused: string;
   claudeCodeProxyInvalid: string;
   claudeCodeRateLimited: string;
+  claudeCodeSessionRecovery: string;
+  claudeCodeSessionRecoveryEmpty: string;
 };
 
 const baseCopy: CopyTree = {
@@ -167,7 +169,9 @@ const baseCopy: CopyTree = {
   networkProxyUrlInvalid: "Enter a full proxy URL before saving.",
   claudeCodeAccessPaused: "Claude Code access was denied. Automatic refresh is paused until you retry manually or update proxy settings.",
   claudeCodeProxyInvalid: "Proxy configuration is invalid. Use a full proxy URL or switch back to system proxy detection.",
-  claudeCodeRateLimited: "Claude Code rate limited the request. Automatic refresh is paused for now; try a manual refresh later."
+  claudeCodeRateLimited: "Claude Code rate limited the request. Automatic refresh is paused for now; try a manual refresh later.",
+  claudeCodeSessionRecovery: "Claude Code session is being restored. It usually recovers after you open Claude Code.",
+  claudeCodeSessionRecoveryEmpty: "Claude Code session is being restored. Open Claude Code to restore the session."
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
@@ -253,7 +257,9 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     networkProxyUrlInvalid: "请先填写完整代理 URL 再保存。",
     claudeCodeAccessPaused: "Claude Code 访问被拒绝，已暂停自动刷新。请手动重试或更新代理设置后再继续。",
     claudeCodeProxyInvalid: "代理配置无效。请填写完整代理 URL，或切回系统代理检测。",
-    claudeCodeRateLimited: "Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。"
+    claudeCodeRateLimited: "Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。",
+    claudeCodeSessionRecovery: "Claude Code 会话恢复中，打开 Claude Code 后通常会自动恢复",
+    claudeCodeSessionRecoveryEmpty: "Claude Code 会话恢复中，请打开 Claude Code 以恢复会话"
   }
   ,
   "en-US": baseCopy
@@ -343,6 +349,13 @@ export const getClaudeCodePlaceholderMessage = (
 
   if (message.includes("rate limited")) {
     return copy.claudeCodeRateLimited;
+  }
+
+  if (message.includes("session is being restored")) {
+    if (message.includes("Open Claude Code to restore")) {
+      return copy.claudeCodeSessionRecoveryEmpty;
+    }
+    return copy.claudeCodeSessionRecovery;
   }
 
   if (normalized === "empty" || message.includes("No Claude Code credentials")) {

@@ -9,3 +9,4 @@ Read @AGENTS.md for full development guidelines, project structure, commands, ar
 
 ## Recent Changes
 - 005-claude-code-support: Claude Code quota display via OAuth API; menubar service selection; panel display order; system proxy support for outbound API calls
+- 007-session-recovery: Remodel 401 as transient session-recovery state; preserve stale cache; auto-recover via existing refresh interval
