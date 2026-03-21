@@ -58,6 +58,7 @@ enum PauseState {
     None,
     AccessDenied,
     RateLimitedUntil(i64),
+    SessionRecovery,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -89,6 +90,17 @@ fn stale_cache() -> &'static Mutex<Option<Vec<QuotaDimension>>> {
     CACHE.get_or_init(|| Mutex::new(None))
 }
 
+/// Seeds the in-memory stale cache from externally restored data (e.g., disk
+/// snapshot cache).  This ensures that if a subsequent 401 occurs, the session
+/// recovery handler has cached dimensions to display.
+pub fn seed_stale_cache(dimensions: Vec<QuotaDimension>) {
+    if let Ok(mut cache) = stale_cache().lock() {
+        if cache.is_none() && !dimensions.is_empty() {
+            *cache = Some(dimensions);
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Refresh pause / cooldown state
 // ---------------------------------------------------------------------------
@@ -108,6 +120,17 @@ fn is_access_paused() -> bool {
     pause_state()
         .lock()
         .map(|state| *state == PauseState::AccessDenied)
+        .unwrap_or(false)
+}
+
+/// Returns true when in session-recovery state (401).
+/// Note: unlike `is_access_paused()`, this does NOT block automatic refresh —
+/// auto-refresh continues at the normal interval to probe for token recovery.
+#[allow(dead_code)]
+fn is_session_recovery() -> bool {
+    pause_state()
+        .lock()
+        .map(|state| *state == PauseState::SessionRecovery)
         .unwrap_or(false)
 }
 
@@ -676,6 +699,9 @@ pub fn load_snapshot(preferences: &UserPreferences, refresh_kind: RefreshKind) -
         }
     };
 
+    // Only AccessDenied (403) blocks auto-refresh. SessionRecovery (401)
+    // intentionally passes through so the normal refresh cycle serves as
+    // the recovery probe — no separate timer needed.
     if refresh_kind == RefreshKind::Automatic && is_access_paused() {
         return pause_snapshot(source);
     }
@@ -706,18 +732,33 @@ pub fn load_snapshot(preferences: &UserPreferences, refresh_kind: RefreshKind) -
             }
         }
         Err(ApiError::Status(401)) => {
-            clear_access_pause();
-            if let Ok(mut cache) = stale_cache().lock() {
-                *cache = None;
+            if let Ok(mut state) = pause_state().lock() {
+                *state = PauseState::SessionRecovery;
             }
-            ClaudeCodeSnapshot {
-                snapshot_state: "failed".into(),
-                connection_state: "disconnected".into(),
-                status_message:
-                    "Claude Code session is unavailable. Open Claude Code to restore the local session, then try again."
-                        .into(),
-                dimensions: Vec::new(),
-                source,
+            // Preserve stale cache — do NOT clear it.
+            let cached = stale_cache()
+                .lock()
+                .ok()
+                .and_then(|guard| guard.clone());
+            match cached {
+                Some(dimensions) => ClaudeCodeSnapshot {
+                    snapshot_state: "stale".into(),
+                    connection_state: "disconnected".into(),
+                    status_message:
+                        "Claude Code session is being restored. It usually recovers after you open Claude Code."
+                            .into(),
+                    dimensions,
+                    source,
+                },
+                None => ClaudeCodeSnapshot {
+                    snapshot_state: "empty".into(),
+                    connection_state: "disconnected".into(),
+                    status_message:
+                        "Claude Code session is being restored. Open Claude Code to restore the session."
+                            .into(),
+                    dimensions: Vec::new(),
+                    source,
+                },
             }
         }
         Err(ApiError::Status(403)) => {
@@ -1024,5 +1065,159 @@ Current WinHTTP proxy settings:
             "Claude Code / week (Sonnet)"
         );
         assert_eq!(dimension_label("seven_day_opus"), "Claude Code / week (Opus)");
+    }
+
+    // --- US1: Session recovery preserves cache ---
+
+    #[test]
+    fn session_recovery_preserves_cache() {
+        // Populate stale cache to simulate a prior successful fetch.
+        {
+            let mut cache = stale_cache().lock().unwrap();
+            *cache = Some(vec![QuotaDimension {
+                label: "Claude Code / 5h".into(),
+                remaining_percent: Some(70),
+                remaining_absolute: "70% remaining".into(),
+                reset_hint: None,
+                status: "healthy".into(),
+                progress_tone: "success".into(),
+            }]);
+        }
+
+        // Simulate what the 401 handler does: read cache without clearing it.
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::SessionRecovery;
+        }
+        let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
+        assert!(cached.is_some(), "cache must NOT be cleared on 401");
+        assert_eq!(cached.unwrap().len(), 1);
+
+        // Cleanup
+        *stale_cache().lock().unwrap() = None;
+        clear_access_pause();
+    }
+
+    #[test]
+    fn session_recovery_sets_pause_state() {
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::SessionRecovery;
+        }
+        assert!(is_session_recovery());
+        assert!(!is_access_paused(), "SessionRecovery must not match is_access_paused");
+        clear_access_pause();
+    }
+
+    #[test]
+    fn session_recovery_does_not_block_auto_refresh() {
+        // Set SessionRecovery, then verify is_access_paused is false
+        // (which is the guard that blocks automatic refresh).
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::SessionRecovery;
+        }
+        assert!(!is_access_paused());
+        assert!(active_rate_limit_until().is_none());
+        // Both guards are false, so load_snapshot would proceed to call the API.
+        clear_access_pause();
+    }
+
+    #[test]
+    fn session_recovery_cleared_on_success() {
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::SessionRecovery;
+        }
+        assert!(is_session_recovery());
+        // Simulate what the 200 handler does: clear_access_pause.
+        clear_access_pause();
+        assert!(!is_session_recovery());
+        let state = pause_state().lock().unwrap().clone();
+        assert_eq!(state, PauseState::None);
+    }
+
+    // --- US2: Empty cache + 401 returns empty snapshot ---
+
+    #[test]
+    fn session_recovery_empty_cache_returns_empty_snapshot() {
+        // Ensure cache is empty.
+        *stale_cache().lock().unwrap() = None;
+
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::SessionRecovery;
+        }
+
+        let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
+        let snapshot = match cached {
+            Some(dimensions) => ClaudeCodeSnapshot {
+                snapshot_state: "stale".into(),
+                connection_state: "disconnected".into(),
+                status_message: "Claude Code session is being restored. It usually recovers after you open Claude Code.".into(),
+                dimensions,
+                source: "test".into(),
+            },
+            None => ClaudeCodeSnapshot {
+                snapshot_state: "empty".into(),
+                connection_state: "disconnected".into(),
+                status_message: "Claude Code session is being restored. Open Claude Code to restore the session.".into(),
+                dimensions: Vec::new(),
+                source: "test".into(),
+            },
+        };
+
+        assert_eq!(snapshot.snapshot_state, "empty");
+        assert_eq!(snapshot.connection_state, "disconnected");
+        assert!(snapshot.dimensions.is_empty());
+        // Verify no technical jargon in the message
+        let msg = &snapshot.status_message;
+        assert!(!msg.contains("token"), "message must not contain 'token'");
+        assert!(!msg.contains("keychain"), "message must not contain 'keychain'");
+        assert!(!msg.contains("401"), "message must not contain '401'");
+        assert!(!msg.contains("credentials"), "message must not contain 'credentials'");
+
+        clear_access_pause();
+    }
+
+    // --- US3: State transitions between SessionRecovery and other states ---
+
+    #[test]
+    fn session_recovery_then_429_enters_rate_limit() {
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::SessionRecovery;
+        }
+        // Simulate what the 429 handler does.
+        let until = now_unix() + RATE_LIMIT_COOLDOWN_SECS;
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::RateLimitedUntil(until);
+        }
+        assert!(!is_session_recovery());
+        assert!(active_rate_limit_until().is_some());
+        clear_access_pause();
+    }
+
+    #[test]
+    fn session_recovery_then_403_enters_access_denied() {
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::SessionRecovery;
+        }
+        // Simulate what the 403 handler does.
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::AccessDenied;
+        }
+        assert!(!is_session_recovery());
+        assert!(is_access_paused());
+        clear_access_pause();
+    }
+
+    #[test]
+    fn rate_limit_expired_then_401_enters_session_recovery() {
+        // Set an expired rate limit.
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::RateLimitedUntil(now_unix() - 1);
+        }
+        assert!(active_rate_limit_until().is_none(), "expired rate limit should not block");
+        // Simulate what the 401 handler does.
+        if let Ok(mut state) = pause_state().lock() {
+            *state = PauseState::SessionRecovery;
+        }
+        assert!(is_session_recovery());
+        clear_access_pause();
     }
 }

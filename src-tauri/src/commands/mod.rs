@@ -1,7 +1,8 @@
 use crate::autostart::set_autostart_status;
 use crate::claude_code::{
     clear_access_pause as clear_claude_code_access_pause,
-    load_snapshot as load_claude_code_snapshot, RefreshKind as ClaudeCodeRefreshKind,
+    load_snapshot as load_claude_code_snapshot, seed_stale_cache as seed_claude_code_stale_cache,
+    RefreshKind as ClaudeCodeRefreshKind,
 };
 use crate::codex::{load_snapshot, save_accounts, save_preferences as persist_preferences_file};
 use crate::notifications::send_demo_notification;
@@ -11,6 +12,8 @@ use crate::state::{
     UserPreferences,
 };
 use crate::tray::apply_display_mode;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, State};
 
@@ -20,6 +23,80 @@ fn now_iso() -> String {
         .unwrap_or_default()
         .as_secs();
     format!("{now}")
+}
+
+// ---------------------------------------------------------------------------
+// Snapshot cache — persists panel state to disk so restarts can reuse recent
+// data without re-fetching.  The cache file sits alongside preferences.json.
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct SnapshotCache {
+    services: HashMap<String, CodexPanelState>,
+}
+
+fn snapshot_cache_path() -> std::path::PathBuf {
+    if let Ok(path) = std::env::var("AI_USAGE_SNAPSHOT_CACHE_FILE") {
+        return std::path::PathBuf::from(path);
+    }
+    let mut path = crate::codex::preferences_path();
+    path.set_file_name("snapshot-cache.json");
+    path
+}
+
+fn read_snapshot_cache() -> SnapshotCache {
+    let path = snapshot_cache_path();
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|contents| serde_json::from_str::<SnapshotCache>(&contents).ok())
+        .unwrap_or_default()
+}
+
+fn write_snapshot_cache(cache: &SnapshotCache) {
+    let path = snapshot_cache_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(payload) = serde_json::to_string(cache) {
+        let _ = std::fs::write(path, payload);
+    }
+}
+
+fn save_to_snapshot_cache(service_id: &str, state: &CodexPanelState) {
+    let mut cache = read_snapshot_cache();
+    cache.services.insert(service_id.into(), state.clone());
+    write_snapshot_cache(&cache);
+}
+
+/// Returns a cached panel state if it exists and is fresh enough
+/// (i.e., `now - updated_at < refresh_interval`).  The returned state
+/// has its `snapshot_state` set to `"stale"` so the UI knows it is cached.
+fn load_from_snapshot_cache(
+    service_id: &str,
+    refresh_interval_minutes: u16,
+) -> Option<CodexPanelState> {
+    let cache = read_snapshot_cache();
+    let entry = cache.services.get(service_id)?;
+
+    let cached_at: u64 = entry.updated_at.parse().ok()?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let age_secs = now.saturating_sub(cached_at);
+    let interval_secs = u64::from(refresh_interval_minutes) * 60;
+
+    if age_secs < interval_secs {
+        let mut restored = entry.clone();
+        // Mark as stale so the user knows this is cached data, not a live fetch.
+        if restored.snapshot_state == "fresh" {
+            restored.snapshot_state = "stale".into();
+        }
+        Some(restored)
+    } else {
+        None
+    }
 }
 
 fn normalize_summary_mode(summary_mode: &str) -> String {
@@ -139,12 +216,35 @@ pub fn build_tray_items(
     accounts: &[CodexAccount],
     refreshed_at: &str,
 ) -> Vec<PanelPlaceholderItem> {
-    let mut items = build_panel_state(preferences, accounts, refreshed_at).items;
-    items.extend(build_claude_code_items(
-        preferences,
-        refreshed_at,
-        ClaudeCodeRefreshKind::Automatic,
-    ));
+    // Tray initialization uses the snapshot cache when available to avoid
+    // unnecessary API calls on startup (especially during dev hot-reloads).
+    let codex_items =
+        if let Some(cached) = load_from_snapshot_cache("codex", preferences.refresh_interval_minutes) {
+            cached.items
+        } else {
+            let result = build_panel_state(preferences, accounts, refreshed_at);
+            save_to_snapshot_cache("codex", &result);
+            result.items
+        };
+
+    let claude_items = if let Some(cached) =
+        load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
+    {
+        let dims: Vec<_> = cached
+            .items
+            .iter()
+            .flat_map(|item| item.quota_dimensions.clone())
+            .collect();
+        seed_claude_code_stale_cache(dims);
+        cached.items
+    } else {
+        let result = build_claude_code_panel_state(preferences, refreshed_at);
+        save_to_snapshot_cache("claude-code", &result);
+        result.items
+    };
+
+    let mut items = codex_items;
+    items.extend(claude_items);
     items
 }
 
@@ -319,15 +419,22 @@ fn build_account(draft: CodexAccountDraft) -> CodexAccount {
 #[tauri::command]
 pub fn get_codex_panel_state(state: State<'_, AppState>) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
+    if let Some(cached) = load_from_snapshot_cache("codex", preferences.refresh_interval_minutes) {
+        return cached;
+    }
     let accounts = state.codex_accounts.lock().unwrap().clone();
-    build_panel_state(&preferences, &accounts, &now_iso())
+    let result = build_panel_state(&preferences, &accounts, &now_iso());
+    save_to_snapshot_cache("codex", &result);
+    result
 }
 
 #[tauri::command]
 pub fn refresh_codex_panel_state(state: State<'_, AppState>) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
     let accounts = state.codex_accounts.lock().unwrap().clone();
-    build_panel_state(&preferences, &accounts, &now_iso())
+    let result = build_panel_state(&preferences, &accounts, &now_iso());
+    save_to_snapshot_cache("codex", &result);
+    result
 }
 
 #[tauri::command]
@@ -418,20 +525,127 @@ pub fn set_autostart(app: AppHandle, state: State<'_, AppState>, enabled: bool) 
 #[tauri::command]
 pub fn get_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
-    build_claude_code_panel_state(&preferences, &now_iso())
+    if let Some(cached) =
+        load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
+    {
+        // Seed in-memory stale cache so session-recovery (401) handler has
+        // data to display if the token expires before the next live fetch.
+        let dims: Vec<_> = cached
+            .items
+            .iter()
+            .flat_map(|item| item.quota_dimensions.clone())
+            .collect();
+        seed_claude_code_stale_cache(dims);
+        return cached;
+    }
+    let result = build_claude_code_panel_state(&preferences, &now_iso());
+    save_to_snapshot_cache("claude-code", &result);
+    result
 }
 
 #[tauri::command]
 pub fn refresh_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
-    build_claude_code_panel_state_with_kind(
+    let result = build_claude_code_panel_state_with_kind(
         &preferences,
         &now_iso(),
         ClaudeCodeRefreshKind::Manual,
-    )
+    );
+    save_to_snapshot_cache("claude-code", &result);
+    result
 }
 
 #[tauri::command]
 pub fn send_test_notification(message: Option<String>) -> NotificationCheckResult {
     send_demo_notification(message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn make_panel_state(service_id: &str, updated_at: &str) -> CodexPanelState {
+        CodexPanelState {
+            desktop_surface: DesktopSurfaceState {
+                platform: "macos".into(),
+                icon_state: "idle".into(),
+                summary_mode: "lowest-remaining".into(),
+                summary_text: None,
+                panel_visible: false,
+                last_opened_at: None,
+            },
+            items: vec![PanelPlaceholderItem {
+                service_id: service_id.into(),
+                service_name: "Test".into(),
+                account_label: None,
+                icon_key: service_id.into(),
+                quota_dimensions: vec![],
+                status_label: "refreshing".into(),
+                badge_label: Some("Live".into()),
+                last_refreshed_at: updated_at.into(),
+            }],
+            configured_account_count: 0,
+            enabled_account_count: 0,
+            snapshot_state: "fresh".into(),
+            status_message: "ok".into(),
+            active_session: None,
+            updated_at: updated_at.into(),
+        }
+    }
+
+    #[test]
+    fn snapshot_cache_round_trip() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var("AI_USAGE_SNAPSHOT_CACHE_FILE", tmp.join("snapshot-cache.json"));
+
+        let state = make_panel_state("test-svc", &now_iso());
+        save_to_snapshot_cache("test-svc", &state);
+
+        // Fresh cache should be returned.
+        let loaded = load_from_snapshot_cache("test-svc", 15);
+        assert!(loaded.is_some());
+        let loaded = loaded.unwrap();
+        assert_eq!(loaded.snapshot_state, "stale"); // marked stale
+        assert_eq!(loaded.items.len(), 1);
+
+        // Non-existent service returns None.
+        assert!(load_from_snapshot_cache("other-svc", 15).is_none());
+
+        // Cleanup
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_expired_returns_none() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-expired-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var("AI_USAGE_SNAPSHOT_CACHE_FILE", tmp.join("snapshot-cache.json"));
+
+        // Create a state with an old timestamp (2 hours ago).
+        let old_ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            - 7200;
+        let state = make_panel_state("test-svc", &format!("{old_ts}"));
+        save_to_snapshot_cache("test-svc", &state);
+
+        // With a 15-minute interval, 2-hour-old data should be expired.
+        assert!(load_from_snapshot_cache("test-svc", 15).is_none());
+
+        // Cleanup
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
 }
