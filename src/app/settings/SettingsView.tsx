@@ -7,6 +7,15 @@ import { getCopy, getSnapshotMessage, getSnapshotTag } from "../shared/i18n";
 
 const clonePreferences = (preferences: UserPreferences): UserPreferences => ({ ...preferences });
 
+const isValidManualProxyUrl = (value: string) => {
+  try {
+    const parsed = new URL(value);
+    return ["http:", "https:", "socks5:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+};
+
 export const SettingsView = () => {
   const {
     preferences,
@@ -21,6 +30,7 @@ export const SettingsView = () => {
   const [draft, setDraft] = useState<UserPreferences>(() => clonePreferences(base));
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [notificationState, setNotificationState] = useState<"idle" | "pending" | "sent" | "blocked" | "failed">("idle");
+  const [validationError, setValidationError] = useState<string | null>(null);
   const copy = getCopy(base.language);
   const activeSessionMessage = getSnapshotMessage(copy, panelState?.snapshotState, true);
   const activeSessionDetail = panelState?.statusMessage?.trim();
@@ -175,12 +185,56 @@ export const SettingsView = () => {
             })}
           </div>
         </PreferenceField>
+
+        <PreferenceField label={copy.networkProxy} description={copy.networkProxyUrlHint}>
+          <div className="grid gap-3">
+            <select
+              aria-label={copy.networkProxyMode}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+              value={draft.networkProxyMode}
+              onChange={(event) => {
+                const nextMode = event.target.value as UserPreferences["networkProxyMode"];
+                setValidationError(null);
+                setDraft((current) => ({ ...current, networkProxyMode: nextMode }));
+              }}
+            >
+              <option value="system">{copy.networkProxyModeSystem}</option>
+              <option value="manual">{copy.networkProxyModeManual}</option>
+              <option value="off">{copy.networkProxyModeOff}</option>
+            </select>
+
+            {draft.networkProxyMode === "manual" ? (
+              <input
+                aria-label={copy.networkProxyUrl}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                placeholder="http://127.0.0.1:7890"
+                type="text"
+                value={draft.networkProxyUrl}
+                onChange={(event) => {
+                  setValidationError(null);
+                  setDraft((current) => ({
+                    ...current,
+                    networkProxyUrl: event.target.value
+                  }));
+                }}
+              />
+            ) : null}
+          </div>
+        </PreferenceField>
       </PreferenceSection>
 
       <PreferenceSection title={copy.actions}>
         <button
           className="rounded-xl bg-emerald-950 px-4 py-3 text-sm font-semibold text-white"
           onClick={async () => {
+            if (
+              draft.networkProxyMode === "manual" &&
+              !isValidManualProxyUrl(draft.networkProxyUrl.trim())
+            ) {
+              setValidationError(copy.networkProxyUrlInvalid);
+              return;
+            }
+            setValidationError(null);
             setSaveState("saving");
             const updated = await savePreferences(draft);
             if (updated) {
@@ -194,6 +248,9 @@ export const SettingsView = () => {
         </button>
         {saveState === "saved" ? (
           <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{copy.saved}</div>
+        ) : null}
+        {validationError ? (
+          <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">{validationError}</div>
         ) : null}
       </PreferenceSection>
 

@@ -89,6 +89,7 @@ describe("SettingsView", () => {
     expect(screen.getByRole("combobox", { name: "语言" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "开机自启" })).toBeInTheDocument();
     expect(screen.getByText("通知测试")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "代理模式" })).toBeInTheDocument();
   });
 
   it("shows local notification feedback near the action area", async () => {
@@ -100,5 +101,21 @@ describe("SettingsView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "发送测试通知" }));
     expect(screen.getByText("测试通知已发送")).toBeInTheDocument();
+  });
+
+  it("shows manual proxy url input and blocks invalid saves", async () => {
+    render(
+      <AppStateContext.Provider value={state}>
+        <SettingsView />
+      </AppStateContext.Provider>
+    );
+
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "代理模式" }), "manual");
+    expect(screen.getByRole("textbox", { name: "代理地址" })).toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "代理地址" }), "127.0.0.1:7890");
+    await userEvent.click(screen.getByRole("button", { name: "保存偏好" }));
+
+    expect(screen.getByText("请先填写完整代理 URL 再保存。")).toBeInTheDocument();
   });
 });

@@ -55,4 +55,46 @@ describe("PanelView", () => {
     expect(screen.queryByText("等待同步")).not.toBeInTheDocument();
     expect(screen.getByText("请确保本地 Codex CLI 会话可读取，以便同步真实额度。")).toBeInTheDocument();
   });
+
+  it("shows a distinct paused message for claude code access denial", () => {
+    const state = createState();
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      snapshotState: "failed",
+      statusMessage:
+        "Claude Code access was denied. Automatic refresh is paused until you retry manually or update proxy settings.",
+      items: []
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(
+      screen.getByText("Claude Code 访问被拒绝，已暂停自动刷新。请手动重试或更新代理设置后再继续。")
+    ).toBeInTheDocument();
+  });
+
+  it("shows a distinct rate limited message for claude code", () => {
+    const state = createState();
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      snapshotState: "stale",
+      statusMessage:
+        "Claude Code rate limited the request. Automatic refresh is paused for about 30 minutes; no cached quota is available yet.",
+      items: []
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(
+      screen.getByText("Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。")
+    ).toBeInTheDocument();
+  });
 });

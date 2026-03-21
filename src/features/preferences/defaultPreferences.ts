@@ -8,5 +8,7 @@ export const defaultPreferences: UserPreferences = {
   notificationTestEnabled: true,
   lastSavedAt: new Date(0).toISOString(),
   menubarService: "codex",
-  serviceOrder: ["codex", "claude-code"]
+  serviceOrder: ["codex", "claude-code"],
+  networkProxyMode: "system",
+  networkProxyUrl: ""
 };

@@ -21,6 +21,19 @@ const normalizeLegacyTraySummaryMode = (value?: string): UserPreferences["traySu
   }
 };
 
+const normalizeNetworkProxyMode = (
+  value?: string
+): UserPreferences["networkProxyMode"] => {
+  switch (value) {
+    case "system":
+    case "manual":
+    case "off":
+      return value;
+    default:
+      return defaultPreferences.networkProxyMode;
+  }
+};
+
 export const normalizePreferences = (
   patch: PreferencePatch & { displayMode?: string } = {},
   current: UserPreferences = defaultPreferences
@@ -28,11 +41,16 @@ export const normalizePreferences = (
   const traySummaryMode = normalizeLegacyTraySummaryMode(
     patch.traySummaryMode ?? patch.displayMode ?? current.traySummaryMode
   );
+  const networkProxyMode = normalizeNetworkProxyMode(
+    patch.networkProxyMode ?? current.networkProxyMode
+  );
 
   const next: UserPreferences = {
     ...current,
     ...patch,
     traySummaryMode,
+    networkProxyMode,
+    networkProxyUrl: (patch.networkProxyUrl ?? current.networkProxyUrl ?? "").trim(),
     refreshIntervalMinutes: Math.max(
       MIN_REFRESH_INTERVAL,
       patch.refreshIntervalMinutes ?? current.refreshIntervalMinutes
@@ -50,6 +68,10 @@ export const normalizePreferences = (
     )
   ) {
     throw new Error("Unsupported tray summary mode");
+  }
+
+  if (!["system", "manual", "off"].includes(next.networkProxyMode)) {
+    throw new Error("Unsupported network proxy mode");
   }
 
   return next;

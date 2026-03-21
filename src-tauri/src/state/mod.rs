@@ -13,6 +13,14 @@ fn default_service_order() -> Vec<String> {
     vec!["codex".into(), "claude-code".into()]
 }
 
+fn default_network_proxy_mode() -> String {
+    "system".into()
+}
+
+fn default_network_proxy_url() -> String {
+    String::new()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaDimension {
@@ -86,6 +94,10 @@ pub struct UserPreferences {
     pub menubar_service: String,
     #[serde(default = "default_service_order")]
     pub service_order: Vec<String>,
+    #[serde(default = "default_network_proxy_mode")]
+    pub network_proxy_mode: String,
+    #[serde(default = "default_network_proxy_url")]
+    pub network_proxy_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,6 +111,8 @@ pub struct PreferencePatch {
     pub notification_test_enabled: Option<bool>,
     pub menubar_service: Option<String>,
     pub service_order: Option<Vec<String>>,
+    pub network_proxy_mode: Option<String>,
+    pub network_proxy_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,6 +155,8 @@ pub fn default_preferences() -> UserPreferences {
         last_saved_at: "1970-01-01T00:00:00.000Z".into(),
         menubar_service: default_menubar_service(),
         service_order: default_service_order(),
+        network_proxy_mode: default_network_proxy_mode(),
+        network_proxy_url: default_network_proxy_url(),
     }
 }
 
@@ -182,6 +198,8 @@ mod tests {
 
         assert_eq!(prefs.menubar_service, "codex");
         assert_eq!(prefs.service_order, vec!["codex", "claude-code"]);
+        assert_eq!(prefs.network_proxy_mode, "system");
+        assert_eq!(prefs.network_proxy_url, "");
         assert_eq!(prefs.refresh_interval_minutes, 20);
         assert_eq!(prefs.tray_summary_mode, "window-5h");
     }

@@ -65,6 +65,8 @@ export interface UserPreferences {
   lastSavedAt: string;
   menubarService: string;
   serviceOrder: string[];
+  networkProxyMode: "system" | "manual" | "off";
+  networkProxyUrl: string;
 }
 
 export interface PreferencePatch {
@@ -75,6 +77,8 @@ export interface PreferencePatch {
   notificationTestEnabled?: boolean;
   menubarService?: string;
   serviceOrder?: string[];
+  networkProxyMode?: UserPreferences["networkProxyMode"];
+  networkProxyUrl?: string;
 }
 
 export interface NotificationCheckResult {

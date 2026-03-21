@@ -72,6 +72,17 @@ export type CopyTree = {
   claudeCodeLabel: string;
   codexLabel: string;
   claudeCodeNotConnected: string;
+  networkProxy: string;
+  networkProxyMode: string;
+  networkProxyModeSystem: string;
+  networkProxyModeManual: string;
+  networkProxyModeOff: string;
+  networkProxyUrl: string;
+  networkProxyUrlHint: string;
+  networkProxyUrlInvalid: string;
+  claudeCodeAccessPaused: string;
+  claudeCodeProxyInvalid: string;
+  claudeCodeRateLimited: string;
 };
 
 const baseCopy: CopyTree = {
@@ -145,7 +156,18 @@ const baseCopy: CopyTree = {
   serviceOrder: "Panel order",
   claudeCodeLabel: "Claude Code",
   codexLabel: "Codex",
-  claudeCodeNotConnected: "Claude Code not connected. Install Claude Code CLI and log in."
+  claudeCodeNotConnected: "Claude Code not connected. Install Claude Code CLI and log in.",
+  networkProxy: "Network proxy",
+  networkProxyMode: "Proxy mode",
+  networkProxyModeSystem: "Use system proxy",
+  networkProxyModeManual: "Use manual proxy",
+  networkProxyModeOff: "No proxy",
+  networkProxyUrl: "Proxy URL",
+  networkProxyUrlHint: "Use a full URL such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080",
+  networkProxyUrlInvalid: "Enter a full proxy URL before saving.",
+  claudeCodeAccessPaused: "Claude Code access was denied. Automatic refresh is paused until you retry manually or update proxy settings.",
+  claudeCodeProxyInvalid: "Proxy configuration is invalid. Use a full proxy URL or switch back to system proxy detection.",
+  claudeCodeRateLimited: "Claude Code rate limited the request. Automatic refresh is paused for now; try a manual refresh later."
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
@@ -220,7 +242,18 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     serviceOrder: "面板顺序",
     claudeCodeLabel: "Claude Code",
     codexLabel: "Codex",
-    claudeCodeNotConnected: "Claude Code 未连接。请安装 Claude Code CLI 并登录。"
+    claudeCodeNotConnected: "Claude Code 未连接。请安装 Claude Code CLI 并登录。",
+    networkProxy: "网络代理",
+    networkProxyMode: "代理模式",
+    networkProxyModeSystem: "使用系统代理",
+    networkProxyModeManual: "手动填写代理",
+    networkProxyModeOff: "不使用代理",
+    networkProxyUrl: "代理地址",
+    networkProxyUrlHint: "请输入完整 URL，例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080",
+    networkProxyUrlInvalid: "请先填写完整代理 URL 再保存。",
+    claudeCodeAccessPaused: "Claude Code 访问被拒绝，已暂停自动刷新。请手动重试或更新代理设置后再继续。",
+    claudeCodeProxyInvalid: "代理配置无效。请填写完整代理 URL，或切回系统代理检测。",
+    claudeCodeRateLimited: "Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。"
   }
   ,
   "en-US": baseCopy
@@ -291,6 +324,33 @@ export const getSnapshotMessage = (
 
 export const getCopy = (language: UserPreferences["language"]) =>
   resolveCopyTree(localeCopy[language] ?? localeCopy["en-US"]);
+
+export const getClaudeCodePlaceholderMessage = (
+  copy: CopyTree,
+  snapshotState?: string | null,
+  statusMessage?: string | null
+) => {
+  const normalized = normalizeSnapshotState(snapshotState);
+  const message = statusMessage?.trim() ?? "";
+
+  if (message.includes("access was denied")) {
+    return copy.claudeCodeAccessPaused;
+  }
+
+  if (message.includes("Proxy configuration is invalid")) {
+    return copy.claudeCodeProxyInvalid;
+  }
+
+  if (message.includes("rate limited")) {
+    return copy.claudeCodeRateLimited;
+  }
+
+  if (normalized === "empty" || message.includes("No Claude Code credentials")) {
+    return copy.claudeCodeNotConnected;
+  }
+
+  return message || copy.claudeCodeNotConnected;
+};
 
 /**
  * Localize a backend-generated "remaining" string.

@@ -15,13 +15,17 @@ describe("preferences persistence", () => {
     const saved = savePreferences({
       refreshIntervalMinutes: 25,
       language: "en-US",
-      traySummaryMode: "window-week"
+      traySummaryMode: "window-week",
+      networkProxyMode: "manual",
+      networkProxyUrl: "http://127.0.0.1:7890"
     });
     const loaded = loadPreferences();
 
     expect(saved.refreshIntervalMinutes).toBe(25);
     expect(loaded.language).toBe("en-US");
     expect(loaded.traySummaryMode).toBe("window-week");
+    expect(loaded.networkProxyMode).toBe("manual");
+    expect(loaded.networkProxyUrl).toBe("http://127.0.0.1:7890");
   });
 
   it("restores saved Codex accounts and enabled state", () => {

@@ -1,6 +1,6 @@
 import { ServiceCard } from "../../components/panel/ServiceCard";
 import { useAppState } from "../shared/appState";
-import { getCopy, getSnapshotMessage } from "../shared/i18n";
+import { getClaudeCodePlaceholderMessage, getCopy, getSnapshotMessage } from "../shared/i18n";
 
 export const PanelView = () => {
   const { panelState, claudeCodePanelState, preferences, error } = useAppState();
@@ -37,7 +37,7 @@ export const PanelView = () => {
           // Not connected placeholder
           const notConnectedMessage =
             serviceId === "claude-code"
-              ? copy.claudeCodeNotConnected
+              ? getClaudeCodePlaceholderMessage(copy, state.snapshotState, state.statusMessage)
               : statusMessage;
           return (
             <div

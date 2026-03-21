@@ -1,5 +1,8 @@
 use crate::autostart::set_autostart_status;
-use crate::claude_code::load_snapshot as load_claude_code_snapshot;
+use crate::claude_code::{
+    clear_access_pause as clear_claude_code_access_pause,
+    load_snapshot as load_claude_code_snapshot, RefreshKind as ClaudeCodeRefreshKind,
+};
 use crate::codex::{load_snapshot, save_accounts, save_preferences as persist_preferences_file};
 use crate::notifications::send_demo_notification;
 use crate::state::{
@@ -137,12 +140,20 @@ pub fn build_tray_items(
     refreshed_at: &str,
 ) -> Vec<PanelPlaceholderItem> {
     let mut items = build_panel_state(preferences, accounts, refreshed_at).items;
-    items.extend(build_claude_code_items(refreshed_at));
+    items.extend(build_claude_code_items(
+        preferences,
+        refreshed_at,
+        ClaudeCodeRefreshKind::Automatic,
+    ));
     items
 }
 
-pub fn build_claude_code_items(refreshed_at: &str) -> Vec<PanelPlaceholderItem> {
-    let snapshot = load_claude_code_snapshot();
+pub fn build_claude_code_items(
+    preferences: &UserPreferences,
+    refreshed_at: &str,
+    refresh_kind: ClaudeCodeRefreshKind,
+) -> Vec<PanelPlaceholderItem> {
+    let snapshot = load_claude_code_snapshot(preferences, refresh_kind);
     if snapshot.dimensions.is_empty() {
         return Vec::new();
     }
@@ -163,7 +174,19 @@ pub fn build_claude_code_items(refreshed_at: &str) -> Vec<PanelPlaceholderItem> 
 }
 
 fn build_claude_code_panel_state(preferences: &UserPreferences, refreshed_at: &str) -> CodexPanelState {
-    let snapshot = load_claude_code_snapshot();
+    build_claude_code_panel_state_with_kind(
+        preferences,
+        refreshed_at,
+        ClaudeCodeRefreshKind::Automatic,
+    )
+}
+
+fn build_claude_code_panel_state_with_kind(
+    preferences: &UserPreferences,
+    refreshed_at: &str,
+    refresh_kind: ClaudeCodeRefreshKind,
+) -> CodexPanelState {
+    let snapshot = load_claude_code_snapshot(preferences, refresh_kind);
     let items = if snapshot.dimensions.is_empty() {
         Vec::new()
     } else {
@@ -227,6 +250,12 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
     }
     if let Some(service_order) = patch.service_order {
         current.service_order = service_order;
+    }
+    if let Some(network_proxy_mode) = patch.network_proxy_mode {
+        current.network_proxy_mode = network_proxy_mode;
+    }
+    if let Some(network_proxy_url) = patch.network_proxy_url {
+        current.network_proxy_url = network_proxy_url;
     }
     current.last_saved_at = now_iso();
     current
@@ -355,6 +384,11 @@ pub fn save_preferences(
 ) -> UserPreferences {
     let current = state.preferences.lock().unwrap().clone();
     let next = merge_preferences(patch, current);
+    if next.network_proxy_mode != state.preferences.lock().unwrap().network_proxy_mode
+        || next.network_proxy_url != state.preferences.lock().unwrap().network_proxy_url
+    {
+        clear_claude_code_access_pause();
+    }
     let refreshed_at = now_iso();
     let merged_items = {
         let accounts = state.codex_accounts.lock().unwrap().clone();
@@ -390,7 +424,11 @@ pub fn get_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanelStat
 #[tauri::command]
 pub fn refresh_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
-    build_claude_code_panel_state(&preferences, &now_iso())
+    build_claude_code_panel_state_with_kind(
+        &preferences,
+        &now_iso(),
+        ClaudeCodeRefreshKind::Manual,
+    )
 }
 
 #[tauri::command]

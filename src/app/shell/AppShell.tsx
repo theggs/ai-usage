@@ -83,14 +83,14 @@ export const AppShell = () => {
   useEffect(() => {
     if (!preferences) return;
     const intervalMs = preferences.refreshIntervalMinutes * 60 * 1000;
-    const id = setInterval(() => { void refreshPanel(); }, intervalMs);
+    const id = setInterval(() => { void refreshPanel(false); }, intervalMs);
     return () => clearInterval(id);
     // refreshPanel is intentionally omitted from deps — it is recreated each
     // render but the panelController dedup guard prevents concurrent calls.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preferences?.refreshIntervalMinutes]);
 
-  const refreshPanel = async () => {
+  const refreshPanel = async (manual = true) => {
     if (isRefreshing) {
       return;
     }
@@ -99,7 +99,7 @@ export const AppShell = () => {
     try {
       const [nextPanel, nextClaudeCodePanel] = await Promise.all([
         refreshPanelState(),
-        refreshClaudeCodePanelState()
+        manual ? refreshClaudeCodePanelState() : loadClaudeCodePanelState()
       ]);
       setPanelState(nextPanel);
       lastStablePanelState.current = nextPanel;
@@ -116,6 +116,10 @@ export const AppShell = () => {
     try {
       const nextPreferences = await persistPreferences(patch);
       setPreferences(nextPreferences);
+      if ("networkProxyMode" in patch || "networkProxyUrl" in patch) {
+        const nextClaudeCodePanel = await refreshClaudeCodePanelState();
+        setClaudeCodePanelState(nextClaudeCodePanel);
+      }
       setPanelState((current) =>
         current
           ? {
