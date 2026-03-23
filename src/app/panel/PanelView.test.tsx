@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AppStateContext, type AppStateValue } from "../shared/appState";
 import { PanelView } from "./PanelView";
 import { createDemoPanelState } from "../../features/demo-services/demoData";
@@ -8,11 +9,15 @@ import type { CodexPanelState } from "../../lib/tauri/contracts";
 const createState = (panelState: CodexPanelState = createDemoPanelState()): AppStateValue => ({
   panelState,
   claudeCodePanelState: null,
-  preferences: defaultPreferences,
+  preferences: {
+    ...defaultPreferences,
+    onboardingDismissedAt: new Date().toISOString()
+  },
   notificationResult: null,
   currentView: "panel",
   isLoading: false,
   isRefreshing: false,
+  isE2EMode: false,
   error: null,
   refreshPanel: vi.fn(async () => {}),
   savePreferences: vi.fn(async () => null),
@@ -53,7 +58,7 @@ describe("PanelView", () => {
     );
 
     expect(screen.queryByText("等待同步")).not.toBeInTheDocument();
-    expect(screen.getByText("请确保本地 Codex CLI 会话可读取，以便同步真实额度。")).toBeInTheDocument();
+    expect(screen.getByText("暂时无法连接")).toBeInTheDocument();
   });
 
   it("shows a distinct paused message for claude code access denial", () => {
@@ -72,9 +77,7 @@ describe("PanelView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(
-      screen.getByText("Claude Code 访问被拒绝，已暂停自动刷新。请手动重试或更新代理设置后再继续。")
-    ).toBeInTheDocument();
+    expect(screen.getByText("前往设置")).toBeInTheDocument();
   });
 
   it("shows a distinct rate limited message for claude code", () => {
@@ -93,9 +96,7 @@ describe("PanelView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(
-      screen.getByText("Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。")
-    ).toBeInTheDocument();
+    expect(screen.getByText("需要先登录")).toBeInTheDocument();
   });
 
   it("shows one global refresh label when service timestamps are aligned", () => {
@@ -127,5 +128,235 @@ describe("PanelView", () => {
     );
 
     expect(screen.getByText(/上次刷新:/)).toBeInTheDocument();
+  });
+
+  it("shows onboarding before empty service placeholders on first run", () => {
+    const state = createState({
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty"
+    });
+    state.preferences = {
+      ...defaultPreferences,
+      onboardingDismissedAt: undefined
+    };
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty",
+      statusMessage: "No Claude Code credentials"
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByText("先连接第一个 AI 服务")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "前往设置" }).length).toBeGreaterThan(0);
+  });
+
+  it("renders full-height accent strips only for warning and danger cards", () => {
+    const now = new Date().toISOString();
+    const state = createState({
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "codex",
+          serviceName: "Codex",
+          lastRefreshedAt: now,
+          quotaDimensions: [
+            {
+              label: "CODEX / 5H",
+              remainingPercent: 18,
+              remainingAbsolute: "18% remaining",
+              resetHint: "Resets in 2h",
+              status: "exhausted",
+              progressTone: "danger"
+            }
+          ]
+        },
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "claude-code",
+          serviceName: "Claude Code",
+          lastRefreshedAt: now,
+          quotaDimensions: [
+            {
+              label: "CLAUDE CODE / WEEK",
+              remainingPercent: 82,
+              remainingAbsolute: "82% remaining",
+              resetHint: "Resets in 4d",
+              status: "healthy",
+              progressTone: "success"
+            }
+          ]
+        }
+      ]
+    });
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    const dangerCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    const healthyCard = screen.getByRole("heading", { name: "Claude Code" }).closest("article");
+
+    expect(dangerCard?.className).toContain("relative overflow-hidden");
+    expect(dangerCard?.querySelector("[aria-hidden='true']")?.className).toContain("absolute inset-y-0 left-0 w-1.5");
+    expect(healthyCard?.querySelector("[aria-hidden='true']")).toBeNull();
+  });
+
+  it("opens settings from service placeholders after onboarding is dismissed", async () => {
+    const state = createState({
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "stale",
+      statusMessage: "The CLI is installed, but there is no readable signed-in session yet."
+    });
+    state.preferences = {
+      ...defaultPreferences,
+      onboardingDismissedAt: new Date().toISOString()
+    };
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty",
+      statusMessage: "No Claude Code credentials"
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.queryByText("先连接第一个 AI 服务")).not.toBeInTheDocument();
+    expect(screen.getByText("CLI 未安装")).toBeInTheDocument();
+    expect(screen.getByText("需要先登录")).toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole("button", { name: "前往设置" })[0]!);
+
+    expect(state.openSettings).toHaveBeenCalled();
+  });
+
+  it("shows non-color warning labels for low and critical quotas", () => {
+    const now = new Date().toISOString();
+    const state = createState({
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "codex",
+          serviceName: "Codex",
+          lastRefreshedAt: now,
+          quotaDimensions: [
+            {
+              label: "CODEX / 5H",
+              remainingPercent: 42,
+              remainingAbsolute: "42% remaining",
+              resetHint: "Resets in 2h",
+              status: "warning",
+              progressTone: "warning"
+            }
+          ]
+        },
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "claude-code",
+          serviceName: "Claude Code",
+          lastRefreshedAt: now,
+          quotaDimensions: [
+            {
+              label: "CLAUDE CODE / WEEK",
+              remainingPercent: 9,
+              remainingAbsolute: "9% remaining",
+              resetHint: "Resets in 4d",
+              status: "exhausted",
+              progressTone: "danger"
+            }
+          ]
+        }
+      ]
+    });
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    const warningCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    const dangerCard = screen.getByRole("heading", { name: "Claude Code" }).closest("article");
+
+    expect(within(warningCard!).getAllByText("偏低").length).toBeGreaterThan(0);
+    expect(within(dangerCard!).getAllByText("紧张").length).toBeGreaterThan(0);
+  });
+
+  it("renders the english health summary without truncating the service-focused message", async () => {
+    vi.resetModules();
+    const lowQuotaState = {
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "codex",
+          serviceName: "Codex",
+          quotaDimensions: [
+            {
+              label: "CODEX / 5H",
+              remainingPercent: 28,
+              remainingAbsolute: "28% remaining",
+              resetHint: "Resets in 2h",
+              status: "warning",
+              progressTone: "warning"
+            }
+          ]
+        }
+      ]
+    };
+
+    vi.doMock("../../features/demo-services/panelController", () => ({
+      loadPanelState: vi.fn(async () => lowQuotaState),
+      refreshPanelState: vi.fn(async () => lowQuotaState),
+      loadClaudeCodePanelState: vi.fn(async () => null),
+      refreshClaudeCodePanelState: vi.fn(async () => null)
+    }));
+    vi.doMock("../../features/preferences/preferencesController", () => ({
+      getPreferences: vi.fn(async () => ({
+        ...defaultPreferences,
+        language: "en-US",
+        serviceOrder: ["codex"]
+      })),
+      persistPreferences: vi.fn(async (patch) => ({
+        ...defaultPreferences,
+        language: "en-US",
+        serviceOrder: ["codex"],
+        ...patch
+      })),
+      applyAutostart: vi.fn(async (enabled: boolean) => ({ ...defaultPreferences, language: "en-US", autostartEnabled: enabled })),
+      getCodexAccounts: vi.fn(async () => []),
+      persistCodexAccount: vi.fn(),
+      deleteCodexAccount: vi.fn(),
+      applyCodexAccountEnabled: vi.fn()
+    }));
+    vi.doMock("../../features/notifications/notificationController", () => ({
+      sendDemoNotification: vi.fn(async () => null)
+    }));
+
+    const { AppShell } = await import("../shell/AppShell");
+    render(<AppShell />);
+
+    expect(await screen.findByText("Codex 5h window is running low")).toBeInTheDocument();
+    expect(screen.queryByText("...")).not.toBeInTheDocument();
+
+    vi.resetModules();
+    vi.unmock("../../features/demo-services/panelController");
+    vi.unmock("../../features/preferences/preferencesController");
+    vi.unmock("../../features/notifications/notificationController");
   });
 });

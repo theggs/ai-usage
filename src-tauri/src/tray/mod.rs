@@ -1,8 +1,40 @@
 use crate::state::{PanelPlaceholderItem, UserPreferences};
+use serde::Serialize;
 use tauri::{
+    image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, Wry,
 };
+
+#[derive(Serialize)]
+struct E2ETraySurface<'a> {
+    severity: &'a str,
+    service_name: &'a str,
+    title: Option<&'a str>,
+    tooltip: &'a str,
+}
+
+fn write_e2e_tray_surface(
+    severity: &str,
+    service_name: &str,
+    title: Option<&str>,
+    tooltip: &str,
+) {
+    let Ok(path) = std::env::var("AI_USAGE_E2E_TRAY_STATE_FILE") else {
+        return;
+    };
+
+    let payload = E2ETraySurface {
+        severity,
+        service_name,
+        title,
+        tooltip,
+    };
+
+    if let Ok(json) = serde_json::to_string(&payload) {
+        let _ = std::fs::write(path, json);
+    }
+}
 
 fn items_for_menubar_service(
     preferences: &UserPreferences,
@@ -121,6 +153,176 @@ fn to_summary_value(dimension: &crate::state::QuotaDimension) -> String {
         .unwrap_or_else(|| dimension.remaining_absolute.clone())
 }
 
+fn tray_severity(items: &[PanelPlaceholderItem]) -> &'static str {
+    let dimensions = all_dimensions(items);
+    if dimensions.is_empty() {
+        return "empty";
+    }
+    if dimensions
+        .iter()
+        .any(|dimension| matches!(dimension.remaining_percent, Some(percent) if percent < 20))
+    {
+        return "danger";
+    }
+    if dimensions
+        .iter()
+        .any(|dimension| matches!(dimension.remaining_percent, Some(percent) if (20..=50).contains(&percent)))
+    {
+        return "warning";
+    }
+    "normal"
+}
+
+fn tray_tooltip(service_name: &str, summary: Option<&str>) -> String {
+    match summary {
+        Some(value) if !value.is_empty() => format!("AIUsage · {service_name} · {value}"),
+        _ => format!("AIUsage · {service_name}"),
+    }
+}
+
+fn fallback_tray_icon_image(severity: &str) -> Image<'static> {
+    let size = 18u32;
+    let center = (size as f32 - 1.0) / 2.0;
+    let radius = 7.0f32;
+    let mut rgba = vec![0u8; (size * size * 4) as usize];
+
+    for y in 0..size {
+        for x in 0..size {
+            let dx = x as f32 - center;
+            let dy = y as f32 - center;
+            let distance = (dx * dx + dy * dy).sqrt();
+            let pixel = ((y * size + x) * 4) as usize;
+
+            let (r, g, b, a) = match severity {
+                "warning" => {
+                    if distance <= radius {
+                        (217, 119, 6, 255)
+                    } else {
+                        (0, 0, 0, 0)
+                    }
+                }
+                "danger" => {
+                    if distance <= radius {
+                        (220, 38, 38, 255)
+                    } else {
+                        (0, 0, 0, 0)
+                    }
+                }
+                _ => {
+                    if distance <= radius {
+                        (15, 23, 42, 255)
+                    } else {
+                        (0, 0, 0, 0)
+                    }
+                }
+            };
+
+            rgba[pixel] = r;
+            rgba[pixel + 1] = g;
+            rgba[pixel + 2] = b;
+            rgba[pixel + 3] = a;
+        }
+    }
+
+    match severity {
+        "warning" => {
+            for y in 4..12 {
+                let pixel = ((y * size + 8) * 4) as usize;
+                rgba[pixel] = 255;
+                rgba[pixel + 1] = 255;
+                rgba[pixel + 2] = 255;
+                rgba[pixel + 3] = 255;
+            }
+            let pixel = ((14 * size + 8) * 4) as usize;
+            rgba[pixel] = 255;
+            rgba[pixel + 1] = 255;
+            rgba[pixel + 2] = 255;
+            rgba[pixel + 3] = 255;
+        }
+        "danger" => {
+            for offset in 0..7 {
+                let left = ((5 + offset) * size + (5 + offset)) * 4;
+                let right = ((5 + offset) * size + (11 - offset)) * 4;
+                for pixel in [left as usize, right as usize] {
+                    rgba[pixel] = 255;
+                    rgba[pixel + 1] = 255;
+                    rgba[pixel + 2] = 255;
+                    rgba[pixel + 3] = 255;
+                }
+            }
+        }
+        _ => {
+            for (x, y) in [
+                (5, 9),
+                (6, 10),
+                (7, 11),
+                (8, 10),
+                (9, 9),
+                (10, 8),
+                (11, 7),
+                (12, 6),
+            ] {
+                let pixel = ((y * size + x) * 4) as usize;
+                rgba[pixel] = 255;
+                rgba[pixel + 1] = 255;
+                rgba[pixel + 2] = 255;
+                rgba[pixel + 3] = 255;
+            }
+        }
+    }
+
+    Image::new_owned(rgba, size, size)
+}
+
+fn tinted_icon(base_icon: Image<'_>, tint: (u8, u8, u8), mix: f32) -> Image<'static> {
+    let mut rgba = base_icon.rgba().to_vec();
+    for pixel in rgba.chunks_exact_mut(4) {
+        if pixel[3] == 0 {
+            continue;
+        }
+
+        let r = pixel[0] as f32;
+        let g = pixel[1] as f32;
+        let b = pixel[2] as f32;
+        let max_channel = r.max(g).max(b);
+        let min_channel = r.min(g).min(b);
+        let luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+        let saturation = if max_channel <= 0.0 {
+            0.0
+        } else {
+            (max_channel - min_channel) / max_channel
+        };
+
+        // Keep dark base areas almost untouched, and concentrate tint on
+        // brighter highlights so the result feels like a native icon variant.
+        let highlight_weight = ((luminance - 0.16) / 0.84).clamp(0.0, 1.0).powf(1.05);
+        let color_weight = (0.22 + 0.78 * saturation).clamp(0.0, 1.0);
+        let local_mix = mix * highlight_weight * color_weight;
+
+        let screen_r = 255.0 - ((255.0 - r) * (255.0 - tint.0 as f32) / 255.0);
+        let screen_g = 255.0 - ((255.0 - g) * (255.0 - tint.1 as f32) / 255.0);
+        let screen_b = 255.0 - ((255.0 - b) * (255.0 - tint.2 as f32) / 255.0);
+
+        let lift = local_mix * 0.24;
+
+        pixel[0] = (r + (screen_r - r) * local_mix + (255.0 - r) * lift).min(255.0).round() as u8;
+        pixel[1] = (g + (screen_g - g) * local_mix + (255.0 - g) * lift).min(255.0).round() as u8;
+        pixel[2] = (b + (screen_b - b) * local_mix + (255.0 - b) * lift).min(255.0).round() as u8;
+    }
+    Image::new_owned(rgba, base_icon.width(), base_icon.height())
+}
+
+fn tray_icon_image(app: &AppHandle, severity: &str) -> Image<'static> {
+    if let Some(base_icon) = app.default_window_icon() {
+        return match severity {
+            "warning" => tinted_icon(base_icon.clone(), (255, 196, 54), 0.68),
+            "danger" => tinted_icon(base_icon.clone(), (236, 96, 88), 0.52),
+            _ => base_icon.clone().to_owned(),
+        };
+    }
+    fallback_tray_icon_image(severity)
+}
+
 pub fn format_summary(summary_mode: &str, items: &[PanelPlaceholderItem]) -> Option<String> {
     let dimensions = all_dimensions(items);
     let sorted = sort_by_remaining_percent(dimensions.clone());
@@ -173,10 +375,15 @@ pub fn apply_display_mode(
     if let Some(tray) = app.tray_by_id("main-tray") {
         let filtered = items_for_menubar_service(preferences, items);
         let summary = format_summary(&preferences.tray_summary_mode, &filtered);
-        let tooltip = summary
-            .clone()
-            .map(|value| format!("AIUsage · {value}"))
-            .unwrap_or_else(|| "AIUsage".to_string());
+        let service_name = filtered
+            .first()
+            .map(|item| item.service_name.as_str())
+            .unwrap_or_else(|| match preferences.menubar_service.as_str() {
+                "claude-code" => "Claude Code",
+                _ => "Codex",
+            });
+        let severity = tray_severity(&filtered);
+        let tooltip = tray_tooltip(service_name, summary.as_deref());
 
         #[cfg(target_os = "macos")]
         match summary.as_deref() {
@@ -191,7 +398,9 @@ pub fn apply_display_mode(
         #[cfg(not(target_os = "macos"))]
         let _ = tray.set_title::<&str>(None);
 
-        let _ = tray.set_tooltip(Some(tooltip));
+        let _ = tray.set_tooltip(Some(tooltip.clone()));
+        let _ = tray.set_icon(Some(tray_icon_image(app, severity)));
+        write_e2e_tray_surface(severity, service_name, summary.as_deref(), &tooltip);
     }
 }
 
@@ -206,12 +415,11 @@ pub fn initialize_tray(
     }
 
     let mut builder = TrayIconBuilder::with_id("main-tray").tooltip("AIUsage");
-    if let Some(icon) = app.default_window_icon() {
-        builder = builder.icon(icon.clone());
-    }
 
     let filtered = items_for_menubar_service(preferences, items);
     let summary = format_summary(&preferences.tray_summary_mode, &filtered);
+    let severity = tray_severity(&filtered);
+    builder = builder.icon(tray_icon_image(app, severity));
     if let Some(text) = summary.clone() {
         builder = builder.title(text);
     }
@@ -251,8 +459,12 @@ pub fn should_hide_on_focus_change(is_focused: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_summary, items_for_menubar_service, should_hide_on_focus_change};
+    use super::{
+        fallback_tray_icon_image, format_summary, items_for_menubar_service,
+        should_hide_on_focus_change, tinted_icon, tray_severity, tray_tooltip,
+    };
     use crate::state::{PanelPlaceholderItem, QuotaDimension};
+    use tauri::image::Image;
 
     fn item(percent: u8) -> PanelPlaceholderItem {
         PanelPlaceholderItem {
@@ -312,7 +524,10 @@ mod tests {
         assert_eq!(
             format_summary(
                 "multi-dimension",
-                &[item_with_label("codex / week", 48), item_with_label("codex / 5h", 64)]
+                &[
+                    item_with_label("codex / week", 48),
+                    item_with_label("codex / 5h", 64)
+                ]
             ),
             Some("64% / 48%".into())
         );
@@ -402,7 +617,54 @@ mod tests {
 
         let filtered = items_for_menubar_service(&prefs, &items);
 
-        assert_eq!(format_summary("lowest-remaining", &filtered), Some("28%".into()));
+        assert_eq!(
+            format_summary("lowest-remaining", &filtered),
+            Some("28%".into())
+        );
+    }
+
+    #[test]
+    fn formats_tooltip_with_service_name() {
+        assert_eq!(
+            tray_tooltip("Codex", Some("37%")),
+            "AIUsage · Codex · 37%".to_string()
+        );
+        assert_eq!(
+            tray_tooltip("Claude Code", None),
+            "AIUsage · Claude Code".to_string()
+        );
+    }
+
+    #[test]
+    fn derives_tray_severity_from_lowest_percent() {
+        assert_eq!(tray_severity(&[item(64)]), "normal");
+        assert_eq!(tray_severity(&[item(45)]), "warning");
+        assert_eq!(tray_severity(&[item(18)]), "danger");
+        assert_eq!(tray_severity(&[]), "empty");
+    }
+
+    #[test]
+    fn creates_distinct_tray_icon_images_for_each_severity() {
+        let normal = fallback_tray_icon_image("normal");
+        let warning = fallback_tray_icon_image("warning");
+        let danger = fallback_tray_icon_image("danger");
+
+        assert_eq!(normal.width(), 18);
+        assert_eq!(normal.height(), 18);
+        assert_ne!(normal.rgba(), warning.rgba());
+        assert_ne!(warning.rgba(), danger.rgba());
+    }
+
+    #[test]
+    fn tints_existing_app_icon_for_warning_and_danger_states() {
+        let base = Image::new_owned(vec![10, 20, 30, 255, 100, 120, 140, 255], 2, 1);
+        let warning = tinted_icon(base.clone(), (245, 158, 11), 0.62);
+        let danger = tinted_icon(base.clone(), (239, 68, 68), 0.72);
+
+        assert_eq!(warning.width(), 2);
+        assert_eq!(danger.height(), 1);
+        assert_ne!(warning.rgba(), base.rgba());
+        assert_ne!(danger.rgba(), base.rgba());
     }
 
     #[test]
@@ -414,6 +676,9 @@ mod tests {
         let filtered = items_for_menubar_service(&prefs, &items);
 
         assert_eq!(filtered.len(), 1);
-        assert_eq!(format_summary("lowest-remaining", &filtered), Some("55%".into()));
+        assert_eq!(
+            format_summary("lowest-remaining", &filtered),
+            Some("55%".into())
+        );
     }
 }

@@ -18,7 +18,8 @@ describe("preferences persistence", () => {
       traySummaryMode: "window-week",
       serviceOrder: ["claude-code", "codex", "claude-code", "unknown-service"],
       networkProxyMode: "manual",
-      networkProxyUrl: "http://127.0.0.1:7890"
+      networkProxyUrl: "http://127.0.0.1:7890",
+      onboardingDismissedAt: "2026-03-23T00:00:00.000Z"
     });
     const loaded = loadPreferences();
 
@@ -28,6 +29,24 @@ describe("preferences persistence", () => {
     expect(loaded.serviceOrder).toEqual(["claude-code", "codex"]);
     expect(loaded.networkProxyMode).toBe("manual");
     expect(loaded.networkProxyUrl).toBe("http://127.0.0.1:7890");
+    expect(loaded.onboardingDismissedAt).toBe("2026-03-23T00:00:00.000Z");
+  });
+
+  it("defaults onboardingDismissedAt when loading a legacy preference payload", () => {
+    localStorage.setItem(
+      "ai-usage.preferences",
+      JSON.stringify({
+        refreshIntervalMinutes: 20,
+        language: "zh-CN",
+        traySummaryMode: "lowest-remaining",
+        serviceOrder: ["unknown-service", "codex"]
+      })
+    );
+
+    const loaded = loadPreferences();
+
+    expect(loaded.onboardingDismissedAt).toBeUndefined();
+    expect(loaded.serviceOrder).toEqual(["codex", "claude-code"]);
   });
 
   it("restores saved Codex accounts and enabled state", () => {

@@ -6,6 +6,8 @@ import {
   getQuotaProgressTone,
   getQuotaStatus,
   getServiceAlertLevel,
+  getServiceStatusCard,
+  getTrayVisualState,
   haveAlignedRefreshTimes
 } from "./summary";
 import type { PanelPlaceholderItem } from "./contracts";
@@ -80,5 +82,28 @@ describe("formatTraySummary", () => {
     expect(getServiceAlertLevel(items[0]!)).toBe("danger");
     expect(haveAlignedRefreshTimes(items)).toBe(true);
     expect(getPanelHealthSummary([])).toMatchObject({ tone: "empty" });
+  });
+
+  it("derives tray visual state for the selected service only", () => {
+    const state = getTrayVisualState("window-week", "codex", items);
+
+    expect(state.serviceName).toBe("Codex");
+    expect(state.summaryText).toBe("6%");
+    expect(state.tooltipText).toBe("AIUsage · Codex · 6%");
+    expect(state.severity).toBe("danger");
+  });
+
+  it("normalizes explicit empty service status cards without unrelated fallback copy", () => {
+    expect(
+      getServiceStatusCard("claude-code", "Claude Code", {
+        snapshotState: "empty",
+        statusMessage: "No Claude Code credentials",
+        items: []
+      })
+    ).toMatchObject({
+      serviceId: "claude-code",
+      serviceName: "Claude Code",
+      connectionState: "empty"
+    });
   });
 });

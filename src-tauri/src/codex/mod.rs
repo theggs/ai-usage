@@ -692,7 +692,14 @@ mod tests {
         env::temp_dir().join(format!("ai-usage-{name}-{nanos}.{extension}"))
     }
 
-    fn write_mock_codex(app_server_stdout: &[&str], app_server_stderr: &[&str], app_server_exit: i32, login_stdout: &[&str], login_stderr: &[&str], login_exit: i32) -> PathBuf {
+    fn write_mock_codex(
+        app_server_stdout: &[&str],
+        app_server_stderr: &[&str],
+        app_server_exit: i32,
+        login_stdout: &[&str],
+        login_stderr: &[&str],
+        login_exit: i32,
+    ) -> PathBuf {
         let path = unique_temp_path("mock-codex");
         let script_body = if cfg!(windows) {
             let mut body = String::from("@echo off\n");
@@ -728,19 +735,31 @@ mod tests {
             body.push_str("fi\n");
             body.push_str("if [ \"$1\" = \"app-server\" ]; then\n");
             for line in app_server_stdout {
-                body.push_str(&format!("  printf '%s\\n' '{}'\n", line.replace('\'', "'\\''")));
+                body.push_str(&format!(
+                    "  printf '%s\\n' '{}'\n",
+                    line.replace('\'', "'\\''")
+                ));
             }
             for line in app_server_stderr {
-                body.push_str(&format!("  printf '%s\\n' '{}' >&2\n", line.replace('\'', "'\\''")));
+                body.push_str(&format!(
+                    "  printf '%s\\n' '{}' >&2\n",
+                    line.replace('\'', "'\\''")
+                ));
             }
             body.push_str(&format!("  exit {app_server_exit}\n"));
             body.push_str("fi\n");
             body.push_str("if [ \"$1\" = \"login\" ] && [ \"$2\" = \"status\" ]; then\n");
             for line in login_stdout {
-                body.push_str(&format!("  printf '%s\\n' '{}'\n", line.replace('\'', "'\\''")));
+                body.push_str(&format!(
+                    "  printf '%s\\n' '{}'\n",
+                    line.replace('\'', "'\\''")
+                ));
             }
             for line in login_stderr {
-                body.push_str(&format!("  printf '%s\\n' '{}' >&2\n", line.replace('\'', "'\\''")));
+                body.push_str(&format!(
+                    "  printf '%s\\n' '{}' >&2\n",
+                    line.replace('\'', "'\\''")
+                ));
             }
             body.push_str(&format!("  exit {login_exit}\n"));
             body.push_str("fi\n");

@@ -35,6 +35,12 @@ struct SnapshotCache {
     services: HashMap<String, CodexPanelState>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeFlags {
+    pub is_e2_e: bool,
+}
+
 fn snapshot_cache_path() -> std::path::PathBuf {
     if let Ok(path) = std::env::var("AI_USAGE_SNAPSHOT_CACHE_FILE") {
         return std::path::PathBuf::from(path);
@@ -218,14 +224,15 @@ pub fn build_tray_items(
 ) -> Vec<PanelPlaceholderItem> {
     // Tray initialization uses the snapshot cache when available to avoid
     // unnecessary API calls on startup (especially during dev hot-reloads).
-    let codex_items =
-        if let Some(cached) = load_from_snapshot_cache("codex", preferences.refresh_interval_minutes) {
-            cached.items
-        } else {
-            let result = build_panel_state(preferences, accounts, refreshed_at);
-            save_to_snapshot_cache("codex", &result);
-            result.items
-        };
+    let codex_items = if let Some(cached) =
+        load_from_snapshot_cache("codex", preferences.refresh_interval_minutes)
+    {
+        cached.items
+    } else {
+        let result = build_panel_state(preferences, accounts, refreshed_at);
+        save_to_snapshot_cache("codex", &result);
+        result.items
+    };
 
     let claude_items = if let Some(cached) =
         load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
@@ -273,7 +280,10 @@ pub fn build_claude_code_items(
     }]
 }
 
-fn build_claude_code_panel_state(preferences: &UserPreferences, refreshed_at: &str) -> CodexPanelState {
+fn build_claude_code_panel_state(
+    preferences: &UserPreferences,
+    refreshed_at: &str,
+) -> CodexPanelState {
     build_claude_code_panel_state_with_kind(
         preferences,
         refreshed_at,
@@ -357,6 +367,13 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
     if let Some(network_proxy_url) = patch.network_proxy_url {
         current.network_proxy_url = network_proxy_url;
     }
+    if let Some(onboarding_dismissed_at) = patch.onboarding_dismissed_at {
+        current.onboarding_dismissed_at = if onboarding_dismissed_at.trim().is_empty() {
+            None
+        } else {
+            Some(onboarding_dismissed_at)
+        };
+    }
     current.last_saved_at = now_iso();
     current
 }
@@ -429,11 +446,13 @@ pub fn get_codex_panel_state(state: State<'_, AppState>) -> CodexPanelState {
 }
 
 #[tauri::command]
-pub fn refresh_codex_panel_state(state: State<'_, AppState>) -> CodexPanelState {
+pub fn refresh_codex_panel_state(app: AppHandle, state: State<'_, AppState>) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
     let accounts = state.codex_accounts.lock().unwrap().clone();
     let result = build_panel_state(&preferences, &accounts, &now_iso());
     save_to_snapshot_cache("codex", &result);
+    let items = build_tray_items(&preferences, &accounts, &result.updated_at);
+    apply_display_mode(&app, &preferences, &items);
     result
 }
 
@@ -481,6 +500,13 @@ pub fn set_codex_account_enabled(
 #[tauri::command]
 pub fn get_preferences(state: State<'_, AppState>) -> UserPreferences {
     state.preferences.lock().unwrap().clone()
+}
+
+#[tauri::command]
+pub fn get_runtime_flags() -> RuntimeFlags {
+    RuntimeFlags {
+        is_e2_e: std::env::var("AI_USAGE_E2E_SHELL_HOOKS").unwrap_or_default() == "1",
+    }
 }
 
 #[tauri::command]
@@ -544,7 +570,10 @@ pub fn get_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanelStat
 }
 
 #[tauri::command]
-pub fn refresh_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanelState {
+pub fn refresh_claude_code_panel_state(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
     let result = build_claude_code_panel_state_with_kind(
         &preferences,
@@ -552,6 +581,9 @@ pub fn refresh_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanel
         ClaudeCodeRefreshKind::Manual,
     );
     save_to_snapshot_cache("claude-code", &result);
+    let accounts = state.codex_accounts.lock().unwrap().clone();
+    let items = build_tray_items(&preferences, &accounts, &result.updated_at);
+    apply_display_mode(&app, &preferences, &items);
     result
 }
 
@@ -605,7 +637,10 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         let tmp = env::temp_dir().join(format!("ai-usage-test-{}", now_iso()));
         std::fs::create_dir_all(&tmp).unwrap();
-        env::set_var("AI_USAGE_SNAPSHOT_CACHE_FILE", tmp.join("snapshot-cache.json"));
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
 
         let state = make_panel_state("test-svc", &now_iso());
         save_to_snapshot_cache("test-svc", &state);
@@ -630,7 +665,10 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         let tmp = env::temp_dir().join(format!("ai-usage-test-expired-{}", now_iso()));
         std::fs::create_dir_all(&tmp).unwrap();
-        env::set_var("AI_USAGE_SNAPSHOT_CACHE_FILE", tmp.join("snapshot-cache.json"));
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
 
         // Create a state with an old timestamp (2 hours ago).
         let old_ts = SystemTime::now()
@@ -645,6 +683,36 @@ mod tests {
         assert!(load_from_snapshot_cache("test-svc", 15).is_none());
 
         // Cleanup
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn build_tray_items_uses_latest_cached_refresh_states_for_all_services() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-tray-refresh-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        let refreshed_at = now_iso();
+        let mut codex_state = make_panel_state("codex", &refreshed_at);
+        codex_state.items[0].service_name = "Codex".into();
+        let mut claude_state = make_panel_state("claude-code", &refreshed_at);
+        claude_state.items[0].service_name = "Claude Code".into();
+
+        save_to_snapshot_cache("codex", &codex_state);
+        save_to_snapshot_cache("claude-code", &claude_state);
+
+        let preferences = crate::state::default_preferences();
+        let items = build_tray_items(&preferences, &[], &refreshed_at);
+
+        assert_eq!(items.len(), 2);
+        assert!(items.iter().any(|item| item.service_id == "codex"));
+        assert!(items.iter().any(|item| item.service_id == "claude-code"));
+
         let _ = std::fs::remove_dir_all(&tmp);
         env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
     }

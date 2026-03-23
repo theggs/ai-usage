@@ -3,6 +3,7 @@ import type {
   PanelPlaceholderItem,
   QuotaDimension,
   QuotaProgressTone,
+  ServiceStatusCard,
   SummaryMode
 } from "./contracts";
 
@@ -14,6 +15,14 @@ export interface PanelHealthSummary {
   serviceName?: string;
   dimensionLabel?: string;
   remainingPercent?: number;
+}
+
+export interface TrayVisualState {
+  serviceId: string;
+  serviceName: string;
+  summaryText?: string;
+  tooltipText: string;
+  severity: "normal" | "warning" | "danger" | "empty";
 }
 
 export const getQuotaStatus = (remainingPercent?: number): CodexLimitStatus => {
@@ -140,6 +149,17 @@ export const getServiceAlertLevel = (item: PanelPlaceholderItem): ServiceAlertLe
   return "normal";
 };
 
+export const getSeverityLabelKey = (item: PanelPlaceholderItem) => {
+  const level = getServiceAlertLevel(item);
+  if (level === "danger") {
+    return "danger";
+  }
+  if (level === "warning") {
+    return "warning";
+  }
+  return undefined;
+};
+
 export const getPanelHealthSummary = (items: PanelPlaceholderItem[]): PanelHealthSummary => {
   if (items.length === 0) {
     return { tone: "empty" };
@@ -196,4 +216,71 @@ export const getSharedRefreshTimestamp = (items: PanelPlaceholderItem[]) => {
   }
 
   return parseTimestamp(items[0]?.lastRefreshedAt);
+};
+
+export const getTrayVisualState = (
+  summaryMode: SummaryMode,
+  menubarService: string,
+  items: PanelPlaceholderItem[]
+): TrayVisualState => {
+  const selectedItems = items.filter((item) => item.serviceId === menubarService);
+  const serviceName = selectedItems[0]?.serviceName ?? (menubarService === "claude-code" ? "Claude Code" : "Codex");
+  const summaryText = formatTraySummary(summaryMode, selectedItems);
+  const severity =
+    selectedItems.length === 0
+      ? "empty"
+      : selectedItems.some((item) => getServiceAlertLevel(item) === "danger")
+        ? "danger"
+        : selectedItems.some((item) => getServiceAlertLevel(item) === "warning")
+          ? "warning"
+          : "normal";
+
+  return {
+    serviceId: menubarService,
+    serviceName,
+    summaryText,
+    tooltipText: summaryText ? `AIUsage · ${serviceName} · ${summaryText}` : `AIUsage · ${serviceName}`,
+    severity
+  };
+};
+
+export const getServiceStatusCard = (
+  serviceId: string,
+  serviceName: string,
+  panelState: {
+    snapshotState?: string;
+    statusMessage?: string;
+    activeSession?: { sessionLabel?: string; source?: string } | null;
+    items?: PanelPlaceholderItem[];
+  } | null
+): ServiceStatusCard => {
+  if (!panelState || panelState.items?.length === 0) {
+    const snapshotState = panelState?.snapshotState;
+    const normalizedState =
+      snapshotState === "failed"
+        ? "failed"
+        : snapshotState === "stale"
+          ? "stale"
+          : snapshotState === "empty"
+            ? "empty"
+            : "disconnected";
+    return {
+      serviceId,
+      serviceName,
+      connectionState: normalizedState,
+      dataSource: panelState?.activeSession?.source ?? "local",
+      primaryMessage: panelState?.statusMessage || "Not connected",
+      sessionLabel: panelState?.activeSession?.sessionLabel
+    };
+  }
+
+  return {
+    serviceId,
+    serviceName,
+    connectionState: panelState.snapshotState === "stale" ? "stale" : "connected",
+    dataSource: panelState.activeSession?.source ?? "snapshot",
+    primaryMessage: panelState.statusMessage,
+    secondaryMessage: panelState.items[0]?.quotaDimensions[0]?.resetHint,
+    sessionLabel: panelState.activeSession?.sessionLabel
+  };
 };

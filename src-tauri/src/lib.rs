@@ -25,8 +25,7 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
-                let mtm = objc2::MainThreadMarker::new()
-                    .expect("setup runs on main thread");
+                let mtm = objc2::MainThreadMarker::new().expect("setup runs on main thread");
                 let ns_app = NSApplication::sharedApplication(mtm);
                 ns_app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
             }
@@ -79,6 +78,7 @@ pub fn run() {
             commands::remove_codex_account,
             commands::set_codex_account_enabled,
             commands::get_preferences,
+            commands::get_runtime_flags,
             commands::save_preferences,
             commands::set_autostart,
             commands::send_test_notification

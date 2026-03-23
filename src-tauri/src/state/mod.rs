@@ -21,6 +21,10 @@ fn default_network_proxy_url() -> String {
     String::new()
 }
 
+fn default_onboarding_dismissed_at() -> Option<String> {
+    None
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaDimension {
@@ -98,6 +102,8 @@ pub struct UserPreferences {
     pub network_proxy_mode: String,
     #[serde(default = "default_network_proxy_url")]
     pub network_proxy_url: String,
+    #[serde(default = "default_onboarding_dismissed_at")]
+    pub onboarding_dismissed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,6 +119,7 @@ pub struct PreferencePatch {
     pub service_order: Option<Vec<String>>,
     pub network_proxy_mode: Option<String>,
     pub network_proxy_url: Option<String>,
+    pub onboarding_dismissed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,6 +164,7 @@ pub fn default_preferences() -> UserPreferences {
         service_order: default_service_order(),
         network_proxy_mode: default_network_proxy_mode(),
         network_proxy_url: default_network_proxy_url(),
+        onboarding_dismissed_at: default_onboarding_dismissed_at(),
     }
 }
 
@@ -200,6 +208,7 @@ mod tests {
         assert_eq!(prefs.service_order, vec!["codex", "claude-code"]);
         assert_eq!(prefs.network_proxy_mode, "system");
         assert_eq!(prefs.network_proxy_url, "");
+        assert_eq!(prefs.onboarding_dismissed_at, None);
         assert_eq!(prefs.refresh_interval_minutes, 20);
         assert_eq!(prefs.tray_summary_mode, "window-5h");
     }

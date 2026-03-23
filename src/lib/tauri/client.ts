@@ -18,6 +18,7 @@ import type {
   CodexPanelState,
   NotificationCheckResult,
   PreferencePatch,
+  RuntimeFlags,
   UserPreferences
 } from "./contracts";
 import { formatTraySummary } from "./summary";
@@ -84,6 +85,10 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
         result: "sent",
         messagePreview: typeof args?.message === "string" ? args.message : "AIUsage demo notification"
       } as T;
+    case "get_runtime_flags":
+      return {
+        isE2E: false
+      } as T;
     default:
       throw new Error(`Unsupported command: ${command}`);
   }
@@ -134,6 +139,8 @@ export const tauriClient = {
     invoke<UserPreferences>("save_preferences", { patch }),
   setAutostart: (enabled: boolean) =>
     invoke<UserPreferences>("set_autostart", { enabled }),
+  getRuntimeFlags: () =>
+    invoke<RuntimeFlags>("get_runtime_flags"),
   sendTestNotification: (message?: string) =>
     invoke<NotificationCheckResult>("send_test_notification", { message })
 };

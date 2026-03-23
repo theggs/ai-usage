@@ -3,6 +3,7 @@
 ## Active Technologies
 - Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh (009-ui-ux-polish)
 - Local preferences persistence via existing `save_preferences` / `preferencesStore`; no new storage layer (009-ui-ux-polish)
+- Existing local preferences persistence via `save_preferences` / `preferencesStore`, plus existing snapshot cache; no new storage layer (010-ui-ux-completion)
 
 - **Runtime**: Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS (via nvm, see `.nvmrc`)
 - **Framework**: Tauri 2 (tauri-build 2.0.0) + React 19
@@ -54,6 +55,23 @@ npm run tauri:build            # Production build
 - TypeScript/React: Follow standard conventions (strict mode)
 - CSS: Tailwind CSS 4 utility classes; no inline styles except dynamic values
 
+## Git Commit Message Convention
+
+Format: `type: lowercase description`
+
+Allowed types:
+- `feat` — new feature or significant enhancement
+- `fix` — bug fix or correction
+- `docs` — documentation only (specs, engineering docs, README)
+- `chore` — tooling, dependencies, CI, license, config changes
+
+Rules:
+- First word after colon is lowercase
+- No period at the end
+- Keep the subject line under 72 characters
+- Body is optional; use it for multi-faceted changes to list key items
+- Do not include AI tool names, model names, or "Co-Authored-By" lines
+
 ## Key Architecture Decisions
 
 - **Window lifecycle**: Close/blur → hide (not quit). Managed in `src-tauri/src/lib.rs` via `WindowEvent::CloseRequested` and `Focused(false)`
@@ -72,4 +90,5 @@ npm run tauri:build            # Production build
 - 005-claude-code-support: Claude Code quota display, menubar service selection, panel display order
 
 ## Recent Changes
+- 010-ui-ux-completion: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
 - 009-ui-ux-polish: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh

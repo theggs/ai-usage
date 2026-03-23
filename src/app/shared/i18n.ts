@@ -101,6 +101,22 @@ export type CopyTree = {
   claudeCodeSessionRecovery: string;
   claudeCodeSessionRecoveryEmpty: string;
   applyProxy: string;
+  settingsAutoSaveHint: string;
+  onboardingTitle: string;
+  onboardingStepConnect: string;
+  onboardingStepChoose: string;
+  onboardingStepRefresh: string;
+  goToSettings: string;
+  skipGuide: string;
+  serviceNotInstalledTitle: string;
+  serviceNotInstalledBody: string;
+  serviceSignedOutTitle: string;
+  serviceSignedOutBody: string;
+  serviceDisconnectedTitle: string;
+  serviceDisconnectedBody: string;
+  statusLow: string;
+  statusCritical: string;
+  reorderHandle: string;
 };
 
 const baseCopy: CopyTree = {
@@ -203,7 +219,23 @@ const baseCopy: CopyTree = {
   claudeCodeRateLimited: "Claude Code rate limited the request. Automatic refresh is paused for now; try a manual refresh later.",
   claudeCodeSessionRecovery: "Claude Code session is being restored. It usually recovers after you open Claude Code.",
   claudeCodeSessionRecoveryEmpty: "Claude Code session is being restored. Open Claude Code to restore the session.",
-  applyProxy: "Apply proxy"
+  applyProxy: "Apply",
+  settingsAutoSaveHint: "Settings save automatically",
+  onboardingTitle: "Connect your first AI service",
+  onboardingStepConnect: "1. Open Settings",
+  onboardingStepChoose: "2. Choose your tray service and order",
+  onboardingStepRefresh: "3. Refresh to confirm live usage",
+  goToSettings: "Go to settings",
+  skipGuide: "Skip for now",
+  serviceNotInstalledTitle: "CLI not installed",
+  serviceNotInstalledBody: "Install the CLI first, then come back here to connect it.",
+  serviceSignedOutTitle: "Sign in required",
+  serviceSignedOutBody: "The CLI is installed, but there is no readable signed-in session yet.",
+  serviceDisconnectedTitle: "Connection unavailable",
+  serviceDisconnectedBody: "The app could not read a live session yet. Open settings to check the integration.",
+  statusLow: "Low",
+  statusCritical: "Critical",
+  reorderHandle: "Reorder"
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
@@ -213,7 +245,7 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     allServicesHealthy: "所有服务正常",
     noServicesConnected: "尚未连接任何服务",
     panelWarningSummary: "{service}{dimension}偏低",
-    panelDangerSummary: "{service}{dimension}告急",
+    panelDangerSummary: "{service}{dimension}紧张",
     settings: "设置",
     preferences: "偏好设置",
     notifications: "通知",
@@ -307,7 +339,23 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     claudeCodeRateLimited: "Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。",
     claudeCodeSessionRecovery: "Claude Code 会话恢复中，打开 Claude Code 后通常会自动恢复",
     claudeCodeSessionRecoveryEmpty: "Claude Code 会话恢复中，请打开 Claude Code 以恢复会话",
-    applyProxy: "应用代理"
+    applyProxy: "应用",
+    settingsAutoSaveHint: "设置会自动保存",
+    onboardingTitle: "先连接第一个 AI 服务",
+    onboardingStepConnect: "1. 前往设置页",
+    onboardingStepChoose: "2. 选择菜单栏服务并调整展示顺序",
+    onboardingStepRefresh: "3. 返回面板并刷新，确认额度已同步",
+    goToSettings: "前往设置",
+    skipGuide: "暂时跳过",
+    serviceNotInstalledTitle: "CLI 未安装",
+    serviceNotInstalledBody: "请先安装对应 CLI，安装后再回到这里完成连接。",
+    serviceSignedOutTitle: "需要先登录",
+    serviceSignedOutBody: "CLI 已安装，但当前没有可读取的登录会话。",
+    serviceDisconnectedTitle: "暂时无法连接",
+    serviceDisconnectedBody: "应用还无法读取到实时会话，请前往设置检查连接状态。",
+    statusLow: "偏低",
+    statusCritical: "紧张",
+    reorderHandle: "拖动排序"
   }
   ,
   "en-US": baseCopy
@@ -413,6 +461,50 @@ export const getClaudeCodePlaceholderMessage = (
   return message || copy.claudeCodeNotConnected;
 };
 
+export const getServicePlaceholderCopy = (
+  copy: CopyTree,
+  serviceId: string,
+  snapshotState?: string | null,
+  statusMessage?: string | null
+) => {
+  const message = statusMessage?.trim() ?? "";
+  const normalized = normalizeSnapshotState(snapshotState);
+
+  if (serviceId === "claude-code") {
+    if (normalized === "empty" || message.includes("No Claude Code credentials")) {
+      return {
+        title: copy.serviceNotInstalledTitle,
+        body: copy.serviceNotInstalledBody
+      };
+    }
+    if (message.includes("session") || normalized === "stale") {
+      return {
+        title: copy.serviceSignedOutTitle,
+        body: copy.serviceSignedOutBody
+      };
+    }
+  }
+
+  if (normalized === "empty") {
+    return {
+      title: copy.serviceNotInstalledTitle,
+      body: copy.serviceNotInstalledBody
+    };
+  }
+
+  if (normalized === "stale" || message.includes("logged-in session")) {
+    return {
+      title: copy.serviceSignedOutTitle,
+      body: copy.serviceSignedOutBody
+    };
+  }
+
+  return {
+    title: copy.serviceDisconnectedTitle,
+    body: copy.serviceDisconnectedBody
+  };
+};
+
 /**
  * Localize a backend-generated "remaining" string.
  * Backend sends "100% remaining"; we reformat using the copy tree.
@@ -483,6 +575,16 @@ export const localizeDimensionLabel = (copy: CopyTree, backendValue: string) => 
   }
 
   return raw;
+};
+
+export const localizeStatusLabel = (copy: CopyTree, level?: "warning" | "danger") => {
+  if (level === "danger") {
+    return copy.statusCritical;
+  }
+  if (level === "warning") {
+    return copy.statusLow;
+  }
+  return undefined;
 };
 
 const parseTimestamp = (value: string) => {

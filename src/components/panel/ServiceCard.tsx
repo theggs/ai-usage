@@ -1,8 +1,8 @@
 import type { PanelPlaceholderItem } from "../../lib/tauri/contracts";
 import { QuotaSummary } from "./QuotaSummary";
 import type { CopyTree } from "../../app/shared/i18n";
-import { formatAbsoluteTime, formatRelativeTime, localizeBadgeLabel } from "../../app/shared/i18n";
-import { getServiceAlertLevel } from "../../lib/tauri/summary";
+import { formatAbsoluteTime, formatRelativeTime, localizeBadgeLabel, localizeStatusLabel } from "../../app/shared/i18n";
+import { getServiceAlertLevel, getSeverityLabelKey } from "../../lib/tauri/summary";
 
 export const ServiceCard = ({
   service,
@@ -29,15 +29,23 @@ export const ServiceCard = ({
       : alertLevel === "warning"
         ? "bg-amber-400"
         : "bg-transparent";
+  const severityLabel = localizeStatusLabel(copy, getSeverityLabelKey(service));
 
   return (
-    <article className={`overflow-hidden rounded-2xl border p-4 shadow-sm ${cardClass}`}>
+    <article className={`relative overflow-hidden rounded-2xl border p-4 shadow-sm ${cardClass}`}>
       {alertLevel !== "normal" ? (
-        <div className={`-ml-4 mb-4 h-10 w-1 rounded-r-full ${accentClass}`} aria-hidden="true" />
+        <div className={`absolute inset-y-0 left-0 w-1.5 ${accentClass}`} aria-hidden="true" />
       ) : null}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-slate-950">{service.serviceName}</h3>
+      <div className={`flex items-start justify-between gap-3 ${alertLevel !== "normal" ? "pl-2" : ""}`}>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold text-slate-950">{service.serviceName}</h3>
+            {severityLabel ? (
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${alertLevel === "danger" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+                {severityLabel}
+              </span>
+            ) : null}
+          </div>
           {service.accountLabel ? (
             <p className="mt-1 text-sm text-slate-500">{service.accountLabel}</p>
           ) : null}
@@ -48,13 +56,13 @@ export const ServiceCard = ({
           </div>
         ) : null}
       </div>
-      <div className="mt-3 grid gap-2">
+      <div className={`mt-3 grid gap-2 ${alertLevel !== "normal" ? "pl-2" : ""}`}>
         {service.quotaDimensions.map((dimension) => (
           <QuotaSummary key={dimension.label} dimension={dimension} copy={copy} />
         ))}
       </div>
       {showLastRefreshed ? (
-        <p className="mt-3 text-xs text-slate-500" title={formatAbsoluteTime(service.lastRefreshedAt)}>
+        <p className={`mt-3 text-xs text-slate-500 ${alertLevel !== "normal" ? "pl-2" : ""}`} title={formatAbsoluteTime(service.lastRefreshedAt)}>
           {copy.lastRefreshedAt}: {formatRelativeTime(copy, service.lastRefreshedAt)}
         </p>
       ) : null}

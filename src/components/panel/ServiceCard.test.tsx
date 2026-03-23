@@ -233,4 +233,32 @@ describe("ServiceCard", () => {
     expect(container.querySelector("article")?.className).toContain("rounded-2xl");
     expect(container.querySelector("[data-testid='progress-track-danger']")?.className).toContain("rounded-full");
   });
+
+  it("shows only one remaining label inside each progress track", () => {
+    render(
+      <ServiceCard
+        copy={getCopy("zh-CN")}
+        service={{
+          serviceId: "codex",
+          serviceName: "Codex",
+          iconKey: "codex",
+          statusLabel: "refreshing",
+          badgeLabel: "Live",
+          lastRefreshedAt: "1742321579",
+          quotaDimensions: [
+            {
+              label: "CODEX / 5H",
+              remainingPercent: 10,
+              remainingAbsolute: "10% remaining",
+              status: "exhausted",
+              progressTone: "danger"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.getAllByText("剩余 10%")).toHaveLength(1);
+    expect(screen.getAllByText("紧张").length).toBeGreaterThan(0);
+  });
 });

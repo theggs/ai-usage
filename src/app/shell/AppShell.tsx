@@ -10,6 +10,7 @@ import {
   getPreferences,
   persistPreferences
 } from "../../features/preferences/preferencesController";
+import { tauriClient } from "../../lib/tauri/client";
 import type {
   CodexPanelState,
   NotificationCheckResult,
@@ -67,24 +68,29 @@ export const AppShell = () => {
   const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isE2EMode, setIsE2EMode] = useState(false);
   const [refreshFeedback, setRefreshFeedback] = useState<"idle" | "error">("idle");
+  const [settingsHeaderStatus, setSettingsHeaderStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const lastStablePanelState = useRef<CodexPanelState | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const settingsHeaderTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     void (async () => {
       try {
-        const [panel, claudeCodePanel, prefs] = await Promise.all([
+        const [panel, claudeCodePanel, prefs, runtimeFlags] = await Promise.all([
           loadPanelState(),
           loadClaudeCodePanelState(),
-          getPreferences()
+          getPreferences(),
+          tauriClient.getRuntimeFlags()
         ]);
         setPanelState(panel);
         lastStablePanelState.current = panel;
         setClaudeCodePanelState(claudeCodePanel);
         setPreferences(prefs);
+        setIsE2EMode(runtimeFlags.isE2E);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to initialize app");
       } finally {
@@ -92,6 +98,23 @@ export const AppShell = () => {
       }
     })();
   }, []);
+
+  useEffect(
+    () => () => {
+      if (settingsHeaderTimerRef.current) {
+        window.clearTimeout(settingsHeaderTimerRef.current);
+      }
+    },
+    []
+  );
+
+  const flashSettingsSaved = () => {
+    setSettingsHeaderStatus("saved");
+    if (settingsHeaderTimerRef.current) {
+      window.clearTimeout(settingsHeaderTimerRef.current);
+    }
+    settingsHeaderTimerRef.current = window.setTimeout(() => setSettingsHeaderStatus("idle"), 1200);
+  };
 
   // Auto-refresh panel on the configured interval.
   // Re-starts whenever the interval preference changes.
@@ -130,6 +153,7 @@ export const AppShell = () => {
 
   const savePreferences = async (patch: PreferencePatch) => {
     setError(null);
+    setSettingsHeaderStatus("saving");
     try {
       const nextPreferences = await persistPreferences(patch);
       setPreferences(nextPreferences);
@@ -152,8 +176,10 @@ export const AppShell = () => {
             }
           : current
       );
+      flashSettingsSaved();
       return nextPreferences;
     } catch (saveError) {
+      setSettingsHeaderStatus("error");
       setError(saveError instanceof Error ? saveError.message : "Save failed");
       return null;
     }
@@ -173,11 +199,14 @@ export const AppShell = () => {
 
   const setAutostart = async (enabled: boolean) => {
     setError(null);
+    setSettingsHeaderStatus("saving");
     try {
       const next = await applyAutostart(enabled);
       setPreferences(next);
+      flashSettingsSaved();
       return next;
     } catch (autostartError) {
+      setSettingsHeaderStatus("error");
       setError(autostartError instanceof Error ? autostartError.message : "Autostart failed");
       return null;
     }
@@ -216,9 +245,21 @@ export const AppShell = () => {
           ? copy.panelDangerSummary
               .replace("{service}", panelSummary.serviceName ?? "")
               .replace("{dimension}", ` ${localizeDimensionLabel(copy, panelSummary.dimensionLabel ?? "")}`)
+              .replace(/\s+/g, " ")
+              .trim()
           : copy.panelWarningSummary
               .replace("{service}", panelSummary.serviceName ?? "")
-              .replace("{dimension}", ` ${localizeDimensionLabel(copy, panelSummary.dimensionLabel ?? "")}`);
+              .replace("{dimension}", ` ${localizeDimensionLabel(copy, panelSummary.dimensionLabel ?? "")}`)
+              .replace(/\s+/g, " ")
+              .trim();
+  const settingsHeaderText =
+    settingsHeaderStatus === "saving"
+      ? copy.saving
+      : settingsHeaderStatus === "saved"
+        ? copy.savedInline
+        : settingsHeaderStatus === "error"
+          ? copy.failed
+          : copy.settingsAutoSaveHint;
 
   return (
     <AppStateContext.Provider
@@ -230,6 +271,7 @@ export const AppShell = () => {
         currentView,
         isLoading,
         isRefreshing,
+        isE2EMode,
         error,
         refreshPanel,
         savePreferences,
@@ -242,15 +284,25 @@ export const AppShell = () => {
       <main className="h-screen overflow-hidden bg-transparent p-3 text-slate-900">
         <div className="mx-auto flex h-full w-full max-w-[380px] flex-col rounded-2xl border border-white/70 bg-white/90 p-3 shadow-sm">
           <div
-            className={`sticky top-0 z-10 -mx-3 -mt-3 mb-3 flex items-center justify-between rounded-t-2xl bg-white/95 px-4 py-3 backdrop-blur-sm transition-shadow ${isScrolled ? "border-b border-slate-200 shadow-sm" : ""}`}
+            className={`sticky top-0 z-10 -mx-3 -mt-3 mb-3 flex items-center justify-between rounded-t-2xl bg-white px-4 py-3 transition-shadow ${isScrolled ? "border-b border-slate-200 shadow-sm" : ""}`}
           >
             {currentView === "panel" ? (
               <>
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.subtitle}</div>
-                  <div className={`truncate text-sm font-semibold ${summaryToneClass}`}>{summaryText}</div>
+                  <div className={`text-sm font-semibold leading-tight ${summaryToneClass}`}>{summaryText}</div>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  {isE2EMode ? (
+                    <button
+                      aria-label="E2E Refresh"
+                      className="rounded-full border border-slate-300 px-2 py-1 text-[10px] font-medium text-slate-500"
+                      onClick={() => void refreshPanel()}
+                      type="button"
+                    >
+                      E2E Refresh
+                    </button>
+                  ) : null}
                   <button
                     aria-label={isRefreshing ? copy.refreshing : copy.refresh}
                     className={`flex h-9 w-9 items-center justify-center rounded-full border bg-white transition-colors hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -269,7 +321,7 @@ export const AppShell = () => {
                   </button>
                   <button
                     aria-label={copy.settings}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition-colors hover:border-emerald-300 hover:text-emerald-800"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
                     onClick={() => setCurrentView("settings")}
                     title={copy.settings}
                     type="button"
@@ -280,15 +332,17 @@ export const AppShell = () => {
               </>
             ) : (
               <>
-                <span className="text-xs uppercase tracking-[0.16em] text-slate-500">{copy.settings}</span>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.16em] text-slate-500">{copy.settings}</div>
+                  <div className="text-sm font-medium text-slate-600">{settingsHeaderText}</div>
+                </div>
                 <button
                   aria-label={copy.back}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
                   onClick={() => setCurrentView("panel")}
                   type="button"
                 >
                   <BackIcon />
-                  {copy.back}
                 </button>
               </>
             )}

@@ -65,6 +65,7 @@ export const normalizePreferences = (
     networkProxyMode,
     networkProxyUrl: (patch.networkProxyUrl ?? current.networkProxyUrl ?? "").trim(),
     serviceOrder: normalizeServiceOrder(patch.serviceOrder, current.serviceOrder),
+    onboardingDismissedAt: patch.onboardingDismissedAt ?? current.onboardingDismissedAt,
     refreshIntervalMinutes: Math.max(
       MIN_REFRESH_INTERVAL,
       patch.refreshIntervalMinutes ?? current.refreshIntervalMinutes

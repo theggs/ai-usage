@@ -51,11 +51,20 @@ guard let windows = windowsRef as? [AXUIElement], let window = windows.first els
 }
 
 // Recursive search for a button with matching title/description
-func findButton(_ element: AXUIElement, label: String) -> AXUIElement? {
+func roleValue(_ element: AXUIElement) -> String {
     var roleRef: CFTypeRef?
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef)
-    let role = roleRef as? String ?? ""
+    return roleRef as? String ?? ""
+}
 
+func parentElement(_ element: AXUIElement) -> AXUIElement? {
+    var parentRef: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXParentAttribute as CFString, &parentRef)
+    guard let parentRef else { return nil }
+    return (parentRef as! AXUIElement)
+}
+
+func findMatchingElement(_ element: AXUIElement, label: String) -> AXUIElement? {
     var titleRef: CFTypeRef?
     AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
     let title = titleRef as? String ?? ""
@@ -64,7 +73,11 @@ func findButton(_ element: AXUIElement, label: String) -> AXUIElement? {
     AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descRef)
     let desc = descRef as? String ?? ""
 
-    if (role == "AXButton" || role == "AXLink") && (title == label || desc == label) {
+    var valueRef: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &valueRef)
+    let value = valueRef as? String ?? ""
+
+    if title == label || desc == label || value == label {
         return element
     }
 
@@ -72,7 +85,7 @@ func findButton(_ element: AXUIElement, label: String) -> AXUIElement? {
     AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef)
     if let children = childrenRef as? [AXUIElement] {
         for child in children {
-            if let found = findButton(child, label: label) {
+            if let found = findMatchingElement(child, label: label) {
                 return found
             }
         }
@@ -80,8 +93,51 @@ func findButton(_ element: AXUIElement, label: String) -> AXUIElement? {
     return nil
 }
 
-guard let button = findButton(window, label: targetLabel) else {
+func elementCenter(_ element: AXUIElement) -> CGPoint? {
+    var positionRef: CFTypeRef?
+    var sizeRef: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionRef) == .success,
+          AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
+          let positionValue = positionRef,
+          let sizeValue = sizeRef else {
+        return nil
+    }
+
+    var position = CGPoint.zero
+    var size = CGSize.zero
+    AXValueGetValue(positionValue as! AXValue, .cgPoint, &position)
+    AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
+    return CGPoint(x: position.x + size.width / 2.0, y: position.y + size.height / 2.0)
+}
+
+func postClick(at point: CGPoint) {
+    let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)
+    let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left)
+    let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
+    move?.post(tap: .cghidEventTap)
+    usleep(80_000)
+    down?.post(tap: .cghidEventTap)
+    usleep(80_000)
+    up?.post(tap: .cghidEventTap)
+}
+
+guard let matchingElement = findMatchingElement(window, label: targetLabel) else {
     fputs("Button '\(targetLabel)' not found\n", stderr)
+    exit(1)
+}
+
+var button: AXUIElement? = matchingElement
+while let current = button {
+    let role = roleValue(current)
+    if role == "AXButton" || role == "AXLink" {
+        button = current
+        break
+    }
+    button = parentElement(current)
+}
+
+guard let button else {
+    fputs("Clickable ancestor for '\(targetLabel)' not found\n", stderr)
     exit(1)
 }
 
@@ -90,6 +146,11 @@ let result = AXUIElementPerformAction(button, kAXPressAction as CFString)
 if result == .success {
     print("clicked")
 } else {
-    fputs("Click failed with error: \(result.rawValue)\n", stderr)
-    exit(1)
+    if let point = elementCenter(button) {
+        postClick(at: point)
+        print("clicked")
+    } else {
+        fputs("Click failed with error: \(result.rawValue)\n", stderr)
+        exit(1)
+    }
 }

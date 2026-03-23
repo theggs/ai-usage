@@ -29,7 +29,10 @@ const SCREENSHOT_DIR = resolve(__dirname, "screenshots");
 
 function compileIfNeeded(swiftFile, outputBin) {
   if (!existsSync(outputBin) || statSync(outputBin).mtimeMs < statSync(swiftFile).mtimeMs) {
-    execSync(`swiftc -O -o "${outputBin}" "${swiftFile}"`, {
+    const moduleCachePath = resolve("/tmp", "aiusage-swift-module-cache");
+    mkdirSync(moduleCachePath, { recursive: true });
+    const macTarget = `${process.arch === "arm64" ? "arm64" : "x86_64"}-apple-macos14.0`;
+    execSync(`swiftc -target "${macTarget}" -module-cache-path "${moduleCachePath}" -O -o "${outputBin}" "${swiftFile}"`, {
       stdio: "pipe",
       timeout: 60000,
     });
@@ -44,6 +47,18 @@ function ensureHelpers() {
   compileIfNeeded(
     resolve(__dirname, "click-button.swift"),
     resolve(__dirname, ".click-button")
+  );
+  compileIfNeeded(
+    resolve(__dirname, "drag-element.swift"),
+    resolve(__dirname, ".drag-element")
+  );
+  compileIfNeeded(
+    resolve(__dirname, "capture-window.swift"),
+    resolve(__dirname, ".capture-window")
+  );
+  compileIfNeeded(
+    resolve(__dirname, "click-point.swift"),
+    resolve(__dirname, ".click-point")
   );
 }
 
@@ -86,7 +101,17 @@ function findWindowId(retries = 10, delayMs = 500) {
 }
 
 function captureWindow(windowId, outputPath) {
-  execSync(`screencapture -l ${windowId} -o "${outputPath}"`, { timeout: 10000 });
+  const captureBin = resolve(__dirname, ".capture-window");
+  execSync(`"${captureBin}" ${windowId} "${outputPath}"`, { timeout: 10000 });
+}
+
+function refreshWindowInfo(ctx) {
+  const nextWindowInfo = findWindowId(6, 300);
+  if (!nextWindowInfo) {
+    throw new Error("Could not find AIUsage window while refreshing window handle");
+  }
+  ctx.windowInfo = nextWindowInfo;
+  return nextWindowInfo;
 }
 
 // --- Public API ----------------------------------------------------------------
@@ -95,7 +120,7 @@ function captureWindow(windowId, outputPath) {
  * Launch the Tauri app in test mode and wait for the window to appear.
  * @returns {Promise<{proc: ChildProcess, windowInfo: object}>}
  */
-export async function launchApp() {
+export async function launchApp(options = {}) {
   const binary = findBinary();
   console.log(`[e2e] Binary: ${binary}`);
 
@@ -105,7 +130,7 @@ export async function launchApp() {
   console.log("[e2e] Launching app...");
   const proc = spawn(binary, [], {
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, AIUSAGE_E2E: "1" },
+    env: { ...process.env, AIUSAGE_E2E: "1", ...(options.env ?? {}) },
     detached: false,
   });
 
@@ -136,10 +161,11 @@ export async function launchApp() {
 export async function screenshot(ctx, name) {
   const outputPath = resolve(SCREENSHOT_DIR, name);
   try {
+    refreshWindowInfo(ctx);
     captureWindow(ctx.windowInfo.id, outputPath);
     console.log(`  ✓ ${name}`);
   } catch (err) {
-    console.log(`  ✗ ${name}: ${err.message}`);
+    throw new Error(`${name}: ${err.message}`);
   }
 }
 
@@ -166,6 +192,69 @@ export async function clickButton(label, ctx) {
   } catch (err) {
     const stderr = err.stderr?.toString() ?? "";
     console.log(`  ⚠ clickButton("${label}") failed: ${stderr.trim()}`);
+    return false;
+  }
+}
+
+/**
+ * Click the first matching label from a candidate list.
+ *
+ * @param {string[]} labels
+ * @param {object} ctx
+ * @returns {Promise<string|null>} clicked label
+ */
+export async function clickAnyButton(labels, ctx) {
+  for (const label of labels) {
+    const clicked = await clickButton(label, ctx);
+    if (clicked) {
+      return label;
+    }
+  }
+  return null;
+}
+
+export async function clickWindowPoint(offsetX, offsetY, ctx) {
+  const clickBin = resolve(__dirname, ".click-point");
+  const { X, Y } = refreshWindowInfo(ctx).bounds;
+  const targetX = X + offsetX;
+  const targetY = Y + offsetY;
+  try {
+    const result = execSync(`"${clickBin}" ${targetX} ${targetY}`, {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    await sleep(400);
+    return result === "clicked";
+  } catch (err) {
+    const stderr = err.stderr?.toString() ?? "";
+    console.log(`  ⚠ clickWindowPoint(${offsetX}, ${offsetY}) failed: ${stderr.trim()}`);
+    return false;
+  }
+}
+
+/**
+ * Drag from one labeled element to another inside the app window.
+ *
+ * @param {string} sourceLabel
+ * @param {string} targetLabel
+ * @param {object} [ctx]
+ * @returns {Promise<boolean>}
+ */
+export async function dragElement(sourceLabel, targetLabel, ctx) {
+  const dragBin = resolve(__dirname, ".drag-element");
+  try {
+    const pidArg = ctx?.proc?.pid != null ? ` ${ctx.proc.pid}` : "";
+    const result = execSync(`"${dragBin}" "${sourceLabel}" "${targetLabel}"${pidArg}`, {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    await sleep(500);
+    return result === "dragged";
+  } catch (err) {
+    const stderr = err.stderr?.toString() ?? "";
+    console.log(`  ⚠ dragElement("${sourceLabel}" -> "${targetLabel}") failed: ${stderr.trim()}`);
     return false;
   }
 }

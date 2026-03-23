@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getCopy, resolveCopyTree } from "./i18n";
+import { getCopy, localizeDimensionLabel, resolveCopyTree } from "./i18n";
 
 describe("i18n fallback", () => {
   it("falls back to the base copy when locale keys are missing", () => {
@@ -16,5 +16,19 @@ describe("i18n fallback", () => {
     expect(zh.lastRefreshedAt).toBe("上次刷新");
     expect(en.autostart).toBe("Autostart");
     expect(en.notificationActions).toBe("Notification");
+  });
+
+  it("keeps the english health-summary building blocks compact for the 360px header", () => {
+    const en = getCopy("en-US");
+    const dimension = localizeDimensionLabel(en, "codex / 5h");
+    const warning = en.panelWarningSummary
+      .replace("{service}", "Codex")
+      .replace("{dimension}", ` ${dimension}`)
+      .replace(/\s+/g, " ")
+      .trim();
+
+    expect(dimension).toBe("5h window");
+    expect(warning).toBe("Codex 5h window is running low");
+    expect(warning.length).toBeLessThanOrEqual(32);
   });
 });

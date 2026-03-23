@@ -28,3 +28,7 @@ tailwind.config.d.ts
 screenshots/
 tests/e2e/screenshots/
 tests/e2e/.find-window
+tests/e2e/.click-button
+tests/e2e/.click-point
+tests/e2e/.capture-window
+tests/e2e/.drag-element

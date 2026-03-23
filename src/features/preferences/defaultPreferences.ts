@@ -10,5 +10,6 @@ export const defaultPreferences: UserPreferences = {
   menubarService: "codex",
   serviceOrder: ["codex", "claude-code"],
   networkProxyMode: "system",
-  networkProxyUrl: ""
+  networkProxyUrl: "",
+  onboardingDismissedAt: undefined
 };

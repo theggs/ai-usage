@@ -23,7 +23,7 @@ const buildItems = (mode: FallbackSessionMode): CodexPanelState["items"] => {
   }
   return [
     {
-      serviceId: "codex-active-session",
+      serviceId: "codex",
       serviceName: "Codex",
       iconKey: "codex",
       statusLabel: "refreshing",

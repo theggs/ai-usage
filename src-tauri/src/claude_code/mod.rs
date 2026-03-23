@@ -145,13 +145,10 @@ fn now_unix() -> i64 {
 
 fn active_rate_limit_until() -> Option<i64> {
     let now = now_unix();
-    pause_state()
-        .lock()
-        .ok()
-        .and_then(|state| match *state {
-            PauseState::RateLimitedUntil(until) if until > now => Some(until),
-            _ => None,
-        })
+    pause_state().lock().ok().and_then(|state| match *state {
+        PauseState::RateLimitedUntil(until) if until > now => Some(until),
+        _ => None,
+    })
 }
 
 fn pause_snapshot(source: String) -> ClaudeCodeSnapshot {
@@ -236,14 +233,7 @@ fn read_token_from_keychain() -> Option<(String, String)> {
     let service = keychain_service_name();
     let user = env::var("USER").unwrap_or_else(|_| env::var("LOGNAME").unwrap_or_default());
     let output = Command::new("security")
-        .args([
-            "find-generic-password",
-            "-a",
-            &user,
-            "-s",
-            &service,
-            "-w",
-        ])
+        .args(["find-generic-password", "-a", &user, "-s", &service, "-w"])
         .output()
         .ok()?;
     if !output.status.success() {
@@ -257,10 +247,7 @@ fn read_token_from_keychain() -> Option<(String, String)> {
     // how Claude Code stored it. Try plain JSON first; fall back to hex decode.
     let credentials: ClaudeCredentials = serde_json::from_str(&raw)
         .ok()
-        .or_else(|| {
-            hex::decode_hex(&raw)
-                .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-        })?;
+        .or_else(|| hex::decode_hex(&raw).and_then(|bytes| serde_json::from_slice(&bytes).ok()))?;
     let token = credentials.claude_ai_oauth.access_token;
     if token.is_empty() {
         return None;
@@ -492,8 +479,7 @@ fn get_macos_system_proxy() -> Option<String> {
 #[cfg(any(test, target_os = "windows"))]
 fn parse_windows_reg_proxy_output(text: &str) -> Option<String> {
     let enabled = text.lines().any(|line| {
-        line.contains("ProxyEnable")
-            && (line.contains("0x1") || line.trim_end().ends_with(" 1"))
+        line.contains("ProxyEnable") && (line.contains("0x1") || line.trim_end().ends_with(" 1"))
     });
     if !enabled {
         return None;
@@ -656,9 +642,9 @@ fn call_usage_api(
 
     match response {
         Ok(resp) => {
-            let usage: ClaudeCodeUsageResponse = resp
-                .into_json()
-                .map_err(|error| ApiError::RequestFailed(format!("response decode failed: {error}")))?;
+            let usage: ClaudeCodeUsageResponse = resp.into_json().map_err(|error| {
+                ApiError::RequestFailed(format!("response decode failed: {error}"))
+            })?;
             Ok((usage, proxy))
         }
         Err(ureq::Error::Status(code, _)) => Err(ApiError::Status(code)),
@@ -683,7 +669,10 @@ fn invalid_proxy_snapshot(source: String, preferences: &UserPreferences) -> Clau
 // Public entry point
 // ---------------------------------------------------------------------------
 
-pub fn load_snapshot(preferences: &UserPreferences, refresh_kind: RefreshKind) -> ClaudeCodeSnapshot {
+pub fn load_snapshot(
+    preferences: &UserPreferences,
+    refresh_kind: RefreshKind,
+) -> ClaudeCodeSnapshot {
     let (token, source) = match read_oauth_token() {
         Some(pair) => pair,
         None => {
@@ -736,10 +725,7 @@ pub fn load_snapshot(preferences: &UserPreferences, refresh_kind: RefreshKind) -
                 *state = PauseState::SessionRecovery;
             }
             // Preserve stale cache — do NOT clear it.
-            let cached = stale_cache()
-                .lock()
-                .ok()
-                .and_then(|guard| guard.clone());
+            let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
             match cached {
                 Some(dimensions) => ClaudeCodeSnapshot {
                     snapshot_state: "stale".into(),
@@ -802,9 +788,7 @@ pub fn load_snapshot(preferences: &UserPreferences, refresh_kind: RefreshKind) -
                 },
             }
         }
-        Err(ApiError::ProxyConfiguration(_kind)) => {
-            invalid_proxy_snapshot(source, preferences)
-        }
+        Err(ApiError::ProxyConfiguration(_kind)) => invalid_proxy_snapshot(source, preferences),
         Err(ApiError::RequestFailed(_reason)) => {
             let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
             match cached {
@@ -1064,7 +1048,10 @@ Current WinHTTP proxy settings:
             dimension_label("seven_day_sonnet"),
             "Claude Code / week (Sonnet)"
         );
-        assert_eq!(dimension_label("seven_day_opus"), "Claude Code / week (Opus)");
+        assert_eq!(
+            dimension_label("seven_day_opus"),
+            "Claude Code / week (Opus)"
+        );
     }
 
     // --- US1: Session recovery preserves cache ---
@@ -1103,7 +1090,10 @@ Current WinHTTP proxy settings:
             *state = PauseState::SessionRecovery;
         }
         assert!(is_session_recovery());
-        assert!(!is_access_paused(), "SessionRecovery must not match is_access_paused");
+        assert!(
+            !is_access_paused(),
+            "SessionRecovery must not match is_access_paused"
+        );
         clear_access_pause();
     }
 
@@ -1168,9 +1158,15 @@ Current WinHTTP proxy settings:
         // Verify no technical jargon in the message
         let msg = &snapshot.status_message;
         assert!(!msg.contains("token"), "message must not contain 'token'");
-        assert!(!msg.contains("keychain"), "message must not contain 'keychain'");
+        assert!(
+            !msg.contains("keychain"),
+            "message must not contain 'keychain'"
+        );
         assert!(!msg.contains("401"), "message must not contain '401'");
-        assert!(!msg.contains("credentials"), "message must not contain 'credentials'");
+        assert!(
+            !msg.contains("credentials"),
+            "message must not contain 'credentials'"
+        );
 
         clear_access_pause();
     }
@@ -1212,7 +1208,10 @@ Current WinHTTP proxy settings:
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::RateLimitedUntil(now_unix() - 1);
         }
-        assert!(active_rate_limit_until().is_none(), "expired rate limit should not block");
+        assert!(
+            active_rate_limit_until().is_none(),
+            "expired rate limit should not block"
+        );
         // Simulate what the 401 handler does.
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::SessionRecovery;

@@ -5,7 +5,7 @@
 **审查范围：** Panel View、Settings View、整体视觉与交互
 **截图来源：** `tests/e2e/screenshots/panel-health-summary.png`、`settings-grouped-top.png`、`panel-returned.png`
 **对应迭代：** 009-ui-ux-polish
-**前置审查：** [ui-ux-review-pre-009.md](./ui-ux-review-pre-009.md)（24 项问题清单）
+**前置审查：** [009-ui-ux-review-pre.md](./009-ui-ux-review-pre.md)（24 项问题清单）
 
 ---
 

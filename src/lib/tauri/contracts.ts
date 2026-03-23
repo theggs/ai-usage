@@ -15,6 +15,7 @@ export type CodexSnapshotState = "fresh" | "stale" | "empty" | "failed" | "pendi
 export type CodexWindowKind = "rolling-hours" | "weekly" | "other";
 export type CodexLimitStatus = "healthy" | "warning" | "exhausted" | "unknown";
 export type QuotaProgressTone = "success" | "warning" | "danger" | "muted";
+export type ServiceConnectionState = "connected" | "disconnected" | "empty" | "failed" | "stale";
 
 export interface QuotaDimension {
   label: string;
@@ -67,6 +68,7 @@ export interface UserPreferences {
   serviceOrder: string[];
   networkProxyMode: "system" | "manual" | "off";
   networkProxyUrl: string;
+  onboardingDismissedAt?: string;
 }
 
 export interface PreferencePatch {
@@ -79,6 +81,17 @@ export interface PreferencePatch {
   serviceOrder?: string[];
   networkProxyMode?: UserPreferences["networkProxyMode"];
   networkProxyUrl?: string;
+  onboardingDismissedAt?: string;
+}
+
+export interface ServiceStatusCard {
+  serviceId: string;
+  serviceName: string;
+  connectionState: ServiceConnectionState;
+  dataSource: string;
+  primaryMessage: string;
+  secondaryMessage?: string;
+  sessionLabel?: string;
 }
 
 export interface NotificationCheckResult {
@@ -86,6 +99,10 @@ export interface NotificationCheckResult {
   triggeredAt: string;
   result: NotificationResultState;
   messagePreview: string;
+}
+
+export interface RuntimeFlags {
+  isE2E: boolean;
 }
 
 export interface CodexAccount {
