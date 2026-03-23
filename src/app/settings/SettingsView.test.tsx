@@ -42,14 +42,13 @@ describe("SettingsView", () => {
     expect(screen.getByText("设置已保存")).toBeInTheDocument();
   });
 
-  it("shows local Codex CLI guidance instead of account fields", async () => {
+  it("does not show account fields", async () => {
     render(
       <AppStateContext.Provider value={state}>
         <SettingsView />
       </AppStateContext.Provider>
     );
 
-    expect(screen.getByText("本迭代只从本地 Codex CLI 会话读取真实额度，不需要手动录入账户或凭证。")).toBeInTheDocument();
     expect(screen.queryByText("新增账户")).not.toBeInTheDocument();
   });
 
@@ -296,7 +295,6 @@ describe("SettingsView", () => {
     render(<AppShell />);
 
     await userEvent.click(await screen.findByRole("button", { name: "设置" }));
-    expect(screen.getAllByText("设置会自动保存").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "返回" })).toBeInTheDocument();
     expect(screen.queryByText(/^返回$/)).not.toBeInTheDocument();
 
@@ -318,7 +316,6 @@ describe("SettingsView", () => {
       await new Promise((resolve) => setTimeout(resolve, 1300));
     });
 
-    expect(screen.getAllByText("设置会自动保存").length).toBeGreaterThan(0);
     vi.resetModules();
     vi.unmock("../../features/demo-services/panelController");
     vi.unmock("../../features/preferences/preferencesController");

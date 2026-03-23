@@ -35,3 +35,8 @@ input[type="text"],
 input[type="number"] {
   min-height: 3rem;
 }
+
+/* Hide scrollbar for compact menubar layout (scroll via trackpad/wheel) */
+::-webkit-scrollbar {
+  display: none;
+}

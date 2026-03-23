@@ -259,7 +259,7 @@ export const AppShell = () => {
         ? copy.savedInline
         : settingsHeaderStatus === "error"
           ? copy.failed
-          : copy.settingsAutoSaveHint;
+          : "";
 
   return (
     <AppStateContext.Provider
@@ -284,14 +284,11 @@ export const AppShell = () => {
       <main className="h-screen overflow-hidden bg-transparent p-3 text-slate-900">
         <div className="mx-auto flex h-full w-full max-w-[380px] flex-col rounded-2xl border border-white/70 bg-white/90 p-3 shadow-sm">
           <div
-            className={`sticky top-0 z-10 -mx-3 -mt-3 mb-3 flex items-center justify-between rounded-t-2xl bg-white px-4 py-3 transition-shadow ${isScrolled ? "border-b border-slate-200 shadow-sm" : ""}`}
+            className={`sticky top-0 z-10 -mx-3 -mt-3 mb-3 flex min-h-[3.75rem] items-center justify-between rounded-t-2xl bg-white px-4 py-3 transition-shadow ${isScrolled ? "border-b border-slate-200 shadow-sm" : ""}`}
           >
             {currentView === "panel" ? (
               <>
-                <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.subtitle}</div>
-                  <div className={`text-sm font-semibold leading-tight ${summaryToneClass}`}>{summaryText}</div>
-                </div>
+                <div className={`min-w-0 text-sm font-semibold leading-tight ${summaryToneClass}`}>{summaryText}</div>
                 <div className="flex items-center gap-1.5">
                   {isE2EMode ? (
                     <button
@@ -333,8 +330,7 @@ export const AppShell = () => {
             ) : (
               <>
                 <div>
-                  <div className="text-xs uppercase tracking-[0.16em] text-slate-500">{copy.settings}</div>
-                  <div className="text-sm font-medium text-slate-600">{settingsHeaderText}</div>
+                  {settingsHeaderText ? <div className="text-sm font-semibold leading-tight text-slate-600">{settingsHeaderText}</div> : null}
                 </div>
                 <button
                   aria-label={copy.back}

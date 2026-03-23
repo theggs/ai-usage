@@ -354,7 +354,7 @@ export const SettingsView = () => {
         ) : null}
       </PreferenceSection>
 
-      <PreferenceSection title={copy.statusSection} description={copy.codexCliHint}>
+      <PreferenceSection title={copy.statusSection}>
         {serviceStatuses.map((status) => (
           <div key={status.serviceId} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
             <div className="font-semibold text-slate-900">{status.serviceName}</div>
@@ -371,10 +371,6 @@ export const SettingsView = () => {
           </div>
         ))}
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <div className="font-medium text-slate-900">{copy.settingsAutoSaveHint}</div>
-          <div className="mt-1">{activeSessionDetail && activeSessionDetail !== activeSessionMessage ? activeSessionDetail : snapshotTag}</div>
-        </div>
       </PreferenceSection>
 
       {saveState === "saved" ? (
