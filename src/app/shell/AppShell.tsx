@@ -116,6 +116,25 @@ export const AppShell = () => {
     settingsHeaderTimerRef.current = window.setTimeout(() => setSettingsHeaderStatus("idle"), 1200);
   };
 
+  const runSettingsMutation = async <T,>(
+    mutation: () => Promise<T>,
+    onSuccess: (result: T) => void,
+    fallbackMessage: string
+  ) => {
+    setError(null);
+    setSettingsHeaderStatus("saving");
+    try {
+      const result = await mutation();
+      onSuccess(result);
+      flashSettingsSaved();
+      return result;
+    } catch (mutationError) {
+      setSettingsHeaderStatus("error");
+      setError(mutationError instanceof Error ? mutationError.message : fallbackMessage);
+      return null;
+    }
+  };
+
   // Auto-refresh panel on the configured interval.
   // Re-starts whenever the interval preference changes.
   useEffect(() => {
@@ -152,37 +171,35 @@ export const AppShell = () => {
   };
 
   const savePreferences = async (patch: PreferencePatch) => {
-    setError(null);
-    setSettingsHeaderStatus("saving");
-    try {
-      const nextPreferences = await persistPreferences(patch);
-      setPreferences(nextPreferences);
-      if ("networkProxyMode" in patch || "networkProxyUrl" in patch) {
-        const nextClaudeCodePanel = await refreshClaudeCodePanelState();
-        setClaudeCodePanelState(nextClaudeCodePanel);
-      }
-      setPanelState((current) =>
-        current
-          ? {
-              ...current,
-              desktopSurface: {
-                ...current.desktopSurface,
-                summaryMode: nextPreferences.traySummaryMode,
-                summaryText: formatTraySummary(
-                  nextPreferences.traySummaryMode,
-                  current.items
-                )
+    return runSettingsMutation(
+      async () => {
+        const nextPreferences = await persistPreferences(patch);
+        let nextClaudeCodePanel: CodexPanelState | null | undefined;
+        if ("networkProxyMode" in patch || "networkProxyUrl" in patch) {
+          nextClaudeCodePanel = await refreshClaudeCodePanelState();
+        }
+        return { nextPreferences, nextClaudeCodePanel };
+      },
+      ({ nextPreferences, nextClaudeCodePanel }) => {
+        setPreferences(nextPreferences);
+        if (nextClaudeCodePanel !== undefined) {
+          setClaudeCodePanelState(nextClaudeCodePanel);
+        }
+        setPanelState((current) =>
+          current
+            ? {
+                ...current,
+                desktopSurface: {
+                  ...current.desktopSurface,
+                  summaryMode: nextPreferences.traySummaryMode,
+                  summaryText: formatTraySummary(nextPreferences.traySummaryMode, current.items)
+                }
               }
-            }
-          : current
-      );
-      flashSettingsSaved();
-      return nextPreferences;
-    } catch (saveError) {
-      setSettingsHeaderStatus("error");
-      setError(saveError instanceof Error ? saveError.message : "Save failed");
-      return null;
-    }
+            : current
+        );
+      },
+      "Save failed"
+    ).then((result) => result?.nextPreferences ?? null);
   };
 
   const sendTestNotification = async () => {
@@ -198,18 +215,11 @@ export const AppShell = () => {
   };
 
   const setAutostart = async (enabled: boolean) => {
-    setError(null);
-    setSettingsHeaderStatus("saving");
-    try {
-      const next = await applyAutostart(enabled);
-      setPreferences(next);
-      flashSettingsSaved();
-      return next;
-    } catch (autostartError) {
-      setSettingsHeaderStatus("error");
-      setError(autostartError instanceof Error ? autostartError.message : "Autostart failed");
-      return null;
-    }
+    return runSettingsMutation(
+      () => applyAutostart(enabled),
+      (next) => setPreferences(next),
+      "Autostart failed"
+    );
   };
 
   const copy = getCopy(preferences?.language ?? "zh-CN");
@@ -319,7 +329,7 @@ export const AppShell = () => {
                   <button
                     aria-label={copy.settings}
                     className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
-                    onClick={() => setCurrentView("settings")}
+                    onClick={() => { setCurrentView("settings"); setIsScrolled(false); }}
                     title={copy.settings}
                     type="button"
                   >
@@ -335,7 +345,7 @@ export const AppShell = () => {
                 <button
                   aria-label={copy.back}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
-                  onClick={() => setCurrentView("panel")}
+                  onClick={() => { setCurrentView("panel"); setIsScrolled(false); }}
                   type="button"
                 >
                   <BackIcon />
@@ -350,7 +360,7 @@ export const AppShell = () => {
               <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">{copy.loading}</div>
             ) : (
               <div
-                className={`flex h-full w-[200%] gap-6 transition-transform duration-300 ease-out ${currentView === "panel" ? "translate-x-0" : "-translate-x-[calc(50%+0.75rem)]"}`}
+                className={`flex h-full w-[200%] gap-6 transition-transform duration-300 ease-out ${currentView === "panel" ? "translate-x-0" : "-translate-x-[calc(50%+1.5rem)]"}`}
               >
                 <div
                   ref={scrollContainerRef}

@@ -92,3 +92,14 @@ Rules:
 ## Recent Changes
 - 010-ui-ux-completion: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
 - 009-ui-ux-polish: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
+
+## Spec-Kit Workflow Constraints
+
+- `spec-kit` artifacts define product intent and acceptance scope, but they do not replace professional implementation judgment for UI behavior, state cleanup, layout stability, or interaction feedback.
+- After `speckit-plan`, any UI-heavy or interaction-heavy feature must include an explicit implementation risk review before coding starts. Capture likely runtime risks, environment traps, and behaviors that cannot be trusted to JSDOM alone.
+- After `speckit-tasks`, verify that tasks cover not only feature implementation but also real-runtime validation, screenshot or visual review, and abnormal-path verification for the affected UX.
+- For drag-and-drop, overlays, animations, window transitions, or coordinate-sensitive UI work, do not treat Vitest/RTL passing as sufficient completion evidence. Real runtime verification is required before calling the work done.
+- For desktop UI changes, the first implementation pass must be followed by screenshot review or real-window inspection before polish is considered complete.
+- When using `speckit-analyze`, also check whether implementation-quality gates are missing from the plan or task breakdown, not just whether requirements are mapped.
+- Do not declare completion based only on code paths and unit tests. Completion requires that the user-facing problem is actually resolved in the running app.
+- See [spec-kit-workflow-constraints.md](/Users/chasewang/01workspace/projects/ai-usage/doc/engineering/spec-kit-workflow-constraints.md) for the full operating guide.

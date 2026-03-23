@@ -80,10 +80,6 @@ export type CopyTree = {
   monthlyQuotaLabel: string;
   menubarService: string;
   serviceOrder: string;
-  generalSection: string;
-  displaySection: string;
-  connectionSection: string;
-  statusSection: string;
   claudeCodeLabel: string;
   codexLabel: string;
   claudeCodeNotConnected: string;
@@ -100,7 +96,6 @@ export type CopyTree = {
   claudeCodeRateLimited: string;
   claudeCodeSessionRecovery: string;
   claudeCodeSessionRecoveryEmpty: string;
-  applyProxy: string;
   settingsAutoSaveHint: string;
   onboardingTitle: string;
   onboardingStepConnect: string;
@@ -179,7 +174,7 @@ const baseCopy: CopyTree = {
   enabled: "Enabled",
   language: "Language",
   refreshInterval: "Refresh interval",
-  refreshIntervalHint: "Minimum 5 minutes",
+  refreshIntervalHint: "Choose 5, 10, 15, or 30 minutes",
   autostart: "Autostart",
   actions: "Actions",
   savePreferences: "Save preferences",
@@ -199,17 +194,13 @@ const baseCopy: CopyTree = {
   monthlyQuotaLabel: "Monthly quota",
   menubarService: "Menubar service",
   serviceOrder: "Panel order",
-  generalSection: "General",
-  displaySection: "Display",
-  connectionSection: "Connection",
-  statusSection: "Status",
   claudeCodeLabel: "Claude Code",
   codexLabel: "Codex",
   claudeCodeNotConnected: "Claude Code not connected. Install Claude Code CLI and log in.",
   networkProxy: "Network proxy",
   networkProxyMode: "Proxy mode",
   networkProxyModeSystem: "Use system proxy",
-  networkProxyModeManual: "Use manual proxy",
+  networkProxyModeManual: "Manual proxy",
   networkProxyModeOff: "No proxy",
   networkProxyUrl: "Proxy URL",
   networkProxyUrlHint: "Use a full URL such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080",
@@ -219,8 +210,7 @@ const baseCopy: CopyTree = {
   claudeCodeRateLimited: "Claude Code rate limited the request. Automatic refresh is paused for now; try a manual refresh later.",
   claudeCodeSessionRecovery: "Claude Code session is being restored. It usually recovers after you open Claude Code.",
   claudeCodeSessionRecoveryEmpty: "Claude Code session is being restored. Open Claude Code to restore the session.",
-  applyProxy: "Apply",
-  settingsAutoSaveHint: "Settings save automatically",
+  settingsAutoSaveHint: "Changes save automatically",
   onboardingTitle: "Connect your first AI service",
   onboardingStepConnect: "1. Open Settings",
   onboardingStepChoose: "2. Choose your tray service and order",
@@ -299,7 +289,7 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     enabled: "启用",
     language: "语言",
     refreshInterval: "刷新间隔",
-    refreshIntervalHint: "最小 5 分钟",
+    refreshIntervalHint: "可选 5 / 10 / 15 / 30 分钟",
     autostart: "开机自启",
     actions: "操作",
     savePreferences: "保存偏好",
@@ -319,17 +309,13 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     monthlyQuotaLabel: "每月额度",
     menubarService: "菜单栏服务",
     serviceOrder: "面板顺序",
-    generalSection: "通用",
-    displaySection: "显示",
-    connectionSection: "连接",
-    statusSection: "状态",
     claudeCodeLabel: "Claude Code",
     codexLabel: "Codex",
     claudeCodeNotConnected: "Claude Code 未连接。请安装 Claude Code CLI 并登录。",
     networkProxy: "网络代理",
     networkProxyMode: "代理模式",
     networkProxyModeSystem: "使用系统代理",
-    networkProxyModeManual: "手动填写代理",
+    networkProxyModeManual: "手动输入",
     networkProxyModeOff: "不使用代理",
     networkProxyUrl: "代理地址",
     networkProxyUrlHint: "请输入完整 URL，例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080",
@@ -339,8 +325,7 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     claudeCodeRateLimited: "Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。",
     claudeCodeSessionRecovery: "Claude Code 会话恢复中，打开 Claude Code 后通常会自动恢复",
     claudeCodeSessionRecoveryEmpty: "Claude Code 会话恢复中，请打开 Claude Code 以恢复会话",
-    applyProxy: "应用",
-    settingsAutoSaveHint: "设置会自动保存",
+    settingsAutoSaveHint: "更改会自动保存",
     onboardingTitle: "先连接第一个 AI 服务",
     onboardingStepConnect: "1. 前往设置页",
     onboardingStepChoose: "2. 选择菜单栏服务并调整展示顺序",
