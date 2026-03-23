@@ -7,6 +7,7 @@ import { defaultPreferences } from "../../features/preferences/defaultPreference
 
 const state: AppStateValue = {
   panelState: createDemoPanelState(),
+  claudeCodePanelState: null,
   preferences: defaultPreferences,
   notificationResult: null,
   currentView: "settings",
@@ -18,7 +19,7 @@ const state: AppStateValue = {
   sendTestNotification: vi.fn(async () => ({
     notificationId: "notification",
     triggeredAt: new Date().toISOString(),
-    result: "sent",
+    result: "sent" as const,
     messagePreview: "preview"
   })),
   setAutostart: vi.fn(async (enabled) => ({ ...defaultPreferences, autostartEnabled: enabled, lastSavedAt: new Date().toISOString() })),
@@ -27,17 +28,14 @@ const state: AppStateValue = {
 };
 
 describe("SettingsView", () => {
-  it("submits updated preferences", async () => {
+  it("applies non-proxy preferences immediately", async () => {
     render(
       <AppStateContext.Provider value={state}>
         <SettingsView />
       </AppStateContext.Provider>
     );
 
-    await userEvent.clear(screen.getByRole("spinbutton"));
-    await userEvent.type(screen.getByRole("spinbutton"), "30");
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "托盘摘要规则" }), "window-week");
-    await userEvent.click(screen.getByRole("button", { name: "保存偏好" }));
     expect(state.savePreferences).toHaveBeenCalled();
     expect(state.savePreferences).toHaveBeenCalledWith(expect.objectContaining({ traySummaryMode: "window-week" }));
     expect(screen.getByText("设置已保存")).toBeInTheDocument();
@@ -78,17 +76,18 @@ describe("SettingsView", () => {
     expect(screen.getByText("Local Codex CLI")).toBeInTheDocument();
   });
 
-  it("uses localized settings labels in Chinese mode", () => {
+  it("uses grouped localized settings labels in Chinese mode", () => {
     render(
       <AppStateContext.Provider value={state}>
         <SettingsView />
       </AppStateContext.Provider>
     );
 
-    expect(screen.getByText("偏好设置")).toBeInTheDocument();
+    expect(screen.getByText("通用")).toBeInTheDocument();
+    expect(screen.getByText("显示")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "语言" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "开机自启" })).toBeInTheDocument();
-    expect(screen.getByText("通知测试")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "发送测试通知" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "代理模式" })).toBeInTheDocument();
   });
 
@@ -114,8 +113,27 @@ describe("SettingsView", () => {
     expect(screen.getByRole("textbox", { name: "代理地址" })).toBeInTheDocument();
 
     await userEvent.type(screen.getByRole("textbox", { name: "代理地址" }), "127.0.0.1:7890");
-    await userEvent.click(screen.getByRole("button", { name: "保存偏好" }));
+    await userEvent.click(screen.getByRole("button", { name: "应用代理" }));
 
     expect(screen.getByText("请先填写完整代理 URL 再保存。")).toBeInTheDocument();
+  });
+
+  it("disables drag affordance when only one service is available", () => {
+    render(
+      <AppStateContext.Provider
+        value={{
+          ...state,
+          preferences: {
+            ...defaultPreferences,
+            serviceOrder: ["codex"]
+          }
+        }}
+      >
+        <SettingsView />
+      </AppStateContext.Provider>
+    );
+
+    const serviceRow = screen.getByLabelText("Codex");
+    expect(serviceRow).toHaveAttribute("draggable", "false");
   });
 });

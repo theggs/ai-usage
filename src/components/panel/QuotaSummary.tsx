@@ -1,6 +1,6 @@
 import type { QuotaDimension } from "../../lib/tauri/contracts";
 import type { CopyTree } from "../../app/shared/i18n";
-import { localizeRemaining, localizeResetHint } from "../../app/shared/i18n";
+import { localizeDimensionLabel, localizeRemaining, localizeResetHint } from "../../app/shared/i18n";
 
 const toneClasses: Record<QuotaDimension["progressTone"], string> = {
   success: "bg-emerald-500",
@@ -8,14 +8,11 @@ const toneClasses: Record<QuotaDimension["progressTone"], string> = {
   danger: "bg-rose-500",
   muted: "bg-slate-300"
 };
-
-const formatDisplayLabel = (label: string) => {
-  const match = label.match(/^(.+?)\s*\/\s*(.+)$/);
-  if (!match) {
-    return label;
-  }
-
-  return match[2].trim() || label;
+const textToneClasses: Record<QuotaDimension["progressTone"], string> = {
+  success: "text-emerald-950",
+  warning: "text-amber-950",
+  danger: "text-rose-950",
+  muted: "text-slate-700"
 };
 
 export const QuotaSummary = ({
@@ -28,22 +25,27 @@ export const QuotaSummary = ({
   const { label, remainingPercent, remainingAbsolute, resetHint, progressTone } = dimension;
   const localizedRemaining = localizeRemaining(copy, remainingPercent, remainingAbsolute);
   const localizedResetHint = localizeResetHint(copy, resetHint);
-  const displayLabel = formatDisplayLabel(label);
+  const displayLabel = localizeDimensionLabel(copy, label);
 
   return (
-    <div className="grid gap-2 rounded-xl bg-slate-50 px-3 py-3">
-      <div className="flex items-center justify-between gap-3 text-xs font-medium tracking-[0.08em] text-slate-500">
-        <span>{displayLabel}</span>
-        <span>{remainingPercent !== undefined ? `${remainingPercent}%` : "--"}</span>
+    <div className="grid gap-2 rounded-2xl bg-slate-50 px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{displayLabel}</span>
+        {localizedResetHint ? <span className="text-xs text-slate-500">{localizedResetHint}</span> : null}
       </div>
-      <div className="h-3 overflow-hidden rounded-full bg-slate-200" data-testid={`progress-track-${label}`}>
+      <div className="relative h-6 overflow-hidden rounded-full bg-slate-200" data-testid={`progress-track-${label}`}>
         <div
-          className={`h-full rounded-full transition-[width] ${toneClasses[progressTone]}`}
+          className={`h-full rounded-full transition-[width] duration-500 ease-out ${toneClasses[progressTone]}`}
           data-testid={`progress-fill-${label}`}
           style={{ width: remainingPercent !== undefined ? `${remainingPercent}%` : "100%" }}
         />
+        <div
+          className={`absolute inset-0 flex items-center justify-between px-3 text-sm font-semibold ${textToneClasses[progressTone]}`}
+        >
+          <span>{remainingPercent !== undefined ? `${remainingPercent}%` : copy.noPercent}</span>
+          <span className="truncate pl-3 text-xs font-medium text-slate-700">{localizedRemaining}</span>
+        </div>
       </div>
-      {localizedResetHint ? <div className="mt-1 text-xs text-slate-500">{localizedResetHint}</div> : null}
     </div>
   );
 };

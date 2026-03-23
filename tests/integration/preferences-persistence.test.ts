@@ -16,6 +16,7 @@ describe("preferences persistence", () => {
       refreshIntervalMinutes: 25,
       language: "en-US",
       traySummaryMode: "window-week",
+      serviceOrder: ["claude-code", "codex", "claude-code", "unknown-service"],
       networkProxyMode: "manual",
       networkProxyUrl: "http://127.0.0.1:7890"
     });
@@ -24,6 +25,7 @@ describe("preferences persistence", () => {
     expect(saved.refreshIntervalMinutes).toBe(25);
     expect(loaded.language).toBe("en-US");
     expect(loaded.traySummaryMode).toBe("window-week");
+    expect(loaded.serviceOrder).toEqual(["claude-code", "codex"]);
     expect(loaded.networkProxyMode).toBe("manual");
     expect(loaded.networkProxyUrl).toBe("http://127.0.0.1:7890");
   });

@@ -1,6 +1,13 @@
 import { ServiceCard } from "../../components/panel/ServiceCard";
 import { useAppState } from "../shared/appState";
-import { getClaudeCodePlaceholderMessage, getCopy, getSnapshotMessage } from "../shared/i18n";
+import {
+  formatAbsoluteTime,
+  formatRelativeTime,
+  getClaudeCodePlaceholderMessage,
+  getCopy,
+  getSnapshotMessage
+} from "../shared/i18n";
+import { getSharedRefreshTimestamp, haveAlignedRefreshTimes } from "../../lib/tauri/summary";
 
 export const PanelView = () => {
   const { panelState, claudeCodePanelState, preferences, error } = useAppState();
@@ -20,6 +27,8 @@ export const PanelView = () => {
   });
 
   const hasAnyItems = allItems.length > 0;
+  const showGlobalRefresh = hasAnyItems && haveAlignedRefreshTimes(allItems);
+  const sharedRefreshTimestamp = showGlobalRefresh ? getSharedRefreshTimestamp(allItems) : undefined;
 
   return (
     <section className="grid gap-4">
@@ -31,7 +40,12 @@ export const PanelView = () => {
           if (!state) return null;
           if (state.items.length > 0) {
             return state.items.map((service) => (
-              <ServiceCard key={service.serviceId} copy={copy} service={service} />
+              <ServiceCard
+                key={service.serviceId}
+                copy={copy}
+                service={service}
+                showLastRefreshed={!showGlobalRefresh}
+              />
             ));
           }
           // Not connected placeholder
@@ -54,6 +68,14 @@ export const PanelView = () => {
           </div>
         )}
       </div>
+      {sharedRefreshTimestamp !== undefined ? (
+        <div
+          className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-xs text-slate-500"
+          title={new Date(sharedRefreshTimestamp).toLocaleString()}
+        >
+          {copy.lastRefresh}: {formatRelativeTime(copy, new Date(sharedRefreshTimestamp).toISOString())}
+        </div>
+      ) : null}
     </section>
   );
 };

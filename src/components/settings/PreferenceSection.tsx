@@ -6,7 +6,7 @@ export const PreferenceSection = ({
   children
 }: PropsWithChildren<{ title: string; description?: string }>) => (
   <section className="grid gap-3">
-    <div className="grid gap-1">
+    <div className="grid gap-1 px-1">
       <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</h3>
       {description ? <p className="text-sm text-slate-500">{description}</p> : null}
     </div>

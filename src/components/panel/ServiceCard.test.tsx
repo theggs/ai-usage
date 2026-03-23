@@ -66,8 +66,8 @@ describe("ServiceCard", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Claude Code" })).toBeInTheDocument();
-    expect(screen.getByText("5H")).toBeInTheDocument();
-    expect(screen.getByText("WEEK")).toBeInTheDocument();
+    expect(screen.getByText("5h window")).toBeInTheDocument();
+    expect(screen.getByText("Weekly quota")).toBeInTheDocument();
     expect(screen.queryByText("CLAUDE CODE / 5H")).not.toBeInTheDocument();
   });
 
@@ -99,7 +99,7 @@ describe("ServiceCard", () => {
     expect(screen.getByText("Custom Window")).toBeInTheDocument();
   });
 
-  it("shows only the badge state while hiding the duplicated top-left status line", () => {
+  it("hides redundant live badges on healthy connected cards", () => {
     render(
       <ServiceCard
         copy={getCopy("zh-CN")}
@@ -125,7 +125,7 @@ describe("ServiceCard", () => {
     );
 
     expect(screen.queryByText("刷新中")).not.toBeInTheDocument();
-    expect(screen.getByText("实时")).toBeInTheDocument();
+    expect(screen.queryByText("实时")).not.toBeInTheDocument();
   });
 
   it("localizes snapshot-state badge labels consistently", () => {

@@ -1,6 +1,8 @@
 # ai-usage Development Guidelines
 
 ## Active Technologies
+- Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh (009-ui-ux-polish)
+- Local preferences persistence via existing `save_preferences` / `preferencesStore`; no new storage layer (009-ui-ux-polish)
 
 - **Runtime**: Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS (via nvm, see `.nvmrc`)
 - **Framework**: Tauri 2 (tauri-build 2.0.0) + React 19
@@ -68,3 +70,6 @@ npm run tauri:build            # Production build
 - 003-macos-menubar-agent: macOS menu bar agent mode
 - 004-menubar-ui-overhaul: Compact UI, progress bars, i18n, popover lifecycle
 - 005-claude-code-support: Claude Code quota display, menubar service selection, panel display order
+
+## Recent Changes
+- 009-ui-ux-polish: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { decorateQuotaDimension, formatTraySummary, getQuotaProgressTone, getQuotaStatus } from "./summary";
+import {
+  decorateQuotaDimension,
+  formatTraySummary,
+  getPanelHealthSummary,
+  getQuotaProgressTone,
+  getQuotaStatus,
+  getServiceAlertLevel,
+  haveAlignedRefreshTimes
+} from "./summary";
 import type { PanelPlaceholderItem } from "./contracts";
 
 const items: PanelPlaceholderItem[] = [
@@ -58,5 +66,19 @@ describe("formatTraySummary", () => {
       remainingPercent: 20,
       remainingAbsolute: "20% remaining"
     }).progressTone).toBe("warning");
+  });
+
+  it("derives the most urgent panel health summary", () => {
+    expect(getPanelHealthSummary(items)).toMatchObject({
+      tone: "danger",
+      serviceName: "Codex",
+      remainingPercent: 6
+    });
+  });
+
+  it("computes service alert level and aligned refresh timestamps", () => {
+    expect(getServiceAlertLevel(items[0]!)).toBe("danger");
+    expect(haveAlignedRefreshTimes(items)).toBe(true);
+    expect(getPanelHealthSummary([])).toMatchObject({ tone: "empty" });
   });
 });

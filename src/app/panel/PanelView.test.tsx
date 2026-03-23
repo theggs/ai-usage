@@ -97,4 +97,35 @@ describe("PanelView", () => {
       screen.getByText("Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。")
     ).toBeInTheDocument();
   });
+
+  it("shows one global refresh label when service timestamps are aligned", () => {
+    const now = new Date().toISOString();
+    const state = createState({
+      ...createDemoPanelState(),
+      items: createDemoPanelState().items.map((item) => ({ ...item, lastRefreshedAt: now }))
+    });
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "claude-code",
+          serviceName: "Claude Code",
+          lastRefreshedAt: now
+        }
+      ]
+    };
+    state.preferences = {
+      ...defaultPreferences,
+      serviceOrder: ["codex", "claude-code"]
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByText(/上次刷新:/)).toBeInTheDocument();
+  });
 });

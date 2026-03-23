@@ -15,7 +15,7 @@ export interface AppStateValue {
   isLoading: boolean;
   isRefreshing: boolean;
   error: string | null;
-  refreshPanel: () => Promise<void>;
+  refreshPanel: (manual?: boolean) => Promise<void>;
   savePreferences: (patch: PreferencePatch) => Promise<UserPreferences | null>;
   sendTestNotification: () => Promise<NotificationCheckResult | null>;
   setAutostart: (enabled: boolean) => Promise<UserPreferences | null>;

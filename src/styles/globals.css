@@ -22,6 +22,10 @@ body {
   min-height: 100vh;
 }
 
+[data-dragging="true"] {
+  opacity: 0.65;
+}
+
 button,
 input,
 select {

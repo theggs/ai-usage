@@ -34,6 +34,19 @@ const normalizeNetworkProxyMode = (
   }
 };
 
+const KNOWN_SERVICE_IDS = ["codex", "claude-code"] as const;
+
+const normalizeServiceOrder = (value: string[] | undefined, current: UserPreferences["serviceOrder"]) => {
+  const next = (value ?? current).filter((serviceId): serviceId is string => KNOWN_SERVICE_IDS.includes(serviceId as typeof KNOWN_SERVICE_IDS[number]));
+  const deduped = Array.from(new Set(next));
+  for (const serviceId of KNOWN_SERVICE_IDS) {
+    if (!deduped.includes(serviceId)) {
+      deduped.push(serviceId);
+    }
+  }
+  return deduped;
+};
+
 export const normalizePreferences = (
   patch: PreferencePatch & { displayMode?: string } = {},
   current: UserPreferences = defaultPreferences
@@ -51,6 +64,7 @@ export const normalizePreferences = (
     traySummaryMode,
     networkProxyMode,
     networkProxyUrl: (patch.networkProxyUrl ?? current.networkProxyUrl ?? "").trim(),
+    serviceOrder: normalizeServiceOrder(patch.serviceOrder, current.serviceOrder),
     refreshIntervalMinutes: Math.max(
       MIN_REFRESH_INTERVAL,
       patch.refreshIntervalMinutes ?? current.refreshIntervalMinutes

@@ -45,21 +45,27 @@ pub fn run() {
             let accounts = app_state.codex_accounts.lock().unwrap().clone();
             let tray_items = commands::build_tray_items(&preferences, &accounts, "startup");
             tray::initialize_tray(app.handle(), &preferences, &tray_items);
+            let test_mode = std::env::var("AIUSAGE_E2E").unwrap_or_default() == "1";
             if let Some(window) = app.get_webview_window("main") {
-                let window_handle = window.clone();
-                window.on_window_event(move |event| match event {
-                    WindowEvent::CloseRequested { api, .. } => {
-                        api.prevent_close();
-                        let _ = window_handle.hide();
-                    }
-                    WindowEvent::Focused(is_focused)
-                        if tray::should_hide_on_focus_change(*is_focused) =>
-                    {
-                        let _ = window_handle.hide();
-                    }
-                    _ => {}
-                });
-                let _ = window.hide();
+                if !test_mode {
+                    let window_handle = window.clone();
+                    window.on_window_event(move |event| match event {
+                        WindowEvent::CloseRequested { api, .. } => {
+                            api.prevent_close();
+                            let _ = window_handle.hide();
+                        }
+                        WindowEvent::Focused(is_focused)
+                            if tray::should_hide_on_focus_change(*is_focused) =>
+                        {
+                            let _ = window_handle.hide();
+                        }
+                        _ => {}
+                    });
+                    let _ = window.hide();
+                } else {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
             }
             Ok(())
         })

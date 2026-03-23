@@ -3,6 +3,10 @@ import type { CodexSnapshotState, UserPreferences } from "../../lib/tauri/contra
 export type CopyTree = {
   title: string;
   subtitle: string;
+  allServicesHealthy: string;
+  noServicesConnected: string;
+  panelWarningSummary: string;
+  panelDangerSummary: string;
   settings: string;
   preferences: string;
   notifications: string;
@@ -44,6 +48,10 @@ export type CopyTree = {
   staleState: string;
   liveState: string;
   failedState: string;
+  justNow: string;
+  minutesAgoFormat: string;
+  hoursAgoFormat: string;
+  daysAgoFormat: string;
   snapshotFresh: string;
   snapshotPending: string;
   snapshotStale: string;
@@ -67,8 +75,15 @@ export type CopyTree = {
   hourShort: string;
   dayShort: string;
   weekShort: string;
+  weeklyQuotaLabel: string;
+  dailyQuotaLabel: string;
+  monthlyQuotaLabel: string;
   menubarService: string;
   serviceOrder: string;
+  generalSection: string;
+  displaySection: string;
+  connectionSection: string;
+  statusSection: string;
   claudeCodeLabel: string;
   codexLabel: string;
   claudeCodeNotConnected: string;
@@ -85,11 +100,16 @@ export type CopyTree = {
   claudeCodeRateLimited: string;
   claudeCodeSessionRecovery: string;
   claudeCodeSessionRecoveryEmpty: string;
+  applyProxy: string;
 };
 
 const baseCopy: CopyTree = {
   title: "AIUsage",
   subtitle: "Usage Panel",
+  allServicesHealthy: "All services look healthy",
+  noServicesConnected: "No services connected yet",
+  panelWarningSummary: "{service} {dimension} is running low",
+  panelDangerSummary: "{service} {dimension} is critical",
   settings: "Settings",
   preferences: "Preferences",
   notifications: "Notifications",
@@ -131,6 +151,10 @@ const baseCopy: CopyTree = {
   staleState: "The local Codex CLI is installed, but no readable logged-in session is available.",
   liveState: "Live Codex limits available.",
   failedState: "Failed to read live Codex CLI limits.",
+  justNow: "Just now",
+  minutesAgoFormat: "{value} minutes ago",
+  hoursAgoFormat: "{value} hours ago",
+  daysAgoFormat: "{value} days ago",
   snapshotFresh: "Live",
   snapshotPending: "Pending",
   snapshotStale: "Disconnected",
@@ -154,8 +178,15 @@ const baseCopy: CopyTree = {
   hourShort: "h",
   dayShort: "d",
   weekShort: "week",
+  weeklyQuotaLabel: "Weekly quota",
+  dailyQuotaLabel: "Daily quota",
+  monthlyQuotaLabel: "Monthly quota",
   menubarService: "Menubar service",
   serviceOrder: "Panel order",
+  generalSection: "General",
+  displaySection: "Display",
+  connectionSection: "Connection",
+  statusSection: "Status",
   claudeCodeLabel: "Claude Code",
   codexLabel: "Codex",
   claudeCodeNotConnected: "Claude Code not connected. Install Claude Code CLI and log in.",
@@ -171,13 +202,18 @@ const baseCopy: CopyTree = {
   claudeCodeProxyInvalid: "Proxy configuration is invalid. Use a full proxy URL or switch back to system proxy detection.",
   claudeCodeRateLimited: "Claude Code rate limited the request. Automatic refresh is paused for now; try a manual refresh later.",
   claudeCodeSessionRecovery: "Claude Code session is being restored. It usually recovers after you open Claude Code.",
-  claudeCodeSessionRecoveryEmpty: "Claude Code session is being restored. Open Claude Code to restore the session."
+  claudeCodeSessionRecoveryEmpty: "Claude Code session is being restored. Open Claude Code to restore the session.",
+  applyProxy: "Apply proxy"
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
   "zh-CN": {
     title: "AIUsage",
     subtitle: "额度面板",
+    allServicesHealthy: "所有服务正常",
+    noServicesConnected: "尚未连接任何服务",
+    panelWarningSummary: "{service}{dimension}偏低",
+    panelDangerSummary: "{service}{dimension}告急",
     settings: "设置",
     preferences: "偏好设置",
     notifications: "通知",
@@ -219,6 +255,10 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     staleState: "本地 Codex CLI 已安装，但当前没有可读取的已登录会话。",
     liveState: "已读取到 Codex 实时额度。",
     failedState: "读取 Codex CLI 实时额度失败。",
+    justNow: "刚刚",
+    minutesAgoFormat: "{value} 分钟前",
+    hoursAgoFormat: "{value} 小时前",
+    daysAgoFormat: "{value} 天前",
     snapshotFresh: "实时",
     snapshotPending: "等待同步",
     snapshotStale: "连接中断",
@@ -242,8 +282,15 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     hourShort: " 小时",
     dayShort: " 天",
     weekShort: "周",
+    weeklyQuotaLabel: "每周额度",
+    dailyQuotaLabel: "每日额度",
+    monthlyQuotaLabel: "每月额度",
     menubarService: "菜单栏服务",
     serviceOrder: "面板顺序",
+    generalSection: "通用",
+    displaySection: "显示",
+    connectionSection: "连接",
+    statusSection: "状态",
     claudeCodeLabel: "Claude Code",
     codexLabel: "Codex",
     claudeCodeNotConnected: "Claude Code 未连接。请安装 Claude Code CLI 并登录。",
@@ -259,7 +306,8 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     claudeCodeProxyInvalid: "代理配置无效。请填写完整代理 URL，或切回系统代理检测。",
     claudeCodeRateLimited: "Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。",
     claudeCodeSessionRecovery: "Claude Code 会话恢复中，打开 Claude Code 后通常会自动恢复",
-    claudeCodeSessionRecoveryEmpty: "Claude Code 会话恢复中，请打开 Claude Code 以恢复会话"
+    claudeCodeSessionRecoveryEmpty: "Claude Code 会话恢复中，请打开 Claude Code 以恢复会话",
+    applyProxy: "应用代理"
   }
   ,
   "en-US": baseCopy
@@ -410,4 +458,69 @@ export const localizeBadgeLabel = (copy: CopyTree, backendValue?: string | null)
   }
 
   return backendValue;
+};
+
+export const localizeDimensionLabel = (copy: CopyTree, backendValue: string) => {
+  const match = backendValue.match(/^(.+?)\s*\/\s*(.+)$/);
+  const raw = (match?.[2] ?? backendValue).trim();
+  const normalized = raw.toLowerCase();
+
+  if (normalized === "5h" || normalized.includes("5h")) {
+    return copy.traySummary5h;
+  }
+
+  if (normalized === "week" || normalized.includes("week") || normalized.includes("7d")) {
+    const suffix = raw.match(/\((.+)\)/)?.[0] ?? "";
+    return `${copy.weeklyQuotaLabel}${suffix ? ` ${suffix}` : ""}`;
+  }
+
+  if (normalized === "day" || normalized.includes("day")) {
+    return copy.dailyQuotaLabel;
+  }
+
+  if (normalized === "month" || normalized.includes("month")) {
+    return copy.monthlyQuotaLabel;
+  }
+
+  return raw;
+};
+
+const parseTimestamp = (value: string) => {
+  const timestamp = /^\d+$/.test(value) ? Number(value) * 1000 : Date.parse(value);
+  return Number.isNaN(timestamp) ? undefined : timestamp;
+};
+
+export const formatAbsoluteTime = (value: string) => {
+  const timestamp = parseTimestamp(value);
+  if (timestamp === undefined) return "--";
+  return new Date(timestamp).toLocaleString();
+};
+
+export const formatRelativeTime = (
+  copy: CopyTree,
+  value: string,
+  nowTimestamp = Date.now()
+) => {
+  const timestamp = parseTimestamp(value);
+  if (timestamp === undefined) {
+    return "--";
+  }
+
+  const diffMs = Math.max(0, nowTimestamp - timestamp);
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) {
+    return copy.justNow;
+  }
+
+  if (diffMinutes < 60) {
+    return copy.minutesAgoFormat.replace("{value}", String(diffMinutes));
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return copy.hoursAgoFormat.replace("{value}", String(diffHours));
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return copy.daysAgoFormat.replace("{value}", String(diffDays));
 };

@@ -25,3 +25,6 @@ vitest.config.js
 vitest.config.d.ts
 tailwind.config.js
 tailwind.config.d.ts
+screenshots/
+tests/e2e/screenshots/
+tests/e2e/.find-window

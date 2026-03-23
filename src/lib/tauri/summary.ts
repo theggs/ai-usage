@@ -6,6 +6,16 @@ import type {
   SummaryMode
 } from "./contracts";
 
+export type ServiceAlertLevel = "normal" | "warning" | "danger";
+
+export interface PanelHealthSummary {
+  tone: "healthy" | "warning" | "danger" | "empty";
+  serviceId?: string;
+  serviceName?: string;
+  dimensionLabel?: string;
+  remainingPercent?: number;
+}
+
 export const getQuotaStatus = (remainingPercent?: number): CodexLimitStatus => {
   if (remainingPercent === undefined) {
     return "unknown";
@@ -44,6 +54,12 @@ export const decorateQuotaDimension = (
 });
 
 const allDimensions = (items: PanelPlaceholderItem[]) => items.flatMap((item) => item.quotaDimensions);
+
+const parseTimestamp = (value?: string) => {
+  if (!value) return undefined;
+  const timestamp = /^\d+$/.test(value) ? Number(value) * 1000 : Date.parse(value);
+  return Number.isNaN(timestamp) ? undefined : timestamp;
+};
 
 const sortByRemainingPercent = (dimensions: QuotaDimension[]) =>
   dimensions
@@ -110,4 +126,74 @@ export const formatTraySummary = (
     .filter((dimension) => dimension.remainingPercent !== undefined)
     .map((dimension) => `${dimension.remainingPercent}%`)
     .join(" / ") || undefined;
+};
+
+export const getServiceAlertLevel = (item: PanelPlaceholderItem): ServiceAlertLevel => {
+  if (item.quotaDimensions.some((dimension) => dimension.status === "exhausted")) {
+    return "danger";
+  }
+
+  if (item.quotaDimensions.some((dimension) => dimension.status === "warning")) {
+    return "warning";
+  }
+
+  return "normal";
+};
+
+export const getPanelHealthSummary = (items: PanelPlaceholderItem[]): PanelHealthSummary => {
+  if (items.length === 0) {
+    return { tone: "empty" };
+  }
+
+  const candidates = items
+    .flatMap((item) =>
+      item.quotaDimensions.map((dimension) => ({
+        item,
+        dimension
+      }))
+    )
+    .filter(({ dimension }) => dimension.remainingPercent !== undefined)
+    .sort((left, right) => (left.dimension.remainingPercent ?? 101) - (right.dimension.remainingPercent ?? 101));
+
+  const critical = candidates.find(({ dimension }) => dimension.status === "exhausted");
+  if (critical) {
+    return {
+      tone: "danger",
+      serviceId: critical.item.serviceId,
+      serviceName: critical.item.serviceName,
+      dimensionLabel: critical.dimension.label,
+      remainingPercent: critical.dimension.remainingPercent
+    };
+  }
+
+  const warning = candidates.find(({ dimension }) => dimension.status === "warning");
+  if (warning) {
+    return {
+      tone: "warning",
+      serviceId: warning.item.serviceId,
+      serviceName: warning.item.serviceName,
+      dimensionLabel: warning.dimension.label,
+      remainingPercent: warning.dimension.remainingPercent
+    };
+  }
+
+  return { tone: "healthy" };
+};
+
+export const haveAlignedRefreshTimes = (items: PanelPlaceholderItem[]) => {
+  const parsed = items.map((item) => parseTimestamp(item.lastRefreshedAt)).filter((value): value is number => value !== undefined);
+  if (parsed.length <= 1) {
+    return parsed.length === items.length;
+  }
+
+  const first = parsed[0];
+  return first !== undefined && parsed.every((value) => value === first);
+};
+
+export const getSharedRefreshTimestamp = (items: PanelPlaceholderItem[]) => {
+  if (!items.length || !haveAlignedRefreshTimes(items)) {
+    return undefined;
+  }
+
+  return parseTimestamp(items[0]?.lastRefreshedAt);
 };
