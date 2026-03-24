@@ -99,7 +99,7 @@ describe("PanelView", () => {
     expect(screen.getByText("需要先登录")).toBeInTheDocument();
   });
 
-  it("shows one global refresh label when service timestamps are aligned", () => {
+  it("shows refresh time inside each service card even when timestamps are aligned", () => {
     const now = new Date().toISOString();
     const state = createState({
       ...createDemoPanelState(),
@@ -127,7 +127,12 @@ describe("PanelView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(screen.getByText(/上次刷新:/)).toBeInTheDocument();
+    const codexCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    const claudeCard = screen.getByRole("heading", { name: "Claude Code" }).closest("article");
+
+    expect(within(codexCard!).getByText(/上次刷新:/)).toBeInTheDocument();
+    expect(within(claudeCard!).getByText(/上次刷新:/)).toBeInTheDocument();
+    expect(screen.getAllByText(/上次刷新:/)).toHaveLength(2);
   });
 
   it("shows onboarding before empty service placeholders on first run", () => {
