@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { getCopy, localizeDimensionLabel, resolveCopyTree } from "./i18n";
+import {
+  formatPromotionDetailTiming,
+  formatPromotionPopoverLine,
+  formatPromotionServiceDecision,
+  getCopy,
+  getPromotionPopoverLabel,
+  getPromotionTriggerLabel,
+  localizeDimensionLabel,
+  resolveCopyTree
+} from "./i18n";
 
 describe("i18n fallback", () => {
   it("falls back to the base copy when locale keys are missing", () => {
@@ -30,5 +39,97 @@ describe("i18n fallback", () => {
     expect(dimension).toBe("5h window");
     expect(warning).toBe("Codex 5h window is running low");
     expect(warning.length).toBeLessThanOrEqual(32);
+  });
+
+  it("formats promotion service decisions and all-state popover copy without expanding into long-form text", () => {
+    const zh = getCopy("zh-CN");
+    const en = getCopy("en-US");
+
+    expect(
+      formatPromotionServiceDecision(zh, {
+        serviceId: "codex",
+        serviceName: "Codex",
+        status: "active-window",
+        benefitLabel: "2x",
+        matchedCampaignId: "codex-limited-time-promotion",
+        messageKey: "promotionStatusActiveWindow",
+        detailTiming: {
+          mode: "continuous"
+        },
+        isInlineVisible: true
+      })
+    ).toBe("Codex 正在优惠时段 2x");
+
+    expect(
+      formatPromotionPopoverLine(en, {
+        inlineServices: [
+          {
+            serviceId: "codex",
+            serviceName: "Codex",
+            status: "active-window",
+            benefitLabel: "2x",
+            matchedCampaignId: "codex-limited-time-promotion",
+            messageKey: "promotionStatusActiveWindow",
+            isInlineVisible: true
+          }
+        ],
+        allServices: [
+          {
+            serviceId: "codex",
+            serviceName: "Codex",
+            status: "active-window",
+            benefitLabel: "2x",
+            matchedCampaignId: "codex-limited-time-promotion",
+            messageKey: "promotionStatusActiveWindow",
+            detailTiming: {
+              mode: "continuous"
+            },
+            isInlineVisible: true
+          },
+          {
+            serviceId: "claude-code",
+            serviceName: "Claude Code",
+            status: "inactive-window",
+            benefitLabel: "2x",
+            matchedCampaignId: "claude-march-2026-usage-promotion",
+            messageKey: "promotionStatusInactiveWindow",
+            detailTiming: {
+              mode: "local-window",
+              dateRangeLabel: "2026.03.13-2026.03.28",
+              localWindowRangeLabel: "20:00-02:00",
+              localTimeZoneLabel: "UTC+08:00"
+            },
+            isInlineVisible: false
+          }
+        ],
+        hiddenServiceCount: 1,
+        fallbackState: null
+      })
+    ).toBe("Codex discount window live 2x · Claude Code outside discount window 2x");
+  });
+
+  it("returns localized labels for the promotion trigger and popover", () => {
+    expect(getPromotionTriggerLabel(getCopy("zh-CN"), "closed")).toBe("预览全部促销状态");
+    expect(getPromotionTriggerLabel(getCopy("en-US"), "pinned")).toBe(
+      "Preview all promotion states (All promotion states)"
+    );
+    expect(getPromotionPopoverLabel(getCopy("zh-CN"))).toBe("全部促销状态");
+  });
+
+  it("formats localized second-line timing copy for popover detail blocks", () => {
+    expect(
+      formatPromotionDetailTiming(getCopy("zh-CN"), {
+        mode: "local-window",
+        dateRangeLabel: "2026.03.13-2026.03.28",
+        localWindowRangeLabel: "20:00-02:00",
+        localTimeZoneLabel: "UTC+08:00"
+      })
+    ).toBe("2026.03.13-2026.03.28 · 工作日 20:00-02:00 (UTC+08:00) 之外");
+
+    expect(
+      formatPromotionDetailTiming(getCopy("en-US"), {
+        mode: "continuous"
+      })
+    ).toBe("All-day discount");
   });
 });

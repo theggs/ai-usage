@@ -3,6 +3,7 @@ import { PanelView } from "../panel/PanelView";
 import { SettingsView } from "../settings/SettingsView";
 import { AppStateContext } from "../shared/appState";
 import { getCopy, localizeDimensionLabel } from "../shared/i18n";
+import { PromotionStatusLine } from "../../components/panel/PromotionStatusLine";
 import { loadPanelState, refreshPanelState, loadClaudeCodePanelState, refreshClaudeCodePanelState } from "../../features/demo-services/panelController";
 import { sendDemoNotification } from "../../features/notifications/notificationController";
 import {
@@ -23,6 +24,10 @@ import {
   getVisibleServiceScope,
   markPanelStateRefreshing
 } from "../../lib/tauri/summary";
+import {
+  resolvePromotionDisplayDecision
+} from "../../features/promotions/resolver";
+import type { PromotionOverlayState } from "../../features/promotions/types";
 
 const RefreshIcon = () => (
   <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
@@ -71,6 +76,7 @@ export const AppShell = () => {
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [notificationResult, setNotificationResult] = useState<NotificationCheckResult | null>(null);
   const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
+  const [promotionOverlayState, setPromotionOverlayState] = useState<PromotionOverlayState>("closed");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClaudeCodeRefreshing, setIsClaudeCodeRefreshing] = useState(false);
@@ -82,6 +88,7 @@ export const AppShell = () => {
   const lastStablePanelState = useRef<CodexPanelState | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const settingsHeaderTimerRef = useRef<number | null>(null);
+  const promotionInteractionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -113,6 +120,41 @@ export const AppShell = () => {
     },
     []
   );
+
+  useEffect(() => {
+    if (currentView !== "panel") {
+      setPromotionOverlayState("closed");
+    }
+  }, [currentView]);
+
+  useEffect(() => {
+    if (promotionOverlayState !== "pinned") {
+      return undefined;
+    }
+
+    const handleDocumentMouseDown = (event: MouseEvent) => {
+      if (
+        promotionInteractionRef.current &&
+        event.target instanceof Node &&
+        !promotionInteractionRef.current.contains(event.target)
+      ) {
+        setPromotionOverlayState("closed");
+      }
+    };
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPromotionOverlayState("closed");
+      }
+    };
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    document.addEventListener("keydown", handleDocumentKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+    };
+  }, [promotionOverlayState]);
 
   const flashSettingsSaved = () => {
     setSettingsHeaderStatus("saved");
@@ -279,6 +321,14 @@ export const AppShell = () => {
     [claudeCodePanelState, serviceOrder, visiblePanelState]
   );
   const panelSummary = getPanelHealthSummary(visibleItems);
+  const promotionDecision = useMemo(
+    () =>
+      resolvePromotionDisplayDecision({
+        visibleServiceScope,
+        panelStates: stateByServiceId
+      }),
+    [claudeCodePanelState, stateByServiceId, visiblePanelState, visibleServiceScope]
+  );
   const summaryToneClass =
     panelSummary.tone === "danger"
       ? "text-rose-700"
@@ -340,7 +390,22 @@ export const AppShell = () => {
           >
             {currentView === "panel" ? (
               <>
-                <div className={`min-w-0 text-sm font-semibold leading-tight ${summaryToneClass}`}>{summaryText}</div>
+                <div className="min-w-0 pr-3">
+                  <div className={`truncate text-sm font-semibold leading-tight ${summaryToneClass}`}>{summaryText}</div>
+                  <PromotionStatusLine
+                    copy={copy}
+                    onPin={() => setPromotionOverlayState("pinned")}
+                    onPreviewEnd={() =>
+                      setPromotionOverlayState((current) => (current === "pinned" ? current : "closed"))
+                    }
+                    onPreviewStart={() =>
+                      setPromotionOverlayState((current) => (current === "pinned" ? current : "preview"))
+                    }
+                    overlayState={promotionOverlayState}
+                    promotionDecision={promotionDecision}
+                    rootRef={promotionInteractionRef}
+                  />
+                </div>
                 <div className="flex items-center gap-1.5">
                   {isE2EMode ? (
                     <button

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppShell } from "./AppShell";
 import { createDemoPanelState } from "../../features/demo-services/demoData";
@@ -161,7 +161,7 @@ describe("AppShell", () => {
     await screen.findByRole("button", { name: "设置" });
     await userEvent.click(screen.getByRole("button", { name: "设置" }));
 
-    await userEvent.click(screen.getByRole("switch", { name: "启用 Claude Code 用度查询" }));
+    await userEvent.click(screen.getByRole("switch", { name: "启用 Claude Code 查询" }));
 
     await waitFor(() =>
       expect(persistPreferences).toHaveBeenCalledWith(
@@ -178,5 +178,123 @@ describe("AppShell", () => {
     });
 
     await waitFor(() => expect(screen.queryByText("刷新中...")).not.toBeInTheDocument());
+  });
+
+  it("renders promotion capsules and supports preview plus pinned popover in the same header area", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
+    getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
+
+    render(<AppShell />);
+
+    await act(async () => {
+      vi.runAllTimers();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
+    expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
+    expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
+
+    act(() => {
+      fireEvent.mouseEnter(screen.getByTestId("promotion-status-trigger"));
+    });
+    expect(screen.getByTestId("promotion-popover-item-codex")).toHaveTextContent(
+      "Codex正在优惠时段2x"
+    );
+    expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
+      "Claude Code不在优惠时段2x"
+    );
+    expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
+      "正在优惠时段"
+    );
+    expect(screen.getByTestId("promotion-popover-benefit-codex")).toHaveTextContent("2x");
+    expect(screen.getByTestId("promotion-popover-status-claude-code")).toHaveTextContent(
+      "不在优惠时段"
+    );
+    expect(screen.getByTestId("promotion-popover-benefit-claude-code")).toHaveTextContent("2x");
+    expect(screen.getByTestId("promotion-popover-detail-codex")).toHaveTextContent(
+      "全天优惠"
+    );
+    expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
+      "2026.03.13-2026.03.28 · 工作日 20:00-02:00 (UTC+08:00) 之外"
+    );
+
+    act(() => {
+      fireEvent.mouseLeave(screen.getByTestId("promotion-status-trigger"));
+    });
+    expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("promotion-status-trigger"));
+    });
+    expect(screen.getByTestId("promotion-popover-item-codex")).toHaveTextContent(
+      "Codex正在优惠时段2x"
+    );
+
+    act(() => {
+      fireEvent.mouseDown(document.body);
+    });
+    expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
+  });
+
+  it("resets the pinned promotion popover when the panel shell is reopened", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
+    getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
+
+    const firstRender = render(<AppShell />);
+    await act(async () => {
+      vi.runAllTimers();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("promotion-status-trigger"));
+    expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
+      "Claude Code不在优惠时段2x"
+    );
+    expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
+      "2026.03.13-2026.03.28 · 工作日 20:00-02:00 (UTC+08:00) 之外"
+    );
+
+    firstRender.unmount();
+
+    render(<AppShell />);
+    await act(async () => {
+      vi.runAllTimers();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
+    expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
+    expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
+  });
+
+  it("closes the pinned promotion popover when Escape is pressed", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
+    getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
+
+    render(<AppShell />);
+
+    await act(async () => {
+      vi.runAllTimers();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("promotion-status-trigger"));
+    });
+    expect(screen.getByTestId("promotion-status-popover")).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.keyDown(document, { key: "Escape" });
+    });
+    expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
   });
 });

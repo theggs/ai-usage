@@ -24,9 +24,20 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { launchApp, screenshot, clickAnyButton, clickWindowPoint, shutdown } from "./tauri-driver.mjs";
+import {
+  launchApp,
+  screenshot,
+  clickAnyButton,
+  clickWindowPoint,
+  hoverAnyButton,
+  moveWindowPoint,
+  pressKey,
+  shutdown
+} from "./tauri-driver.mjs";
 
 const nowSeconds = () => String(Math.floor(Date.now() / 1000));
+const PROMOTION_TRIGGER_POINT = { x: 78, y: 90 };
+const PROMOTION_CLOSE_POINT = { x: 342, y: 160 };
 
 function createScenarioFiles({
   language = "zh-CN",
@@ -167,6 +178,41 @@ async function run() {
     console.log("\n[screenshots] Panel view...");
     await sleep(1400);
     await screenshot(ctx, "panel-health-summary.png");
+    await screenshot(ctx, "panel-promotion-focused.png");
+
+    const hoveredPromotion =
+      (await hoverAnyButton(["预览全部促销状态", "Preview all promotion states"], ctx)) ||
+      (await moveWindowPoint(PROMOTION_TRIGGER_POINT.x, PROMOTION_TRIGGER_POINT.y, ctx));
+    if (hoveredPromotion) {
+      await sleep(500);
+      await screenshot(ctx, "panel-promotion-preview.png");
+    }
+
+    const pinnedPromotion =
+      (await clickAnyButton(["预览全部促销状态", "Preview all promotion states"], ctx)) ||
+      (await clickWindowPoint(PROMOTION_TRIGGER_POINT.x, PROMOTION_TRIGGER_POINT.y, ctx));
+    if (pinnedPromotion) {
+      await sleep(600);
+      await screenshot(ctx, "panel-promotion-all.png");
+
+      const closedByOutsideClick = await clickWindowPoint(PROMOTION_CLOSE_POINT.x, PROMOTION_CLOSE_POINT.y, ctx);
+      if (closedByOutsideClick) {
+        await sleep(500);
+        await screenshot(ctx, "panel-promotion-closed-click.png");
+      }
+
+      const repinnedPromotion =
+        (await clickAnyButton(["预览全部促销状态", "Preview all promotion states"], ctx)) ||
+        (await clickWindowPoint(PROMOTION_TRIGGER_POINT.x, PROMOTION_TRIGGER_POINT.y, ctx));
+      if (repinnedPromotion) {
+        await sleep(500);
+        const closedByEscape = await pressKey("escape", ctx);
+        if (closedByEscape) {
+          await sleep(500);
+          await screenshot(ctx, "panel-promotion-closed-escape.png");
+        }
+      }
+    }
 
     // --- Settings view ---
     console.log("[screenshots] Navigating to settings...");

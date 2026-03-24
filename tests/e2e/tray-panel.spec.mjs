@@ -17,13 +17,26 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { launchApp, screenshot, clickAnyButton, clickWindowPoint, dragElement, shutdown } from "./tauri-driver.mjs";
+import {
+  launchApp,
+  screenshot,
+  clickAnyButton,
+  clickWindowPoint,
+  dragElement,
+  hoverAnyButton,
+  moveWindowPoint,
+  pressKey,
+  shutdown
+} from "./tauri-driver.mjs";
 
 let ctx;
 let passed = 0;
 let failed = 0;
 
 const nowSeconds = () => String(Math.floor(Date.now() / 1000));
+const PROMOTION_TRIGGER_POINT = { x: 78, y: 90 };
+const PROMOTION_CLOSE_POINT = { x: 342, y: 160 };
+const CLAUDE_DISCLOSURE_DISMISS_POINT = { x: 86, y: 642 };
 
 function panelState({ serviceId, serviceName, snapshotState, statusMessage, dimensions }) {
   const lastSuccessfulRefreshAt = nowSeconds();
@@ -281,6 +294,39 @@ async function run() {
       await screenshot(ctx, "test-panel-health-summary.png");
     });
 
+    await test("promotion header supports preview, pinned popover, and both close paths in the native shell", async () => {
+      await screenshot(ctx, "test-panel-promotion-focused.png");
+      const hovered =
+        (await hoverAnyButton(["预览全部促销状态", "Preview all promotion states"], ctx)) ||
+        (await moveWindowPoint(PROMOTION_TRIGGER_POINT.x, PROMOTION_TRIGGER_POINT.y, ctx));
+      assert.ok(hovered, "should be able to preview the promotion popover");
+      await sleep(500);
+      await screenshot(ctx, "test-panel-promotion-preview.png");
+
+      const pinned =
+        (await clickAnyButton(["预览全部促销状态", "Preview all promotion states"], ctx)) ||
+        (await clickWindowPoint(PROMOTION_TRIGGER_POINT.x, PROMOTION_TRIGGER_POINT.y, ctx));
+      assert.ok(pinned, "should be able to pin the promotion popover");
+      await sleep(500);
+      await screenshot(ctx, "test-panel-promotion-all.png");
+
+      const closedByOutsideClick = await clickWindowPoint(PROMOTION_CLOSE_POINT.x, PROMOTION_CLOSE_POINT.y, ctx);
+      assert.ok(closedByOutsideClick, "should be able to close the pinned popover by clicking outside");
+      await sleep(500);
+      await screenshot(ctx, "test-panel-promotion-closed-click.png");
+
+      const repinned =
+        (await clickAnyButton(["预览全部促销状态", "Preview all promotion states"], ctx)) ||
+        (await clickWindowPoint(PROMOTION_TRIGGER_POINT.x, PROMOTION_TRIGGER_POINT.y, ctx));
+      assert.ok(repinned, "should be able to reopen the pinned promotion popover");
+      await sleep(500);
+
+      const closedByEscape = await pressKey("escape", ctx);
+      assert.ok(closedByEscape, "should be able to close the pinned popover with Escape");
+      await sleep(500);
+      await screenshot(ctx, "test-panel-promotion-closed-escape.png");
+    });
+
     await test("settings button navigates to settings", async () => {
       const clicked =
         (await clickAnyButton(["设置", "Settings"], ctx)) ||
@@ -395,7 +441,13 @@ async function run() {
       ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
       await sleep(1200);
 
-      const dismissed = await clickAnyButton(["我知道了", "I understand"], ctx);
+      const dismissed =
+        (await clickAnyButton(["我知道了", "I understand"], ctx)) ||
+        (await clickWindowPoint(
+          CLAUDE_DISCLOSURE_DISMISS_POINT.x,
+          CLAUDE_DISCLOSURE_DISMISS_POINT.y,
+          ctx
+        ));
       assert.ok(dismissed, "should be able to dismiss the Claude disclosure card");
 
       await pollFor(() => {
@@ -554,7 +606,7 @@ async function run() {
       await screenshot(ctx, "test-settings-claude-usage-group.png");
 
       const toggleClicked = await clickAnyButton(
-        ["E2E Toggle Claude Code Usage", "启用 Claude Code 用度查询", "Enable Claude Code usage query"],
+        ["E2E Toggle Claude Code Usage", "启用 Claude Code 查询", "Enable Claude Code query"],
         ctx
       )
         || (await clickWindowPoint(290, 554, ctx))

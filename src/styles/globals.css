@@ -36,3 +36,173 @@ input[type="number"] {
 ::-webkit-scrollbar {
   display: none;
 }
+
+.promotion-status-line {
+  text-wrap: nowrap;
+}
+
+.promotion-trigger {
+  cursor: pointer;
+}
+
+.promotion-pill-row {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.375rem;
+  overflow: hidden;
+}
+
+.promotion-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.1875rem 0.45rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.promotion-pill-compact {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.promotion-pill-compact .promotion-pill-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.promotion-pill-icon {
+  height: 0.75rem;
+  width: 0.75rem;
+  flex-shrink: 0;
+}
+
+.promotion-pill-active-window {
+  border-color: rgba(34, 197, 94, 0.2);
+  background: rgba(220, 252, 231, 0.95);
+  color: #166534;
+}
+
+.promotion-pill-active-general {
+  border-color: rgba(59, 130, 246, 0.18);
+  background: rgba(219, 234, 254, 0.95);
+  color: #1d4ed8;
+}
+
+.promotion-pill-inactive-window {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(241, 245, 249, 0.95);
+  color: #475569;
+}
+
+.promotion-pill-eligibility-unknown {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(254, 243, 199, 0.95);
+  color: #92400e;
+}
+
+.promotion-pill-none {
+  border-color: rgba(203, 213, 225, 0.75);
+  background: rgba(248, 250, 252, 0.95);
+  color: #64748b;
+}
+
+.promotion-fallback {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.promotion-popover {
+  text-wrap: wrap;
+}
+
+.promotion-popover-list {
+  align-items: flex-start;
+}
+
+.promotion-popover-item {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  border-radius: 0.875rem;
+  border: 1px solid transparent;
+  padding: 0.5rem 0.625rem;
+}
+
+.promotion-popover-main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 0.375rem;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.promotion-popover-header {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.promotion-popover-identity {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.promotion-popover-service {
+  min-width: 0;
+  font-weight: 700;
+}
+
+.promotion-popover-badges {
+  display: inline-flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+
+.promotion-popover-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  padding: 0.125rem 0.5rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.promotion-popover-status-badge {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.promotion-popover-benefit-badge {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.promotion-popover-detail {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+.promotion-trigger:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.45);
+  outline-offset: 2px;
+}

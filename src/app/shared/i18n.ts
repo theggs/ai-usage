@@ -1,4 +1,11 @@
 import type { CodexSnapshotState, UserPreferences } from "../../lib/tauri/contracts";
+import type {
+  PromotionDetailTiming,
+  PromotionDisplayDecision,
+  PromotionOverlayState,
+  PromotionServiceDecision,
+  PromotionServiceStatus
+} from "../../features/promotions/types";
 
 export type CopyTree = {
   title: string;
@@ -123,6 +130,23 @@ export type CopyTree = {
   statusLow: string;
   statusCritical: string;
   reorderHandle: string;
+  codexCompactLabel: string;
+  claudeCodeCompactLabel: string;
+  promotionNoneKnown: string;
+  promotionCompactStatusActiveWindow: string;
+  promotionCompactStatusActiveGeneral: string;
+  promotionCompactStatusInactiveWindow: string;
+  promotionCompactStatusEligibilityUnknown: string;
+  promotionCompactStatusNone: string;
+  promotionStatusActiveWindow: string;
+  promotionStatusActiveGeneral: string;
+  promotionStatusInactiveWindow: string;
+  promotionStatusEligibilityUnknown: string;
+  promotionStatusNone: string;
+  promotionDetailContinuous: string;
+  promotionDetailLocalWindowTemplate: string;
+  promotionTriggerAria: string;
+  promotionPopoverLabel: string;
 };
 
 const baseCopy: CopyTree = {
@@ -249,7 +273,24 @@ const baseCopy: CopyTree = {
   serviceDisconnectedBody: "The app could not read a live session yet. Open settings to check the integration.",
   statusLow: "Low",
   statusCritical: "Critical",
-  reorderHandle: "Reorder"
+  reorderHandle: "Reorder",
+  codexCompactLabel: "Codex",
+  claudeCodeCompactLabel: "Claude",
+  promotionNoneKnown: "No promotion right now",
+  promotionCompactStatusActiveWindow: "promo on",
+  promotionCompactStatusActiveGeneral: "promo on",
+  promotionCompactStatusInactiveWindow: "off",
+  promotionCompactStatusEligibilityUnknown: "pending",
+  promotionCompactStatusNone: "none",
+  promotionStatusActiveWindow: "discount window live",
+  promotionStatusActiveGeneral: "discount window live",
+  promotionStatusInactiveWindow: "outside discount window",
+  promotionStatusEligibilityUnknown: "discount eligibility pending",
+  promotionStatusNone: "no promotion",
+  promotionDetailContinuous: "All-day discount",
+  promotionDetailLocalWindowTemplate: "outside weekdays {range} ({timeZone})",
+  promotionTriggerAria: "Preview all promotion states",
+  promotionPopoverLabel: "All promotion states"
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
@@ -377,7 +418,24 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     serviceDisconnectedBody: "应用还无法读取到实时会话，请前往设置检查连接状态。",
     statusLow: "偏低",
     statusCritical: "紧张",
-    reorderHandle: "拖动排序"
+    reorderHandle: "拖动排序",
+    codexCompactLabel: "Codex",
+    claudeCodeCompactLabel: "Claude",
+    promotionNoneKnown: "当前无优惠活动",
+    promotionCompactStatusActiveWindow: "优惠中",
+    promotionCompactStatusActiveGeneral: "优惠中",
+    promotionCompactStatusInactiveWindow: "未命中",
+    promotionCompactStatusEligibilityUnknown: "待确认",
+    promotionCompactStatusNone: "无优惠",
+    promotionStatusActiveWindow: "正在优惠时段",
+    promotionStatusActiveGeneral: "正在优惠时段",
+    promotionStatusInactiveWindow: "不在优惠时段",
+    promotionStatusEligibilityUnknown: "优惠资格待确认",
+    promotionStatusNone: "无优惠活动",
+    promotionDetailContinuous: "全天优惠",
+    promotionDetailLocalWindowTemplate: "工作日 {range} ({timeZone}) 之外",
+    promotionTriggerAria: "预览全部促销状态",
+    promotionPopoverLabel: "全部促销状态"
   }
   ,
   "en-US": baseCopy
@@ -608,6 +666,91 @@ export const localizeStatusLabel = (copy: CopyTree, level?: "warning" | "danger"
   }
   return undefined;
 };
+
+export const getCompactServiceLabel = (copy: CopyTree, serviceId: string) => {
+  if (serviceId === "claude-code") {
+    return copy.claudeCodeCompactLabel;
+  }
+  if (serviceId === "codex") {
+    return copy.codexCompactLabel;
+  }
+  return serviceId;
+};
+
+export const getPromotionStatusLabel = (copy: CopyTree, status: PromotionServiceStatus) => {
+  switch (status) {
+    case "active-window":
+      return copy.promotionStatusActiveWindow;
+    case "active-general":
+      return copy.promotionStatusActiveGeneral;
+    case "inactive-window":
+      return copy.promotionStatusInactiveWindow;
+    case "eligibility-unknown":
+      return copy.promotionStatusEligibilityUnknown;
+    default:
+      return copy.promotionStatusNone;
+  }
+};
+
+export const getPromotionCompactStatusLabel = (copy: CopyTree, status: PromotionServiceStatus) => {
+  switch (status) {
+    case "active-window":
+      return copy.promotionCompactStatusActiveWindow;
+    case "active-general":
+      return copy.promotionCompactStatusActiveGeneral;
+    case "inactive-window":
+      return copy.promotionCompactStatusInactiveWindow;
+    case "eligibility-unknown":
+      return copy.promotionCompactStatusEligibilityUnknown;
+    default:
+      return copy.promotionCompactStatusNone;
+  }
+};
+
+export const formatPromotionServiceDecision = (
+  copy: CopyTree,
+  serviceDecision: PromotionServiceDecision
+) =>
+  `${serviceDecision.serviceName} ${getPromotionStatusLabel(copy, serviceDecision.status)}${
+    serviceDecision.benefitLabel ? ` ${serviceDecision.benefitLabel}` : ""
+  }`;
+
+export const formatPromotionDetailTiming = (
+  copy: CopyTree,
+  detailTiming: PromotionDetailTiming
+) => {
+  if (detailTiming.mode === "continuous") {
+    return copy.promotionDetailContinuous;
+  }
+
+  if (detailTiming.mode === "local-window") {
+    return `${detailTiming.dateRangeLabel} · ${copy.promotionDetailLocalWindowTemplate
+      .replace("{range}", detailTiming.localWindowRangeLabel)
+      .replace("{timeZone}", detailTiming.localTimeZoneLabel)}`.replace(/\s+/g, " ").trim();
+  }
+
+  return "";
+};
+
+export const formatPromotionPopoverLine = (
+  copy: CopyTree,
+  promotionDecision: PromotionDisplayDecision
+) => {
+  if (promotionDecision.fallbackState === "none" || promotionDecision.allServices.length === 0) {
+    return copy.promotionNoneKnown;
+  }
+
+  return promotionDecision.allServices
+    .map((serviceDecision) => formatPromotionServiceDecision(copy, serviceDecision))
+    .join(" · ");
+};
+
+export const getPromotionTriggerLabel = (
+  copy: CopyTree,
+  overlayState: PromotionOverlayState
+) => (overlayState === "pinned" ? `${copy.promotionTriggerAria} (${copy.promotionPopoverLabel})` : copy.promotionTriggerAria);
+
+export const getPromotionPopoverLabel = (copy: CopyTree) => copy.promotionPopoverLabel;
 
 const parseTimestamp = (value: string) => {
   const timestamp = /^\d+$/.test(value) ? Number(value) * 1000 : Date.parse(value);

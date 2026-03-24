@@ -49,6 +49,10 @@ function ensureHelpers() {
     resolve(__dirname, ".click-button")
   );
   compileIfNeeded(
+    resolve(__dirname, "hover-button.swift"),
+    resolve(__dirname, ".hover-button")
+  );
+  compileIfNeeded(
     resolve(__dirname, "drag-element.swift"),
     resolve(__dirname, ".drag-element")
   );
@@ -59,6 +63,14 @@ function ensureHelpers() {
   compileIfNeeded(
     resolve(__dirname, "click-point.swift"),
     resolve(__dirname, ".click-point")
+  );
+  compileIfNeeded(
+    resolve(__dirname, "move-point.swift"),
+    resolve(__dirname, ".move-point")
+  );
+  compileIfNeeded(
+    resolve(__dirname, "press-key.swift"),
+    resolve(__dirname, ".press-key")
   );
 }
 
@@ -102,7 +114,7 @@ function findWindowId(retries = 10, delayMs = 500) {
 
 function captureWindow(windowId, outputPath) {
   const captureBin = resolve(__dirname, ".capture-window");
-  execSync(`"${captureBin}" ${windowId} "${outputPath}"`, { timeout: 20000 });
+  execSync(`"${captureBin}" ${windowId} "${outputPath}"`, { timeout: 60000 });
 }
 
 function refreshWindowInfo(ctx) {
@@ -160,13 +172,19 @@ export async function launchApp(options = {}) {
  */
 export async function screenshot(ctx, name) {
   const outputPath = resolve(SCREENSHOT_DIR, name);
-  try {
-    refreshWindowInfo(ctx);
-    captureWindow(ctx.windowInfo.id, outputPath);
-    console.log(`  ✓ ${name}`);
-  } catch (err) {
-    throw new Error(`${name}: ${err.message}`);
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      refreshWindowInfo(ctx);
+      captureWindow(ctx.windowInfo.id, outputPath);
+      console.log(`  ✓ ${name}`);
+      return;
+    } catch (err) {
+      lastError = err;
+      await sleep(500);
+    }
   }
+  throw new Error(`${name}: ${lastError?.message ?? "capture failed"}`);
 }
 
 /**
@@ -213,6 +231,34 @@ export async function clickAnyButton(labels, ctx) {
   return null;
 }
 
+export async function hoverButton(label, ctx) {
+  const hoverBin = resolve(__dirname, ".hover-button");
+  try {
+    const pidArg = ctx?.proc?.pid != null ? ` ${ctx.proc.pid}` : "";
+    const result = execSync(`"${hoverBin}" "${label}"${pidArg}`, {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    await sleep(300);
+    return result === "hovered";
+  } catch (err) {
+    const stderr = err.stderr?.toString() ?? "";
+    console.log(`  ⚠ hoverButton("${label}") failed: ${stderr.trim()}`);
+    return false;
+  }
+}
+
+export async function hoverAnyButton(labels, ctx) {
+  for (const label of labels) {
+    const hovered = await hoverButton(label, ctx);
+    if (hovered) {
+      return label;
+    }
+  }
+  return null;
+}
+
 export async function clickWindowPoint(offsetX, offsetY, ctx) {
   const clickBin = resolve(__dirname, ".click-point");
   const { X, Y } = refreshWindowInfo(ctx).bounds;
@@ -229,6 +275,26 @@ export async function clickWindowPoint(offsetX, offsetY, ctx) {
   } catch (err) {
     const stderr = err.stderr?.toString() ?? "";
     console.log(`  ⚠ clickWindowPoint(${offsetX}, ${offsetY}) failed: ${stderr.trim()}`);
+    return false;
+  }
+}
+
+export async function moveWindowPoint(offsetX, offsetY, ctx) {
+  const moveBin = resolve(__dirname, ".move-point");
+  const { X, Y } = refreshWindowInfo(ctx).bounds;
+  const targetX = X + offsetX;
+  const targetY = Y + offsetY;
+  try {
+    const result = execSync(`"${moveBin}" ${targetX} ${targetY}`, {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    await sleep(300);
+    return result === "moved";
+  } catch (err) {
+    const stderr = err.stderr?.toString() ?? "";
+    console.log(`  ⚠ moveWindowPoint(${offsetX}, ${offsetY}) failed: ${stderr.trim()}`);
     return false;
   }
 }
@@ -255,6 +321,24 @@ export async function dragElement(sourceLabel, targetLabel, ctx) {
   } catch (err) {
     const stderr = err.stderr?.toString() ?? "";
     console.log(`  ⚠ dragElement("${sourceLabel}" -> "${targetLabel}") failed: ${stderr.trim()}`);
+    return false;
+  }
+}
+
+export async function pressKey(key, ctx) {
+  const pressBin = resolve(__dirname, ".press-key");
+  try {
+    const pidArg = ctx?.proc?.pid != null ? ` ${ctx.proc.pid}` : "";
+    const result = execSync(`"${pressBin}" "${key}"${pidArg}`, {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    await sleep(300);
+    return result === "pressed";
+  } catch (err) {
+    const stderr = err.stderr?.toString() ?? "";
+    console.log(`  ⚠ pressKey("${key}") failed: ${stderr.trim()}`);
     return false;
   }
 }

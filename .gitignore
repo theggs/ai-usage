@@ -32,3 +32,6 @@ tests/e2e/.click-button
 tests/e2e/.click-point
 tests/e2e/.capture-window
 tests/e2e/.drag-element
+tests/e2e/.hover-button
+tests/e2e/.move-point
+tests/e2e/.press-key
