@@ -25,7 +25,9 @@ vitest.config.js
 vitest.config.d.ts
 tailwind.config.js
 tailwind.config.d.ts
-screenshots/
+screenshots/*
+!screenshots/panel-en.png
+!screenshots/setting-en.png
 tests/e2e/screenshots/
 tests/e2e/.find-window
 tests/e2e/.click-button
