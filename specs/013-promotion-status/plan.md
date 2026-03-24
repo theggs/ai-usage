@@ -77,7 +77,7 @@ specs/013-promotion-status/
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
-├── promotion-update-guide.md
+├── /Users/chasewang/01workspace/projects/ai-usage/doc/promotion-update-guide.md
 ├── contracts/
 │   └── promotion-status-ui-contract.md
 ├── checklists/
@@ -204,13 +204,13 @@ tests/
 ### 切片 4 —— 历史保留、维护指南与真实壳层验证
 
 范围：
-- 补齐 `promotion-update-guide.md`，指导后续新增活动、结束活动、归档和规则修订
+- 补齐 `doc/promotion-update-guide.md`，指导后续新增活动、结束活动、归档和规则修订
 - 在 quickstart 中固化更新后验证流程
 - 用真实 Tauri 壳层检查默认副行和完整浮层在窄面板中的稳定性
 - 确认中英文下都不会因第二行信息过长而导致明显视觉抖动或重叠
 
 主要文件：
-- `specs/013-promotion-status/promotion-update-guide.md`
+- `doc/promotion-update-guide.md`
 - `specs/013-promotion-status/quickstart.md`
 - `tests/e2e/tray-panel.spec.mjs`
 - `tests/e2e/screenshot-review.mjs`

@@ -75,7 +75,7 @@
 - [X] T018 [US2] Expand `/Users/chasewang/01workspace/projects/ai-usage/src/features/promotions/catalog.ts` with explicit current/history entries, lifecycle metadata, source labels, and review timestamps
 - [X] T019 [US2] Extend `/Users/chasewang/01workspace/projects/ai-usage/src/features/promotions/types.ts` with retention-oriented constraints for versioned campaign history and popover-ready display decisions
 - [X] T020 [US2] Update `/Users/chasewang/01workspace/projects/ai-usage/src/features/promotions/resolver.ts` so only active campaigns affect current UI while ended/archived campaigns remain queryable in the catalog
-- [X] T021 [US2] Write and align the maintenance flow in `/Users/chasewang/01workspace/projects/ai-usage/specs/013-promotion-status/promotion-update-guide.md` and `/Users/chasewang/01workspace/projects/ai-usage/specs/013-promotion-status/quickstart.md`, covering catalog location, field definitions, add/end/archive/versioning rules, time-zone validation, two-line detail verification, and required test or screenshot checks
+- [X] T021 [US2] Write and align the maintenance flow in `/Users/chasewang/01workspace/projects/ai-usage/doc/promotion-update-guide.md` and `/Users/chasewang/01workspace/projects/ai-usage/specs/013-promotion-status/quickstart.md`, covering catalog location, field definitions, add/end/archive/versioning rules, time-zone validation, two-line detail verification, and required test or screenshot checks
 
 **Checkpoint**: User Stories 1 and 2 should both work independently
 
@@ -107,7 +107,7 @@
 
 - [X] T027 [P] Add screenshot regression coverage for focused capsules, hover/focus preview, click-pinned popover, two-line detail blocks, and close behavior in `/Users/chasewang/01workspace/projects/ai-usage/tests/e2e/screenshot-review.mjs`
 - [X] T028 [P] Add real-Tauri interaction coverage for hover/focus preview, click-to-pin, outside-click / `Esc` close, no-overlap header behavior, and detail-line readability in `/Users/chasewang/01workspace/projects/ai-usage/tests/e2e/tray-panel.spec.mjs`
-- [X] T029 Run the validation flow documented in `/Users/chasewang/01workspace/projects/ai-usage/specs/013-promotion-status/quickstart.md` and `/Users/chasewang/01workspace/projects/ai-usage/specs/013-promotion-status/promotion-update-guide.md`, then reconcile any visual or copy drift in `/Users/chasewang/01workspace/projects/ai-usage/src/app/shell/AppShell.tsx`, `/Users/chasewang/01workspace/projects/ai-usage/src/components/panel/PromotionStatusLine.tsx`, `/Users/chasewang/01workspace/projects/ai-usage/src/app/shared/i18n.ts`, and `/Users/chasewang/01workspace/projects/ai-usage/src/styles/globals.css`
+- [X] T029 Run the validation flow documented in `/Users/chasewang/01workspace/projects/ai-usage/specs/013-promotion-status/quickstart.md` and `/Users/chasewang/01workspace/projects/ai-usage/doc/promotion-update-guide.md`, then reconcile any visual or copy drift in `/Users/chasewang/01workspace/projects/ai-usage/src/app/shell/AppShell.tsx`, `/Users/chasewang/01workspace/projects/ai-usage/src/components/panel/PromotionStatusLine.tsx`, `/Users/chasewang/01workspace/projects/ai-usage/src/app/shared/i18n.ts`, and `/Users/chasewang/01workspace/projects/ai-usage/src/styles/globals.css`
 
 ---
 

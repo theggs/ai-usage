@@ -60,8 +60,13 @@ src/                          React frontend
 src-tauri/                    Rust backend and Tauri shell
 tests/                        E2E and integration tests
 screenshots/                  UI reference screenshots
+doc/                          Engineering notes and maintenance guides
 specs/                        Feature specs and planning artifacts
 ```
+
+Documentation notes:
+
+- Promotion campaign maintenance is documented in [doc/promotion-update-guide.md](./doc/promotion-update-guide.md)
 
 Useful commands:
 
@@ -80,9 +85,34 @@ npm run tauri:build   # Desktop production build
 
 - Codex data is read from the local logged-in Codex CLI session.
 - Claude Code data depends on local Claude Code credentials being available on the machine.
+- Promotion campaign maintenance is documented in [doc/promotion-update-guide.md](./doc/promotion-update-guide.md).
 - The frontend renders normalized payloads returned by the host layer rather than parsing raw CLI output directly.
 - The host prefers `codex app-server` plus `account/rateLimits/read` for live Codex limits.
 - `AI_USAGE_CODEX_STATUS_TEXT` and `AI_USAGE_CODEX_STATUS_FILE` exist only as test or debug fallbacks.
+
+## Development Workflow
+
+Each feature is developed through a spec-driven workflow managed by
+[Spec Kit](https://github.com/github/spec-kit). The process runs in order:
+
+1. **Constitution** — governing principles in `.specify/memory/constitution.md`
+   define non-negotiable boundaries for security, contracts, testing, and
+   truthful state handling. Every feature plan is checked against these before
+   implementation starts.
+2. **Spec** — user scenarios, acceptance criteria, and edge cases written before
+   any code is touched.
+3. **Contract** — host-to-UI command boundaries, payload shapes, and error
+   contracts defined per feature so layers stay decoupled.
+4. **Plan** — technical approach and architecture decisions, including an
+   explicit constitution check.
+5. **Tasks** — implementation broken into steps small enough for an AI coding
+   agent to execute without losing context.
+6. **Implement** — code written against the spec and contract, followed by
+   real-runtime verification for any UI or tray behavior.
+
+Planning artifacts for each feature live in `specs/<feature-id>/`. The
+constitution and workflow constraints are the primary mechanism for keeping
+AI-generated output consistent across sessions and models.
 
 ## Testing
 

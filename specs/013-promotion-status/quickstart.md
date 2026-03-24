@@ -93,7 +93,7 @@ npm run test:e2e:screenshots
 
 ## 维护文档
 
-- 实施完成后，需补充 [promotion-update-guide.md](./promotion-update-guide.md)
+- 实施完成后，需补充 [promotion-update-guide.md](/Users/chasewang/01workspace/projects/ai-usage/doc/promotion-update-guide.md)
 - 该指南至少应覆盖：
   - 活动目录位置与维护入口
   - 活动关键字段与更新时间含义
