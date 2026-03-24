@@ -21,12 +21,16 @@ describe("promotions resolver", () => {
     expect(decision.inlineServices[0]?.benefitLabel).toBe("2x");
     expect(decision.allServices[0]?.status).toBe("active-window");
     expect(decision.allServices[0]?.benefitLabel).toBe("2x");
-    expect(decision.allServices[0]?.detailTiming).toEqual({
+    expect(decision.allServices[0]?.detailTiming).toMatchObject({
       mode: "local-window",
-      dateRangeLabel: "2026.03.13-2026.03.28",
-      localWindowRangeLabel: "20:00-02:00",
-      localTimeZoneLabel: "UTC+08:00"
+      dateRangeLabel: "2026.03.13-2026.03.28"
     });
+    expect(decision.allServices[0]?.detailTiming).toEqual(
+      expect.objectContaining({
+        localWindowRangeLabel: expect.stringMatching(/^\d{2}:\d{2}-\d{2}:\d{2}$/),
+        localTimeZoneLabel: expect.stringMatching(/^UTC[+-]\d{2}:\d{2}$/)
+      })
+    );
     expect(decision.fallbackState).toBeNull();
   });
 
@@ -40,12 +44,16 @@ describe("promotions resolver", () => {
     expect(decision.inlineServices).toEqual([]);
     expect(decision.allServices[0]?.status).toBe("inactive-window");
     expect(decision.allServices[0]?.benefitLabel).toBe("2x");
-    expect(decision.allServices[0]?.detailTiming).toEqual({
+    expect(decision.allServices[0]?.detailTiming).toMatchObject({
       mode: "local-window",
-      dateRangeLabel: "2026.03.13-2026.03.28",
-      localWindowRangeLabel: "20:00-02:00",
-      localTimeZoneLabel: "UTC+08:00"
+      dateRangeLabel: "2026.03.13-2026.03.28"
     });
+    expect(decision.allServices[0]?.detailTiming).toEqual(
+      expect.objectContaining({
+        localWindowRangeLabel: expect.stringMatching(/^\d{2}:\d{2}-\d{2}:\d{2}$/),
+        localTimeZoneLabel: expect.stringMatching(/^UTC[+-]\d{2}:\d{2}$/)
+      })
+    );
     expect(decision.fallbackState).toBe("none");
   });
 

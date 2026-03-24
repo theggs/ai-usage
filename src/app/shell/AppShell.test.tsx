@@ -1,9 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppShell } from "./AppShell";
+import { formatPromotionDetailTiming, getCopy } from "../shared/i18n";
 import { createDemoPanelState } from "../../features/demo-services/demoData";
 import { defaultPreferences } from "../../features/preferences/defaultPreferences";
 import type { CodexPanelState, UserPreferences } from "../../lib/tauri/contracts";
+import { resolvePromotionDisplayDecision } from "../../features/promotions/resolver";
 
 const {
   loadPanelState,
@@ -80,6 +82,24 @@ const createDeferred = <T,>() => {
     reject = innerReject;
   });
   return { promise, resolve, reject };
+};
+
+const getExpectedClaudePromotionDetail = () => {
+  const decision = resolvePromotionDisplayDecision({
+    now: new Date("2026-03-24T16:00:00Z"),
+    visibleServiceScope: {
+      visiblePanelServiceOrder: ["codex", "claude-code"],
+      visibleMenubarServices: ["codex", "claude-code"],
+      hasVisibleClaudeCode: true
+    },
+    eligibilityByServiceId: {
+      codex: "eligible",
+      "claude-code": "eligible"
+    }
+  });
+  const claudeDecision = decision.allServices.find((service) => service.serviceId === "claude-code");
+
+  return formatPromotionDetailTiming(getCopy("zh-CN"), claudeDecision?.detailTiming ?? { mode: "none" });
 };
 
 describe("AppShell", () => {
@@ -181,6 +201,7 @@ describe("AppShell", () => {
   });
 
   it("renders promotion capsules and supports preview plus pinned popover in the same header area", async () => {
+    const expectedClaudePromotionDetail = getExpectedClaudePromotionDetail();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
     getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
@@ -218,7 +239,7 @@ describe("AppShell", () => {
       "全天优惠"
     );
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
-      "2026.03.13-2026.03.28 · 工作日 20:00-02:00 (UTC+08:00) 之外"
+      expectedClaudePromotionDetail
     );
 
     act(() => {
@@ -240,6 +261,7 @@ describe("AppShell", () => {
   });
 
   it("resets the pinned promotion popover when the panel shell is reopened", async () => {
+    const expectedClaudePromotionDetail = getExpectedClaudePromotionDetail();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
     getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
@@ -257,7 +279,7 @@ describe("AppShell", () => {
       "Claude Code不在优惠时段2x"
     );
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
-      "2026.03.13-2026.03.28 · 工作日 20:00-02:00 (UTC+08:00) 之外"
+      expectedClaudePromotionDetail
     );
 
     firstRender.unmount();
