@@ -17,12 +17,21 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, State};
 
+const MIN_CLAUDE_REFRESH_COOLDOWN_SECS: u64 = 60;
+
 fn now_iso() -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
     format!("{now}")
+}
+
+fn now_unix_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +128,25 @@ fn load_from_snapshot_cache(
     } else {
         None
     }
+}
+
+fn is_claude_code_usage_enabled(preferences: &UserPreferences) -> bool {
+    preferences.claude_code_usage_enabled
+}
+
+fn parse_refresh_timestamp(value: &str) -> Option<u64> {
+    value.parse::<u64>().ok()
+}
+
+fn claude_refresh_cooldown_hit() -> bool {
+    read_snapshot_cache()
+        .services
+        .get("claude-code")
+        .and_then(|state| parse_refresh_timestamp(&state.last_successful_refresh_at))
+        .map(|last_success| {
+            now_unix_secs().saturating_sub(last_success) < MIN_CLAUDE_REFRESH_COOLDOWN_SECS
+        })
+        .unwrap_or(false)
 }
 
 fn normalize_summary_mode(summary_mode: &str) -> String {
@@ -252,24 +280,25 @@ pub fn build_tray_items(
         result.items
     };
 
-    let claude_items = if let Some(cached) =
-        load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
-    {
-        let dims: Vec<_> = cached
-            .items
-            .iter()
-            .flat_map(|item| item.quota_dimensions.clone())
-            .collect();
-        seed_claude_code_stale_cache(dims);
-        cached.items
-    } else {
-        let result = build_claude_code_panel_state(preferences, refreshed_at);
-        save_to_snapshot_cache("claude-code", &result);
-        result.items
-    };
-
     let mut items = codex_items;
-    items.extend(claude_items);
+    if is_claude_code_usage_enabled(preferences) {
+        let claude_items = if let Some(cached) =
+            load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
+        {
+            let dims: Vec<_> = cached
+                .items
+                .iter()
+                .flat_map(|item| item.quota_dimensions.clone())
+                .collect();
+            seed_claude_code_stale_cache(dims);
+            cached.items
+        } else {
+            let result = build_claude_code_panel_state(preferences, refreshed_at);
+            save_to_snapshot_cache("claude-code", &result);
+            result.items
+        };
+        items.extend(claude_items);
+    }
     items
 }
 
@@ -308,6 +337,45 @@ fn build_claude_code_panel_state(
         preferences,
         refreshed_at,
         ClaudeCodeRefreshKind::Automatic,
+    )
+}
+
+fn empty_claude_code_panel_state(
+    preferences: &UserPreferences,
+    refreshed_at: &str,
+    status_message: &str,
+) -> CodexPanelState {
+    CodexPanelState {
+        desktop_surface: DesktopSurfaceState {
+            platform: if cfg!(target_os = "macos") {
+                "macos".into()
+            } else {
+                "windows".into()
+            },
+            icon_state: "attention".into(),
+            summary_mode: normalize_summary_mode(&preferences.tray_summary_mode),
+            summary_text: None,
+            panel_visible: false,
+            last_opened_at: None,
+        },
+        items: Vec::new(),
+        configured_account_count: 0,
+        enabled_account_count: 0,
+        snapshot_state: "empty".into(),
+        status_message: status_message.into(),
+        active_session: None,
+        last_successful_refresh_at: refreshed_at.into(),
+    }
+}
+
+fn claude_code_disabled_panel_state(
+    preferences: &UserPreferences,
+    refreshed_at: &str,
+) -> CodexPanelState {
+    empty_claude_code_panel_state(
+        preferences,
+        refreshed_at,
+        "Claude Code usage query is disabled.",
     )
 }
 
@@ -396,8 +464,21 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
             Some(onboarding_dismissed_at)
         };
     }
+    if let Some(claude_code_usage_enabled) = patch.claude_code_usage_enabled {
+        current.claude_code_usage_enabled = claude_code_usage_enabled;
+    }
+    if let Some(claude_code_disclosure_dismissed_at) =
+        patch.claude_code_disclosure_dismissed_at
+    {
+        current.claude_code_disclosure_dismissed_at =
+            if claude_code_disclosure_dismissed_at.trim().is_empty() {
+                None
+            } else {
+                Some(claude_code_disclosure_dismissed_at)
+            };
+    }
     current.last_saved_at = now_iso();
-    current
+    crate::state::normalize_preferences(current)
 }
 
 fn persist_accounts(accounts: &[CodexAccount]) {
@@ -573,6 +654,9 @@ pub fn set_autostart(app: AppHandle, state: State<'_, AppState>, enabled: bool) 
 #[tauri::command]
 pub fn get_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
+    if !is_claude_code_usage_enabled(&preferences) {
+        return claude_code_disabled_panel_state(&preferences, &now_iso());
+    }
     if let Some(cached) =
         load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
     {
@@ -597,6 +681,23 @@ pub fn refresh_claude_code_panel_state(
     state: State<'_, AppState>,
 ) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
+    if !is_claude_code_usage_enabled(&preferences) {
+        let result = claude_code_disabled_panel_state(&preferences, &now_iso());
+        let accounts = state.codex_accounts.lock().unwrap().clone();
+        let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
+        apply_display_mode(&app, &preferences, &items);
+        return result;
+    }
+    if claude_refresh_cooldown_hit() {
+        if let Some(cached) =
+            load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
+        {
+            let accounts = state.codex_accounts.lock().unwrap().clone();
+            let items = build_tray_items(&preferences, &accounts, &cached.last_successful_refresh_at);
+            apply_display_mode(&app, &preferences, &items);
+            return cached;
+        }
+    }
     let result = build_claude_code_panel_state_with_kind(
         &preferences,
         &now_iso(),
@@ -758,12 +859,56 @@ mod tests {
         save_to_snapshot_cache("codex", &codex_state);
         save_to_snapshot_cache("claude-code", &claude_state);
 
-        let preferences = crate::state::default_preferences();
+        let mut preferences = crate::state::default_preferences();
+        preferences.claude_code_usage_enabled = true;
         let items = build_tray_items(&preferences, &[], &refreshed_at);
 
         assert_eq!(items.len(), 2);
         assert!(items.iter().any(|item| item.service_id == "codex"));
         assert!(items.iter().any(|item| item.service_id == "claude-code"));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn build_tray_items_hides_claude_when_usage_disabled() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-tray-disabled-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        let refreshed_at = now_iso();
+        save_to_snapshot_cache("codex", &make_panel_state("codex", &refreshed_at));
+        save_to_snapshot_cache("claude-code", &make_panel_state("claude-code", &refreshed_at));
+
+        let mut preferences = crate::state::default_preferences();
+        preferences.claude_code_usage_enabled = false;
+        let items = build_tray_items(&preferences, &[], &refreshed_at);
+
+        assert_eq!(items.len(), 1);
+        assert!(items.iter().all(|item| item.service_id != "claude-code"));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn claude_refresh_cooldown_hits_recent_cached_result() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-cooldown-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        save_to_snapshot_cache("claude-code", &make_panel_state("claude-code", &now_iso()));
+
+        assert!(claude_refresh_cooldown_hit());
 
         let _ = std::fs::remove_dir_all(&tmp);
         env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");

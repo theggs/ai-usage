@@ -4,6 +4,7 @@
 - Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh (009-ui-ux-polish)
 - Local preferences persistence via existing `save_preferences` / `preferencesStore`; no new storage layer (009-ui-ux-polish)
 - Existing local preferences persistence via `save_preferences` / `preferencesStore`, plus existing snapshot cache; no new storage layer (010-ui-ux-completion)
+- 现有 `preferences.json` 与 `snapshot-cache.json` 本地持久化；不新增存储层 (012-claude-code-usage-query-disclosure)
 
 - **Runtime**: Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS (via nvm, see `.nvmrc`)
 - **Framework**: Tauri 2 (tauri-build 2.0.0) + React 19
@@ -90,8 +91,9 @@ Rules:
 - 005-claude-code-support: Claude Code quota display, menubar service selection, panel display order
 
 ## Recent Changes
+- 012-claude-code-usage-query-disclosure: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
+- 012-claude-code-usage-query-disclosure: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
 - 010-ui-ux-completion: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
-- 009-ui-ux-polish: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
 
 ## Spec-Kit Workflow Constraints
 

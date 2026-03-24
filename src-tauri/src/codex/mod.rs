@@ -641,6 +641,7 @@ pub fn load_preferences() -> crate::state::UserPreferences {
     fs::read_to_string(path)
         .ok()
         .and_then(|contents| serde_json::from_str::<crate::state::UserPreferences>(&contents).ok())
+        .map(crate::state::normalize_preferences)
         .unwrap_or_else(crate::state::default_preferences)
 }
 

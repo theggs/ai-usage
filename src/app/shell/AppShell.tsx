@@ -17,7 +17,12 @@ import type {
   PreferencePatch,
   UserPreferences
 } from "../../lib/tauri/contracts";
-import { formatTraySummary, getPanelHealthSummary } from "../../lib/tauri/summary";
+import {
+  formatTraySummary,
+  getPanelHealthSummary,
+  getVisibleServiceScope,
+  markPanelStateRefreshing
+} from "../../lib/tauri/summary";
 
 const RefreshIcon = () => (
   <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
@@ -68,6 +73,7 @@ export const AppShell = () => {
   const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isClaudeCodeRefreshing, setIsClaudeCodeRefreshing] = useState(false);
   const [isE2EMode, setIsE2EMode] = useState(false);
   const [refreshFeedback, setRefreshFeedback] = useState<"idle" | "error">("idle");
   const [settingsHeaderStatus, setSettingsHeaderStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -80,12 +86,12 @@ export const AppShell = () => {
   useEffect(() => {
     void (async () => {
       try {
-        const [panel, claudeCodePanel, prefs, runtimeFlags] = await Promise.all([
+        const [panel, prefs, runtimeFlags] = await Promise.all([
           loadPanelState(),
-          loadClaudeCodePanelState(),
           getPreferences(),
           tauriClient.getRuntimeFlags()
         ]);
+        const claudeCodePanel = prefs.claudeCodeUsageEnabled ? await loadClaudeCodePanelState() : null;
         setPanelState(panel);
         lastStablePanelState.current = panel;
         setClaudeCodePanelState(claudeCodePanel);
@@ -154,29 +160,58 @@ export const AppShell = () => {
     setIsRefreshing(true);
     setError(null);
     try {
+      const shouldRefreshClaudeCode = preferences?.claudeCodeUsageEnabled ?? false;
+      if (shouldRefreshClaudeCode) {
+        setIsClaudeCodeRefreshing(true);
+        setClaudeCodePanelState((current) => markPanelStateRefreshing(current));
+      }
+
       const [nextPanel, nextClaudeCodePanel] = await Promise.all([
         refreshPanelState(),
-        manual ? refreshClaudeCodePanelState() : loadClaudeCodePanelState()
+        shouldRefreshClaudeCode
+          ? manual
+            ? refreshClaudeCodePanelState()
+            : loadClaudeCodePanelState()
+          : Promise.resolve(claudeCodePanelState)
       ]);
       setPanelState(nextPanel);
       lastStablePanelState.current = nextPanel;
-      setClaudeCodePanelState(nextClaudeCodePanel);
+      if (shouldRefreshClaudeCode) {
+        setClaudeCodePanelState(nextClaudeCodePanel);
+      }
     } catch (refreshError) {
       setRefreshFeedback("error");
       window.setTimeout(() => setRefreshFeedback("idle"), 1000);
       setError(refreshError instanceof Error ? refreshError.message : "Refresh failed");
     } finally {
+      setIsClaudeCodeRefreshing(false);
       setIsRefreshing(false);
     }
   };
 
   const savePreferences = async (patch: PreferencePatch) => {
+    const previousPreferences = preferences;
     return runSettingsMutation(
       async () => {
         const nextPreferences = await persistPreferences(patch);
         let nextClaudeCodePanel: CodexPanelState | null | undefined;
-        if ("networkProxyMode" in patch || "networkProxyUrl" in patch) {
+        const enablingClaudeCode =
+          !!nextPreferences.claudeCodeUsageEnabled && !previousPreferences?.claudeCodeUsageEnabled;
+        const refreshingClaudeCode =
+          nextPreferences.claudeCodeUsageEnabled &&
+          (enablingClaudeCode || "networkProxyMode" in patch || "networkProxyUrl" in patch);
+
+        if (refreshingClaudeCode) {
+          setIsRefreshing(true);
+          setIsClaudeCodeRefreshing(true);
+          const seedState =
+            claudeCodePanelState ??
+            (await loadClaudeCodePanelState());
+          setClaudeCodePanelState(markPanelStateRefreshing(seedState));
           nextClaudeCodePanel = await refreshClaudeCodePanelState();
+        }
+        if (!nextPreferences.claudeCodeUsageEnabled) {
+          setIsClaudeCodeRefreshing(false);
         }
         return { nextPreferences, nextClaudeCodePanel };
       },
@@ -199,7 +234,12 @@ export const AppShell = () => {
         );
       },
       "Save failed"
-    ).then((result) => result?.nextPreferences ?? null);
+    )
+      .then((result) => result?.nextPreferences ?? null)
+      .finally(() => {
+        setIsRefreshing(false);
+        setIsClaudeCodeRefreshing(false);
+      });
   };
 
   const sendTestNotification = async () => {
@@ -224,7 +264,8 @@ export const AppShell = () => {
 
   const copy = getCopy(preferences?.language ?? "zh-CN");
   const visiblePanelState = panelState ?? lastStablePanelState.current;
-  const serviceOrder = preferences?.serviceOrder ?? ["codex", "claude-code"];
+  const visibleServiceScope = getVisibleServiceScope(preferences);
+  const serviceOrder = visibleServiceScope.visiblePanelServiceOrder;
   const stateByServiceId: Record<string, CodexPanelState | null> = {
     codex: visiblePanelState,
     "claude-code": claudeCodePanelState
@@ -281,6 +322,7 @@ export const AppShell = () => {
         currentView,
         isLoading,
         isRefreshing,
+        isClaudeCodeRefreshing,
         isE2EMode,
         error,
         refreshPanel,

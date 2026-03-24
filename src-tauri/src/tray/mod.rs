@@ -40,9 +40,17 @@ fn items_for_menubar_service(
     preferences: &UserPreferences,
     items: &[PanelPlaceholderItem],
 ) -> Vec<PanelPlaceholderItem> {
+    let active_service = if !preferences.claude_code_usage_enabled
+        && preferences.menubar_service == "claude-code"
+    {
+        "codex"
+    } else {
+        preferences.menubar_service.as_str()
+    };
+
     items
         .iter()
-        .filter(|item| item.service_id == preferences.menubar_service)
+        .filter(|item| item.service_id == active_service)
         .cloned()
         .collect()
 }
@@ -378,7 +386,13 @@ pub fn apply_display_mode(
         let service_name = filtered
             .first()
             .map(|item| item.service_name.as_str())
-            .unwrap_or_else(|| match preferences.menubar_service.as_str() {
+            .unwrap_or_else(|| match if !preferences.claude_code_usage_enabled
+                && preferences.menubar_service == "claude-code"
+            {
+                "codex"
+            } else {
+                preferences.menubar_service.as_str()
+            } {
                 "claude-code" => "Claude Code",
                 _ => "Codex",
             });
@@ -578,6 +592,7 @@ mod tests {
 
         // When menubar_service is "claude-code", summary reflects Claude Code only.
         let mut prefs = crate::state::default_preferences();
+        prefs.claude_code_usage_enabled = true;
         prefs.menubar_service = "claude-code".into();
         let filtered = items_for_menubar_service(&prefs, &items);
         assert_eq!(
@@ -601,6 +616,7 @@ mod tests {
 
         // menubar_service doesn't match any item → empty filtered list → None summary.
         let mut prefs = crate::state::default_preferences();
+        prefs.claude_code_usage_enabled = true;
         prefs.menubar_service = "claude-code".into();
         let filtered = items_for_menubar_service(&prefs, &items);
         assert_eq!(format_summary("lowest-remaining", &filtered), None);
@@ -613,6 +629,7 @@ mod tests {
             item_for_service("claude-code", "Claude Code / 5h", 28),
         ];
         let mut prefs = crate::state::default_preferences();
+        prefs.claude_code_usage_enabled = true;
         prefs.menubar_service = "claude-code".into();
 
         let filtered = items_for_menubar_service(&prefs, &items);
@@ -621,6 +638,25 @@ mod tests {
             format_summary("lowest-remaining", &filtered),
             Some("28%".into())
         );
+    }
+
+    #[test]
+    fn disabled_claude_menubar_selection_falls_back_to_codex() {
+        let items = [
+            item_for_service("codex", "Codex / 5h", 72),
+            item_for_service("claude-code", "Claude Code / 5h", 28),
+        ];
+        let mut prefs = crate::state::default_preferences();
+        prefs.claude_code_usage_enabled = false;
+        prefs.menubar_service = "claude-code".into();
+
+        let filtered = items_for_menubar_service(&prefs, &items);
+
+        assert_eq!(
+            format_summary("lowest-remaining", &filtered),
+            Some("72%".into())
+        );
+        assert!(filtered.iter().all(|item| item.service_id == "codex"));
     }
 
     #[test]

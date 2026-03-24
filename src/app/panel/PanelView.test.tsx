@@ -11,12 +11,14 @@ const createState = (panelState: CodexPanelState = createDemoPanelState()): AppS
   claudeCodePanelState: null,
   preferences: {
     ...defaultPreferences,
+    claudeCodeUsageEnabled: true,
     onboardingDismissedAt: new Date().toISOString()
   },
   notificationResult: null,
   currentView: "panel",
   isLoading: false,
   isRefreshing: false,
+  isClaudeCodeRefreshing: false,
   isE2EMode: false,
   error: null,
   refreshPanel: vi.fn(async () => {}),
@@ -118,6 +120,7 @@ describe("PanelView", () => {
     };
     state.preferences = {
       ...defaultPreferences,
+      claudeCodeUsageEnabled: true,
       serviceOrder: ["codex", "claude-code"]
     };
 
@@ -143,6 +146,7 @@ describe("PanelView", () => {
     });
     state.preferences = {
       ...defaultPreferences,
+      claudeCodeUsageEnabled: false,
       onboardingDismissedAt: undefined
     };
     state.claudeCodePanelState = {
@@ -159,7 +163,148 @@ describe("PanelView", () => {
     );
 
     expect(screen.getByText("先连接第一个 AI 服务")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code 查询")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "前往设置" }).length).toBeGreaterThan(0);
+  });
+
+  it("dismisses the Claude disclosure card independently from the generic onboarding card", async () => {
+    const savePreferences = vi.fn(async () => ({
+      ...defaultPreferences,
+      onboardingDismissedAt: undefined,
+      claudeCodeDisclosureDismissedAt: new Date().toISOString()
+    }));
+    const state = createState({
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty"
+    });
+    state.preferences = {
+      ...defaultPreferences,
+      claudeCodeUsageEnabled: false,
+      onboardingDismissedAt: undefined,
+      claudeCodeDisclosureDismissedAt: undefined
+    };
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty",
+      statusMessage: "No Claude Code credentials"
+    };
+    state.savePreferences = savePreferences;
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "我知道了" }));
+
+    expect(savePreferences).toHaveBeenCalledWith(
+      expect.objectContaining({ claudeCodeDisclosureDismissedAt: expect.any(String) })
+    );
+    expect(screen.getByText("先连接第一个 AI 服务")).toBeInTheDocument();
+  });
+
+  it("renders the Claude disclosure card with English copy when the shell language is English", () => {
+    const state = createState({
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty"
+    });
+    state.preferences = {
+      ...defaultPreferences,
+      language: "en-US",
+      claudeCodeUsageEnabled: false,
+      onboardingDismissedAt: undefined,
+      claudeCodeDisclosureDismissedAt: undefined
+    };
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty",
+      statusMessage: "No Claude Code credentials"
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByText("Claude Code query")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "I understand" })).toBeInTheDocument();
+  });
+
+  it("shows a dedicated Claude refreshing placeholder when enabled without visible quota yet", () => {
+    const state = createState({
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty"
+    });
+    state.preferences = {
+      ...defaultPreferences,
+      onboardingDismissedAt: new Date().toISOString(),
+      claudeCodeUsageEnabled: true
+    };
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      items: [],
+      snapshotState: "empty",
+      statusMessage: "No Claude Code credentials"
+    };
+    state.isClaudeCodeRefreshing = true;
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByText("正在查询 Claude Code 额度")).toBeInTheDocument();
+  });
+
+  it("keeps cached Claude Code cards hidden after the usage query is disabled", () => {
+    const now = new Date().toISOString();
+    const state = createState({
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "codex",
+          serviceName: "Codex",
+          lastSuccessfulRefreshAt: now
+        }
+      ]
+    });
+    state.preferences = {
+      ...defaultPreferences,
+      claudeCodeUsageEnabled: false,
+      onboardingDismissedAt: new Date().toISOString()
+    };
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      snapshotState: "stale",
+      statusMessage: "Cached Claude Code quota.",
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "claude-code",
+          serviceName: "Claude Code",
+          iconKey: "claude-code",
+          lastSuccessfulRefreshAt: now
+        }
+      ]
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByRole("heading", { name: "Codex" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Claude Code" })).not.toBeInTheDocument();
   });
 
   it("renders full-height accent strips only for warning and danger cards", () => {
@@ -225,6 +370,7 @@ describe("PanelView", () => {
     });
     state.preferences = {
       ...defaultPreferences,
+      claudeCodeUsageEnabled: true,
       onboardingDismissedAt: new Date().toISOString()
     };
     state.claudeCodePanelState = {

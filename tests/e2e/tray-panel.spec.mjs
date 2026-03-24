@@ -59,7 +59,16 @@ function panelState({ serviceId, serviceName, snapshotState, statusMessage, dime
   };
 }
 
-function createScenarioEnv({ onboardingDismissedAt, codexState, claudeState }) {
+function createScenarioEnv({
+  language = "zh-CN",
+  menubarService = "codex",
+  serviceOrder = ["codex", "claude-code"],
+  onboardingDismissedAt,
+  claudeCodeUsageEnabled = false,
+  claudeCodeDisclosureDismissedAt,
+  codexState,
+  claudeState
+}) {
   const dir = mkdtempSync(join(tmpdir(), "aiusage-e2e-"));
   const preferencesFile = join(dir, "preferences.json");
   const snapshotFile = join(dir, "snapshot-cache.json");
@@ -68,17 +77,19 @@ function createScenarioEnv({ onboardingDismissedAt, codexState, claudeState }) {
     preferencesFile,
     JSON.stringify(
       {
-        language: "zh-CN",
+        language,
         refreshIntervalMinutes: 15,
         traySummaryMode: "lowest-remaining",
         autostartEnabled: false,
         notificationTestEnabled: true,
         lastSavedAt: new Date(0).toISOString(),
-        menubarService: "codex",
-        serviceOrder: ["codex", "claude-code"],
+        menubarService,
+        serviceOrder,
         networkProxyMode: "system",
         networkProxyUrl: "",
-        onboardingDismissedAt
+        onboardingDismissedAt,
+        claudeCodeUsageEnabled,
+        claudeCodeDisclosureDismissedAt
       },
       null,
       2
@@ -115,7 +126,11 @@ function createRefreshScenarioEnv({
   language = "en-US",
   menubarService = "codex",
   serviceOrder = ["codex", "claude-code"],
-  statusText
+  claudeCodeUsageEnabled = false,
+  statusText,
+  claudeSnapshotState = "empty",
+  claudeStatusText = "No Claude Code credentials",
+  claudeDimensions = []
 }) {
   const dir = mkdtempSync(join(tmpdir(), "aiusage-e2e-refresh-"));
   const preferencesFile = join(dir, "preferences.json");
@@ -137,7 +152,9 @@ function createRefreshScenarioEnv({
         serviceOrder,
         networkProxyMode: "system",
         networkProxyUrl: "",
-        onboardingDismissedAt: new Date().toISOString()
+        onboardingDismissedAt: new Date().toISOString(),
+        claudeCodeUsageEnabled,
+        claudeCodeDisclosureDismissedAt: new Date().toISOString()
       },
       null,
       2
@@ -168,9 +185,9 @@ function createRefreshScenarioEnv({
           "claude-code": panelState({
             serviceId: "claude-code",
             serviceName: "Claude Code",
-            snapshotState: "empty",
-            statusMessage: "No Claude Code credentials",
-            dimensions: []
+            snapshotState: claudeSnapshotState,
+            statusMessage: claudeStatusText,
+            dimensions: claudeDimensions
           })
         }
       },
@@ -355,6 +372,50 @@ async function run() {
       scenario = null;
     });
 
+    await test("Claude Code disclosure can be dismissed independently in the native shell", async () => {
+      await shutdown(ctx);
+      scenario = createScenarioEnv({
+        onboardingDismissedAt: undefined,
+        claudeCodeDisclosureDismissedAt: undefined,
+        codexState: panelState({
+          serviceId: "codex",
+          serviceName: "Codex",
+          snapshotState: "empty",
+          statusMessage: "No Codex session",
+          dimensions: []
+        }),
+        claudeState: panelState({
+          serviceId: "claude-code",
+          serviceName: "Claude Code",
+          snapshotState: "empty",
+          statusMessage: "No Claude Code credentials",
+          dimensions: []
+        })
+      });
+      ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
+      await sleep(1200);
+
+      const dismissed = await clickAnyButton(["我知道了", "I understand"], ctx);
+      assert.ok(dismissed, "should be able to dismiss the Claude disclosure card");
+
+      await pollFor(() => {
+        const preferences = readJson(scenario.preferencesFile);
+        assert.ok(
+          typeof preferences.claudeCodeDisclosureDismissedAt === "string" &&
+            preferences.claudeCodeDisclosureDismissedAt.length > 0,
+          "disclosure dismissal should persist to preferences"
+        );
+        assert.ok(
+          preferences.onboardingDismissedAt == null,
+          "dismissing the Claude card should not dismiss the generic onboarding card"
+        );
+        return preferences;
+      }, "Claude disclosure dismissal should persist");
+
+      scenario.cleanup();
+      scenario = null;
+    });
+
     await test("warning and danger text labels render in the native shell", async () => {
       await shutdown(ctx);
       scenario = createScenarioEnv({
@@ -399,11 +460,126 @@ async function run() {
       scenario = null;
     });
 
+    await test("disabled Claude Code falls back to Codex in the tray even if Claude was selected", async () => {
+      await shutdown(ctx);
+      scenario = createRefreshScenarioEnv({
+        language: "zh-CN",
+        menubarService: "claude-code",
+        claudeCodeUsageEnabled: false,
+        statusText: "Codex / 5h: 64% remaining (Resets in 2h)"
+      });
+      ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
+
+      await pollFor(() => {
+        const trayState = readJson(scenario.trayStateFile);
+        assert.equal(trayState.title, "71%");
+        assert.equal(trayState.tooltip, "AIUsage · Codex · 71%");
+        return trayState;
+      }, "tray should fall back to Codex when Claude usage is disabled");
+
+      scenario.cleanup();
+      scenario = null;
+    });
+
+    await test("enabled Claude Code can be selected as the tray service", async () => {
+      await shutdown(ctx);
+      scenario = createRefreshScenarioEnv({
+        language: "zh-CN",
+        menubarService: "claude-code",
+        claudeCodeUsageEnabled: true,
+        statusText: "Codex / 5h: 64% remaining (Resets in 2h)",
+        claudeSnapshotState: "fresh",
+        claudeStatusText: "Live Claude Code limits available.",
+        claudeDimensions: [
+          {
+            label: "CLAUDE CODE / WEEK",
+            remainingPercent: 44,
+            remainingAbsolute: "44% remaining",
+            resetHint: "Resets in 3d",
+            status: "warning",
+            progressTone: "warning"
+          }
+        ]
+      });
+      ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
+
+      await pollFor(() => {
+        const trayState = readJson(scenario.trayStateFile);
+        assert.equal(trayState.title, "44%");
+        assert.equal(trayState.tooltip, "AIUsage · Claude Code · 44%");
+        return trayState;
+      }, "tray should follow Claude Code when it is enabled and selected");
+
+      scenario.cleanup();
+      scenario = null;
+    });
+
+    await test("settings persists the Claude Code usage toggle directly", async () => {
+      await shutdown(ctx);
+      scenario = createScenarioEnv({
+        onboardingDismissedAt: new Date().toISOString(),
+        claudeCodeUsageEnabled: false,
+        claudeCodeDisclosureDismissedAt: new Date().toISOString(),
+        codexState: panelState({
+          serviceId: "codex",
+          serviceName: "Codex",
+          snapshotState: "fresh",
+          statusMessage: "Live Codex limits available.",
+          dimensions: [
+            {
+              label: "CODEX / 5H",
+              remainingPercent: 71,
+              remainingAbsolute: "71% remaining",
+              resetHint: "Resets in 2h",
+              status: "healthy",
+              progressTone: "success"
+            }
+          ]
+        }),
+        claudeState: panelState({
+          serviceId: "claude-code",
+          serviceName: "Claude Code",
+          snapshotState: "empty",
+          statusMessage: "No Claude Code credentials",
+          dimensions: []
+        })
+      });
+      ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
+
+      const settingsClicked =
+        (await clickAnyButton(["设置", "Settings"], ctx)) ||
+        (await clickWindowPoint(314, 86, ctx));
+      assert.ok(settingsClicked, "should be able to open settings");
+      await sleep(600);
+      await screenshot(ctx, "test-settings-claude-usage-group.png");
+
+      const toggleClicked = await clickAnyButton(
+        ["E2E Toggle Claude Code Usage", "启用 Claude Code 用度查询", "Enable Claude Code usage query"],
+        ctx
+      )
+        || (await clickWindowPoint(290, 554, ctx))
+        || (await clickWindowPoint(268, 554, ctx))
+        || (await clickWindowPoint(246, 554, ctx))
+        || (await clickWindowPoint(290, 522, ctx))
+        || (await clickWindowPoint(268, 522, ctx));
+      assert.ok(toggleClicked, "should be able to toggle Claude Code usage in settings");
+
+      await pollFor(() => {
+        const preferences = readJson(scenario.preferencesFile);
+        assert.equal(preferences.claudeCodeUsageEnabled, true);
+        return preferences;
+      }, "Claude Code usage toggle should persist directly");
+
+      scenario.cleanup();
+      scenario = null;
+    });
+
     await test("pointer reordering persists service order in the native shell", async () => {
       await shutdown(ctx);
       scenario = createRefreshScenarioEnv({
         language: "en-US",
         serviceOrder: ["codex", "claude-code"],
+        claudeCodeUsageEnabled: true,
         statusText: "Codex / 5h: 64% remaining (Resets in 2h)"
       });
       ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });

@@ -35,6 +35,7 @@ const normalizeNetworkProxyMode = (
 };
 
 const KNOWN_SERVICE_IDS = ["codex", "claude-code"] as const;
+const DEFAULT_MENUBAR_SERVICE = "codex";
 
 const normalizeServiceOrder = (value: string[] | undefined, current: UserPreferences["serviceOrder"]) => {
   const next = (value ?? current).filter((serviceId): serviceId is string => KNOWN_SERVICE_IDS.includes(serviceId as typeof KNOWN_SERVICE_IDS[number]));
@@ -45,6 +46,27 @@ const normalizeServiceOrder = (value: string[] | undefined, current: UserPrefere
     }
   }
   return deduped;
+};
+
+const normalizeMenubarService = (
+  value: string | undefined,
+  serviceOrder: UserPreferences["serviceOrder"],
+  claudeCodeUsageEnabled: boolean
+) => {
+  const candidate =
+    value && KNOWN_SERVICE_IDS.includes(value as typeof KNOWN_SERVICE_IDS[number])
+      ? value
+      : DEFAULT_MENUBAR_SERVICE;
+
+  if (!claudeCodeUsageEnabled && candidate === "claude-code") {
+    return DEFAULT_MENUBAR_SERVICE;
+  }
+
+  if (serviceOrder.includes(candidate)) {
+    return candidate;
+  }
+
+  return serviceOrder[0] ?? DEFAULT_MENUBAR_SERVICE;
 };
 
 export const normalizePreferences = (
@@ -66,12 +88,21 @@ export const normalizePreferences = (
     networkProxyUrl: (patch.networkProxyUrl ?? current.networkProxyUrl ?? "").trim(),
     serviceOrder: normalizeServiceOrder(patch.serviceOrder, current.serviceOrder),
     onboardingDismissedAt: patch.onboardingDismissedAt ?? current.onboardingDismissedAt,
+    claudeCodeUsageEnabled: patch.claudeCodeUsageEnabled ?? current.claudeCodeUsageEnabled,
+    claudeCodeDisclosureDismissedAt:
+      patch.claudeCodeDisclosureDismissedAt ?? current.claudeCodeDisclosureDismissedAt,
     refreshIntervalMinutes: Math.max(
       MIN_REFRESH_INTERVAL,
       patch.refreshIntervalMinutes ?? current.refreshIntervalMinutes
     ),
     lastSavedAt: new Date().toISOString()
   };
+
+  next.menubarService = normalizeMenubarService(
+    patch.menubarService ?? current.menubarService,
+    next.serviceOrder,
+    next.claudeCodeUsageEnabled
+  );
 
   if (!["zh-CN", "en-US"].includes(next.language)) {
     throw new Error("Unsupported language");

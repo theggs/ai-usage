@@ -102,7 +102,7 @@ function findWindowId(retries = 10, delayMs = 500) {
 
 function captureWindow(windowId, outputPath) {
   const captureBin = resolve(__dirname, ".capture-window");
-  execSync(`"${captureBin}" ${windowId} "${outputPath}"`, { timeout: 10000 });
+  execSync(`"${captureBin}" ${windowId} "${outputPath}"`, { timeout: 20000 });
 }
 
 function refreshWindowInfo(ctx) {

@@ -11,5 +11,7 @@ export const defaultPreferences: UserPreferences = {
   serviceOrder: ["codex", "claude-code"],
   networkProxyMode: "system",
   networkProxyUrl: "",
-  onboardingDismissedAt: undefined
+  onboardingDismissedAt: undefined,
+  claudeCodeUsageEnabled: false,
+  claudeCodeDisclosureDismissedAt: undefined
 };

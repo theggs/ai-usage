@@ -30,6 +30,9 @@ declare global {
 }
 
 const hasTauriRuntime = () => typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+const MOCK_CLAUDE_REFRESH_COOLDOWN_MS = 60_000;
+let mockClaudeLastSuccessAt = 0;
+let mockClaudePanelState: CodexPanelState | null = null;
 
 const withSummary = (panelState: CodexPanelState, preferences: UserPreferences): CodexPanelState => {
   return {
@@ -39,6 +42,38 @@ const withSummary = (panelState: CodexPanelState, preferences: UserPreferences):
       summaryMode: preferences.traySummaryMode,
       summaryText: formatTraySummary(preferences.traySummaryMode, panelState.items)
     }
+  };
+};
+
+const createDisabledClaudePanelState = (preferences: UserPreferences): CodexPanelState => ({
+  desktopSurface: {
+    platform: "macos",
+    iconState: "attention",
+    summaryMode: preferences.traySummaryMode,
+    summaryText: undefined,
+    panelVisible: false,
+    lastOpenedAt: undefined
+  },
+  items: [],
+  configuredAccountCount: 0,
+  enabledAccountCount: 0,
+  snapshotState: "empty",
+  statusMessage: "Claude Code usage query is disabled.",
+  activeSession: undefined,
+  lastSuccessfulRefreshAt: String(Math.floor(Date.now() / 1000))
+});
+
+const createMockClaudePanelState = (preferences: UserPreferences): CodexPanelState => {
+  const demo = createDemoPanelState(preferences.traySummaryMode);
+  return {
+    ...demo,
+    items: demo.items.map((item) => ({
+      ...item,
+      serviceId: "claude-code",
+      serviceName: "Claude Code",
+      iconKey: "claude-code"
+    })),
+    statusMessage: "Live Claude Code quota available."
   };
 };
 
@@ -62,7 +97,21 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
     case "get_claude_code_panel_state":
     case "refresh_claude_code_panel_state": {
       const preferences = loadPreferences();
-      return createDemoPanelState(preferences.traySummaryMode) as T;
+      if (!preferences.claudeCodeUsageEnabled) {
+        return createDisabledClaudePanelState(preferences) as T;
+      }
+
+      if (
+        command === "refresh_claude_code_panel_state" &&
+        mockClaudePanelState &&
+        Date.now() - mockClaudeLastSuccessAt < MOCK_CLAUDE_REFRESH_COOLDOWN_MS
+      ) {
+        return mockClaudePanelState as T;
+      }
+
+      mockClaudePanelState = createMockClaudePanelState(preferences);
+      mockClaudeLastSuccessAt = Date.now();
+      return mockClaudePanelState as T;
     }
     case "get_codex_accounts":
       return loadCodexAccounts() as T;

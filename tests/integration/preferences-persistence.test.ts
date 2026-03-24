@@ -19,7 +19,9 @@ describe("preferences persistence", () => {
       serviceOrder: ["claude-code", "codex", "claude-code", "unknown-service"],
       networkProxyMode: "manual",
       networkProxyUrl: "http://127.0.0.1:7890",
-      onboardingDismissedAt: "2026-03-23T00:00:00.000Z"
+      onboardingDismissedAt: "2026-03-23T00:00:00.000Z",
+      claudeCodeUsageEnabled: true,
+      claudeCodeDisclosureDismissedAt: "2026-03-22T00:00:00.000Z"
     });
     const loaded = loadPreferences();
 
@@ -30,6 +32,9 @@ describe("preferences persistence", () => {
     expect(loaded.networkProxyMode).toBe("manual");
     expect(loaded.networkProxyUrl).toBe("http://127.0.0.1:7890");
     expect(loaded.onboardingDismissedAt).toBe("2026-03-23T00:00:00.000Z");
+    expect(saved.claudeCodeUsageEnabled).toBe(true);
+    expect(loaded.claudeCodeUsageEnabled).toBe(true);
+    expect(loaded.claudeCodeDisclosureDismissedAt).toBe("2026-03-22T00:00:00.000Z");
   });
 
   it("defaults onboardingDismissedAt when loading a legacy preference payload", () => {
@@ -46,6 +51,8 @@ describe("preferences persistence", () => {
     const loaded = loadPreferences();
 
     expect(loaded.onboardingDismissedAt).toBeUndefined();
+    expect(loaded.claudeCodeUsageEnabled).toBe(false);
+    expect(loaded.claudeCodeDisclosureDismissedAt).toBeUndefined();
     expect(loaded.serviceOrder).toEqual(["codex", "claude-code"]);
   });
 

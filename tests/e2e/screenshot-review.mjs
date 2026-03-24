@@ -28,7 +28,14 @@ import { launchApp, screenshot, clickAnyButton, clickWindowPoint, shutdown } fro
 
 const nowSeconds = () => String(Math.floor(Date.now() / 1000));
 
-function createScenarioFiles({ language = "zh-CN", onboardingDismissedAt, codexState, claudeState }) {
+function createScenarioFiles({
+  language = "zh-CN",
+  onboardingDismissedAt,
+  claudeCodeUsageEnabled = false,
+  claudeCodeDisclosureDismissedAt,
+  codexState,
+  claudeState
+}) {
   const dir = mkdtempSync(join(tmpdir(), "aiusage-e2e-"));
   const preferencesFile = join(dir, "preferences.json");
   const snapshotFile = join(dir, "snapshot-cache.json");
@@ -47,7 +54,9 @@ function createScenarioFiles({ language = "zh-CN", onboardingDismissedAt, codexS
         serviceOrder: ["codex", "claude-code"],
         networkProxyMode: "system",
         networkProxyUrl: "",
-        onboardingDismissedAt
+        onboardingDismissedAt,
+        claudeCodeUsageEnabled,
+        claudeCodeDisclosureDismissedAt
       },
       null,
       2
@@ -115,11 +124,48 @@ async function run() {
   let ctx;
   let scenario;
   try {
-    ctx = await launchApp();
+    scenario = createScenarioFiles({
+      onboardingDismissedAt: new Date().toISOString(),
+      claudeCodeUsageEnabled: true,
+      claudeCodeDisclosureDismissedAt: new Date().toISOString(),
+      codexState: panelState({
+        serviceId: "codex",
+        serviceName: "Codex",
+        snapshotState: "fresh",
+        statusMessage: "Live Codex limits available.",
+        dimensions: [
+          {
+            label: "CODEX / 5H",
+            remainingPercent: 71,
+            remainingAbsolute: "71% remaining",
+            resetHint: "Resets in 2h",
+            status: "healthy",
+            progressTone: "success"
+          }
+        ]
+      }),
+      claudeState: panelState({
+        serviceId: "claude-code",
+        serviceName: "Claude Code",
+        snapshotState: "fresh",
+        statusMessage: "Live Claude Code limits available.",
+        dimensions: [
+          {
+            label: "CLAUDE CODE / WEEK",
+            remainingPercent: 44,
+            remainingAbsolute: "44% remaining",
+            resetHint: "Resets in 3d",
+            status: "warning",
+            progressTone: "warning"
+          }
+        ]
+      })
+    });
+    ctx = await launchApp({ env: scenario.env });
 
     // --- Panel view ---
     console.log("\n[screenshots] Panel view...");
-    await sleep(2000); // Wait for real data fetch
+    await sleep(1400);
     await screenshot(ctx, "panel-health-summary.png");
 
     // --- Settings view ---
@@ -130,9 +176,10 @@ async function run() {
     if (!clicked) {
       throw new Error("Could not click settings button");
     }
-    await sleep(800);
+    await sleep(1400);
     await screenshot(ctx, "settings-grouped-top.png");
     await screenshot(ctx, "settings-grouped-rhythm.png");
+    await screenshot(ctx, "settings-claude-usage-group.png");
 
     // --- Back to panel ---
     console.log("[screenshots] Going back to panel...");
@@ -142,8 +189,11 @@ async function run() {
     if (!backClicked) {
       throw new Error("Could not click back button");
     }
-    await sleep(500);
+    await sleep(900);
     await screenshot(ctx, "panel-returned.png");
+    await shutdown(ctx);
+    scenario.cleanup();
+    scenario = null;
 
     console.log("\n[screenshots] Done! View with: open tests/e2e/screenshots/");
 

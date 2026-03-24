@@ -69,6 +69,8 @@ export interface UserPreferences {
   networkProxyMode: "system" | "manual" | "off";
   networkProxyUrl: string;
   onboardingDismissedAt?: string;
+  claudeCodeUsageEnabled: boolean;
+  claudeCodeDisclosureDismissedAt?: string;
 }
 
 export interface PreferencePatch {
@@ -82,6 +84,8 @@ export interface PreferencePatch {
   networkProxyMode?: UserPreferences["networkProxyMode"];
   networkProxyUrl?: string;
   onboardingDismissedAt?: string;
+  claudeCodeUsageEnabled?: boolean;
+  claudeCodeDisclosureDismissedAt?: string;
 }
 
 export interface ServiceStatusCard {

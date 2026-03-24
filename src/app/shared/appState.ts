@@ -14,6 +14,7 @@ export interface AppStateValue {
   currentView: "panel" | "settings";
   isLoading: boolean;
   isRefreshing: boolean;
+  isClaudeCodeRefreshing: boolean;
   isE2EMode: boolean;
   error: string | null;
   refreshPanel: (manual?: boolean) => Promise<void>;

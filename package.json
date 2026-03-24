@@ -19,6 +19,7 @@
     "lint": "tsc --noEmit",
     "verify:build-stability": "node scripts/ci/verify-build-stability.mjs",
     "tauri:dev": "tauri dev",
+    "tauri:dev:onboarding": "node scripts/dev/run-onboarding-scenario.mjs",
     "tauri:build": "tauri build"
   },
   "dependencies": {

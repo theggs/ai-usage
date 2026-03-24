@@ -1,10 +1,12 @@
 import type {
   CodexLimitStatus,
+  CodexPanelState,
   PanelPlaceholderItem,
   QuotaDimension,
   QuotaProgressTone,
   ServiceStatusCard,
-  SummaryMode
+  SummaryMode,
+  UserPreferences
 } from "./contracts";
 
 export type ServiceAlertLevel = "normal" | "warning" | "danger";
@@ -24,6 +26,46 @@ export interface TrayVisualState {
   tooltipText: string;
   severity: "normal" | "warning" | "danger" | "empty";
 }
+
+export interface VisibleServiceScope {
+  visiblePanelServiceOrder: string[];
+  visibleMenubarServices: string[];
+  hasVisibleClaudeCode: boolean;
+}
+
+const SERVICE_IDS = ["codex", "claude-code"] as const;
+
+export const getVisibleServiceScope = (
+  preferences?: Pick<UserPreferences, "serviceOrder" | "claudeCodeUsageEnabled"> | null
+): VisibleServiceScope => {
+  const serviceOrder = preferences?.serviceOrder?.length ? preferences.serviceOrder : [...SERVICE_IDS];
+  const visiblePanelServiceOrder = preferences?.claudeCodeUsageEnabled
+    ? serviceOrder
+    : serviceOrder.filter((serviceId) => serviceId !== "claude-code");
+
+  return {
+    visiblePanelServiceOrder,
+    visibleMenubarServices: visiblePanelServiceOrder,
+    hasVisibleClaudeCode: visiblePanelServiceOrder.includes("claude-code")
+  };
+};
+
+export const markPanelStateRefreshing = (
+  panelState: CodexPanelState | null
+): CodexPanelState | null => {
+  if (!panelState) {
+    return null;
+  }
+
+  return {
+    ...panelState,
+    items: panelState.items.map((item) => ({
+      ...item,
+      badgeLabel: "Refreshing",
+      statusLabel: "refreshing"
+    }))
+  };
+};
 
 export const getQuotaStatus = (remainingPercent?: number): CodexLimitStatus => {
   if (remainingPercent === undefined) {

@@ -25,6 +25,16 @@ fn default_onboarding_dismissed_at() -> Option<String> {
     None
 }
 
+fn default_claude_code_usage_enabled() -> bool {
+    false
+}
+
+fn default_claude_code_disclosure_dismissed_at() -> Option<String> {
+    None
+}
+
+const KNOWN_SERVICE_IDS: [&str; 2] = ["codex", "claude-code"];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaDimension {
@@ -106,6 +116,10 @@ pub struct UserPreferences {
     pub network_proxy_url: String,
     #[serde(default = "default_onboarding_dismissed_at")]
     pub onboarding_dismissed_at: Option<String>,
+    #[serde(default = "default_claude_code_usage_enabled")]
+    pub claude_code_usage_enabled: bool,
+    #[serde(default = "default_claude_code_disclosure_dismissed_at")]
+    pub claude_code_disclosure_dismissed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,6 +136,8 @@ pub struct PreferencePatch {
     pub network_proxy_mode: Option<String>,
     pub network_proxy_url: Option<String>,
     pub onboarding_dismissed_at: Option<String>,
+    pub claude_code_usage_enabled: Option<bool>,
+    pub claude_code_disclosure_dismissed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,7 +171,7 @@ pub struct CodexAccountDraft {
 }
 
 pub fn default_preferences() -> UserPreferences {
-    UserPreferences {
+    normalize_preferences(UserPreferences {
         language: "zh-CN".into(),
         refresh_interval_minutes: 15,
         tray_summary_mode: "lowest-remaining".into(),
@@ -167,7 +183,46 @@ pub fn default_preferences() -> UserPreferences {
         network_proxy_mode: default_network_proxy_mode(),
         network_proxy_url: default_network_proxy_url(),
         onboarding_dismissed_at: default_onboarding_dismissed_at(),
+        claude_code_usage_enabled: default_claude_code_usage_enabled(),
+        claude_code_disclosure_dismissed_at: default_claude_code_disclosure_dismissed_at(),
+    })
+}
+
+fn normalize_service_order(service_order: Vec<String>) -> Vec<String> {
+    let mut normalized = service_order
+        .into_iter()
+        .filter(|service_id| KNOWN_SERVICE_IDS.contains(&service_id.as_str()))
+        .fold(Vec::new(), |mut acc, service_id| {
+            if !acc.contains(&service_id) {
+                acc.push(service_id);
+            }
+            acc
+        });
+
+    for service_id in KNOWN_SERVICE_IDS {
+        if !normalized.iter().any(|existing| existing == service_id) {
+            normalized.push(service_id.into());
+        }
     }
+
+    normalized
+}
+
+pub fn normalize_preferences(mut preferences: UserPreferences) -> UserPreferences {
+    preferences.refresh_interval_minutes = preferences.refresh_interval_minutes.max(5);
+    preferences.service_order = normalize_service_order(preferences.service_order);
+
+    if !preferences.claude_code_usage_enabled
+        && preferences.menubar_service == "claude-code"
+    {
+        preferences.menubar_service = "codex".into();
+    }
+
+    if !KNOWN_SERVICE_IDS.contains(&preferences.menubar_service.as_str()) {
+        preferences.menubar_service = "codex".into();
+    }
+
+    preferences
 }
 
 pub struct AppState {
@@ -186,7 +241,7 @@ impl Default for AppState {
 
 #[cfg(test)]
 mod tests {
-    use super::UserPreferences;
+    use super::{normalize_preferences, UserPreferences};
 
     // T022: Backward-compatibility gate — existing preference files without
     // the new fields must deserialize cleanly and pick up defaults.
@@ -211,7 +266,32 @@ mod tests {
         assert_eq!(prefs.network_proxy_mode, "system");
         assert_eq!(prefs.network_proxy_url, "");
         assert_eq!(prefs.onboarding_dismissed_at, None);
+        assert!(!prefs.claude_code_usage_enabled);
+        assert_eq!(prefs.claude_code_disclosure_dismissed_at, None);
         assert_eq!(prefs.refresh_interval_minutes, 20);
         assert_eq!(prefs.tray_summary_mode, "window-5h");
+    }
+
+    #[test]
+    fn normalizes_disabled_claude_menubar_selection() {
+        let prefs = normalize_preferences(UserPreferences {
+            language: "zh-CN".into(),
+            refresh_interval_minutes: 1,
+            tray_summary_mode: "lowest-remaining".into(),
+            autostart_enabled: false,
+            notification_test_enabled: true,
+            last_saved_at: "2025-01-01T00:00:00.000Z".into(),
+            menubar_service: "claude-code".into(),
+            service_order: vec!["unknown".into(), "claude-code".into()],
+            network_proxy_mode: "system".into(),
+            network_proxy_url: String::new(),
+            onboarding_dismissed_at: None,
+            claude_code_usage_enabled: false,
+            claude_code_disclosure_dismissed_at: None,
+        });
+
+        assert_eq!(prefs.menubar_service, "codex");
+        assert_eq!(prefs.service_order, vec!["claude-code", "codex"]);
+        assert_eq!(prefs.refresh_interval_minutes, 5);
     }
 }

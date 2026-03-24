@@ -91,6 +91,17 @@ export type CopyTree = {
   networkProxyUrl: string;
   networkProxyUrlHint: string;
   networkProxyUrlInvalid: string;
+  claudeCodeUsageInfoTitle: string;
+  claudeCodeUsageInfoBody: string;
+  claudeCodeUsageEyebrow: string;
+  claudeCodeUsageEnabledLabel: string;
+  claudeCodeUsageEnabledAriaLabel: string;
+  claudeCodeUsageEnabledHint: string;
+  claudeCodeUsageDisclosureTitle: string;
+  claudeCodeUsageDisclosureBody: string;
+  claudeCodeUsageDisclosureButton: string;
+  claudeCodeUsageRefreshingTitle: string;
+  claudeCodeUsageRefreshingBody: string;
   claudeCodeAccessPaused: string;
   claudeCodeProxyInvalid: string;
   claudeCodeRateLimited: string;
@@ -205,6 +216,19 @@ const baseCopy: CopyTree = {
   networkProxyUrl: "Proxy URL",
   networkProxyUrlHint: "Use a full URL such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080",
   networkProxyUrlInvalid: "Enter a full proxy URL before saving.",
+  claudeCodeUsageInfoTitle: "Claude Code query",
+  claudeCodeUsageInfoBody:
+    "The app uses the Claude Code credential already available on this device.\nThat credential is only used to query quota status from Claude official APIs.\nThe app will not store or modify that credential, or proactively send it to AIUsage or other non-official endpoints.",
+  claudeCodeUsageEyebrow: "Claude Code query",
+  claudeCodeUsageEnabledLabel: "Enable",
+  claudeCodeUsageEnabledAriaLabel: "Enable Claude Code query",
+  claudeCodeUsageEnabledHint: "",
+  claudeCodeUsageDisclosureTitle: "Claude Code query",
+  claudeCodeUsageDisclosureBody:
+    "The app uses the Claude Code credential already available on this device.\nThat credential is only used to query quota status from Claude official APIs.\nThe app will not store or modify that credential, or proactively send it to AIUsage or other non-official endpoints.",
+  claudeCodeUsageDisclosureButton: "I understand",
+  claudeCodeUsageRefreshingTitle: "Querying Claude Code quota",
+  claudeCodeUsageRefreshingBody: "AIUsage is using your local Claude Code credential to refresh quota status.",
   claudeCodeAccessPaused: "Claude Code access was denied. Automatic refresh is paused until you retry manually or update proxy settings.",
   claudeCodeProxyInvalid: "Proxy configuration is invalid. Use a full proxy URL or switch back to system proxy detection.",
   claudeCodeRateLimited: "Claude Code rate limited the request. Automatic refresh is paused for now; try a manual refresh later.",
@@ -320,6 +344,19 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     networkProxyUrl: "代理地址",
     networkProxyUrlHint: "请输入完整 URL，例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080",
     networkProxyUrlInvalid: "请先填写完整代理 URL 再保存。",
+    claudeCodeUsageInfoTitle: "Claude Code 查询",
+    claudeCodeUsageInfoBody:
+      "程序会使用本机现有的 Claude Code 登录凭证。\nClaude Code 登录凭证仅用于向 Claude 官方接口查询额度状态。\n程序不会存储或修改该凭证，也不会主动将其发送到 AIUsage 或其他非官方接口。",
+    claudeCodeUsageEyebrow: "Claude Code 查询",
+    claudeCodeUsageEnabledLabel: "启用",
+    claudeCodeUsageEnabledAriaLabel: "启用 Claude Code 查询",
+    claudeCodeUsageEnabledHint: "",
+    claudeCodeUsageDisclosureTitle: "Claude Code 查询",
+    claudeCodeUsageDisclosureBody:
+      "程序会使用本机现有的 Claude Code 登录凭证。\nClaude Code 登录凭证仅用于向 Claude 官方接口查询额度状态。\n程序不会存储或修改该凭证，也不会主动将其发送到 AIUsage 或其他非官方接口。",
+    claudeCodeUsageDisclosureButton: "我知道了",
+    claudeCodeUsageRefreshingTitle: "正在查询 Claude Code 额度",
+    claudeCodeUsageRefreshingBody: "AIUsage 正在使用你本机现有的 Claude Code 登录凭证刷新额度状态。",
     claudeCodeAccessPaused: "Claude Code 访问被拒绝，已暂停自动刷新。请手动重试或更新代理设置后再继续。",
     claudeCodeProxyInvalid: "代理配置无效。请填写完整代理 URL，或切回系统代理检测。",
     claudeCodeRateLimited: "Claude Code 请求已被限流，当前已暂停自动刷新；请稍后再手动重试。",

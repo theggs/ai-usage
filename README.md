@@ -1,29 +1,127 @@
 # AIUsage
 
-AIUsage is a cross-platform tray-first desktop shell for tracking AI service quota usage. The current iteration focuses on a host-normalized Codex usage-limits panel and truthful disconnected/failed states driven by the local Codex CLI instead of synthetic demo quota data.
+AIUsage is a tray-first desktop app for checking AI CLI quota usage.
 
-## Local Development
+## Features
 
-1. Run `nvm install` and `nvm use` to enter the project Node.js 20 environment.
-2. Install Rust stable.
-3. Run `npm install`.
-4. Install the Codex CLI and complete `codex login` in your local shell.
-5. Run `npm run dev` for the frontend shell.
-6. Run `npm run tauri:dev` for the desktop runtime when Tauri dependencies are available.
-7. Optional test-only fallback: export `AI_USAGE_CODEX_STATUS_TEXT` or `AI_USAGE_CODEX_STATUS_FILE` only when you need to simulate host snapshots without a local CLI.
+- Check Codex and Claude Code quota status from one desktop panel
+- Review remaining quota, reset timing, and severity at a glance
+- Keep the app in the tray or menu bar instead of a full desktop window
+- Refresh service status on demand
+- Customize tray summary behavior, panel order, language, autostart, refresh interval, and proxy settings
+- See clear disconnected or missing-session states when a service is unavailable
 
-## Validation
+## Get the App
 
-- `npm test`
-- `npx tsc --noEmit`
-- `npm run test:e2e`
-- `cargo test --manifest-path src-tauri/Cargo.toml`
-- `npm run tauri:build`
-- `npm run verify:build-stability ./artifacts/build-metadata/*.json` after collecting three successful CI metadata files
+Download a prebuilt desktop package from the [GitHub Releases page](https://github.com/theggs/ai-usage/releases).
 
-## Codex Validation Notes
+## Screenshots
 
-- The frontend renders only normalized host payloads; it does not execute or parse Codex CLI output directly.
-- The host now prefers `codex app-server` plus `account/rateLimits/read` to fetch live limits from the local logged-in Codex session.
-- The settings page explains local Codex CLI sync status and no longer asks users to enter account credentials manually.
-- `AI_USAGE_CODEX_STATUS_TEXT` and `AI_USAGE_CODEX_STATUS_FILE` are test/debug fallback only; they are no longer the normal validation path.
+Quota panel:
+
+![AIUsage quota panel](./screenshots/panel-en.png)
+
+Settings:
+
+![AIUsage settings](./screenshots/setting-en.png)
+
+## Usage
+
+- Open the tray or menu bar panel to inspect the current service status
+- Review remaining quota, reset timing, and severity for each supported service
+- Open Settings to adjust tray summary behavior, service order, language, autostart, refresh interval, and proxy settings
+- Refresh the panel when you want to sync with the latest local CLI state
+
+For live data, make sure the relevant local CLI is installed and already signed in on your machine.
+
+## Claude Code Query Notice
+
+AIUsage reads the Claude Code credential already available on your device and uses it only to query quota status from Claude official APIs.
+
+AIUsage will not store, modify, or manage that credential, or proactively send it to AIUsage services or other non-official endpoints.
+
+Some regions may require a network proxy to retrieve Claude Code quota information. The app automatically detects and uses available proxy settings.
+
+## Development
+
+Build from source only if you want to contribute, test, or run the project locally during development.
+
+Requirements:
+
+- Node.js 20 LTS (`.nvmrc` is set to `20`)
+- Rust stable toolchain
+- A local Codex CLI installation with an active `codex login` session
+- Tauri desktop build prerequisites for your platform
+
+Project structure:
+
+```text
+src/                          React frontend
+src-tauri/                    Rust backend and Tauri shell
+tests/                        E2E and integration tests
+screenshots/                  UI reference screenshots
+specs/                        Feature specs and planning artifacts
+```
+
+Useful commands:
+
+```bash
+nvm install
+nvm use
+npm install
+npm run dev           # Vite frontend
+npm run tauri:dev     # Tauri desktop app
+npm run tauri:dev:onboarding  # Tauri app in first-run onboarding mode
+npm run build         # Frontend production build
+npm run tauri:build   # Desktop production build
+```
+
+## Architecture Notes
+
+- Codex data is read from the local logged-in Codex CLI session.
+- Claude Code data depends on local Claude Code credentials being available on the machine.
+- The frontend renders normalized payloads returned by the host layer rather than parsing raw CLI output directly.
+- The host prefers `codex app-server` plus `account/rateLimits/read` for live Codex limits.
+- `AI_USAGE_CODEX_STATUS_TEXT` and `AI_USAGE_CODEX_STATUS_FILE` exist only as test or debug fallbacks.
+
+## Testing
+
+Run the main validation commands:
+
+```bash
+npm test
+npm run lint
+npm run test:e2e
+cargo test --manifest-path src-tauri/Cargo.toml
+npm run tauri:build
+```
+
+Additional desktop verification commands:
+
+```bash
+npm run test:e2e:tauri
+npm run test:e2e:screenshots
+npm run verify:build-stability ./artifacts/build-metadata/*.json
+```
+
+The screenshot and Tauri-specific end-to-end checks are especially important for UI or tray behavior because desktop interaction details cannot be validated by JSDOM alone.
+
+## Troubleshooting
+
+- If Codex data is unavailable, run `codex login` again in your shell.
+- If Claude Code data is unavailable, verify that Claude Code is installed and signed in on the machine.
+- If `npm run tauri:dev` fails on a fresh machine, verify the native prerequisites required by Tauri for your operating system.
+
+## Contributing
+
+Contributions are welcome. For substantial changes, open an issue first so the implementation approach can be aligned before work starts.
+
+Before submitting a pull request:
+
+- Run the relevant test commands from the `Testing` section
+- Keep commit messages in the `type: lowercase description` format
+- Preserve real-runtime verification for desktop UI changes instead of relying only on unit tests
+
+## License
+
+This project is licensed under the Apache License 2.0. See [LICENSE](./LICENSE) for details.

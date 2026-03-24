@@ -8,16 +8,21 @@ import { defaultPreferences } from "../../features/preferences/defaultPreference
 const createState = (overrides: Partial<AppStateValue> = {}): AppStateValue => ({
   panelState: createDemoPanelState(),
   claudeCodePanelState: null,
-  preferences: defaultPreferences,
+  preferences: {
+    ...defaultPreferences,
+    claudeCodeUsageEnabled: true
+  },
   notificationResult: null,
   currentView: "settings",
   isLoading: false,
   isRefreshing: false,
+  isClaudeCodeRefreshing: false,
   isE2EMode: false,
   error: null,
   refreshPanel: vi.fn(async () => {}),
   savePreferences: vi.fn(async (patch) => ({
     ...defaultPreferences,
+    claudeCodeUsageEnabled: true,
     ...patch,
     lastSavedAt: new Date().toISOString()
   })),
@@ -29,6 +34,7 @@ const createState = (overrides: Partial<AppStateValue> = {}): AppStateValue => (
   })),
   setAutostart: vi.fn(async (enabled) => ({
     ...defaultPreferences,
+    claudeCodeUsageEnabled: true,
     autostartEnabled: enabled,
     lastSavedAt: new Date().toISOString()
   })),
@@ -48,7 +54,7 @@ const renderSettings = (overrides: Partial<AppStateValue> = {}) => {
 };
 
 describe("SettingsView", () => {
-  it("renders all seven settings inside a single card without section headings", () => {
+  it("renders the main settings card and a separate Claude Code query card", () => {
     renderSettings();
 
     expect(screen.queryByText("显示")).not.toBeInTheDocument();
@@ -63,9 +69,15 @@ describe("SettingsView", () => {
     expect(screen.getByRole("switch", { name: "开机自启" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "刷新间隔" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "代理模式" })).toBeInTheDocument();
+    expect(screen.getByText("Claude Code 查询")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "启用 Claude Code 查询" })).toBeInTheDocument();
 
-    const surface = screen.getByRole("combobox", { name: "托盘摘要规则" }).closest(".settings-surface");
-    expect(surface).toBeInTheDocument();
+    const surfaces = document.querySelectorAll(".settings-surface");
+    expect(surfaces).toHaveLength(2);
+    expect(screen.getByRole("combobox", { name: "托盘摘要规则" }).closest(".settings-surface")).toBe(
+      surfaces[0]
+    );
+    expect(screen.getByText("Claude Code 查询").closest(".settings-surface")).toBe(surfaces[1]);
   });
 
   it("keeps standard settings rows in an inline two-column layout at shell width", () => {
@@ -144,7 +156,7 @@ describe("SettingsView", () => {
     const setAutostart = vi.fn().mockResolvedValueOnce(null);
     renderSettings({ setAutostart });
 
-    const toggle = screen.getByRole("switch");
+    const toggle = screen.getByRole("switch", { name: "开机自启" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
 
     await userEvent.click(toggle);
@@ -157,6 +169,7 @@ describe("SettingsView", () => {
     renderSettings({
       preferences: {
         ...defaultPreferences,
+        claudeCodeUsageEnabled: false,
         serviceOrder: ["codex"]
       }
     });
@@ -169,9 +182,70 @@ describe("SettingsView", () => {
     expect(wrapContainer?.className).toContain("flex-nowrap");
   });
 
+  it("hides Claude Code from menubar and panel order settings when usage is disabled", () => {
+    renderSettings({
+      preferences: {
+        ...defaultPreferences,
+        claudeCodeUsageEnabled: false
+      }
+    });
+
+    expect(screen.queryByRole("option", { name: "Claude Code" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Claude Code")).not.toBeInTheDocument();
+  });
+
+  it("shows Claude Code options again when usage is enabled", () => {
+    renderSettings({
+      preferences: {
+        ...defaultPreferences,
+        claudeCodeUsageEnabled: true
+      }
+    });
+
+    expect(screen.getByRole("option", { name: "Claude Code" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Claude Code")).toBeInTheDocument();
+  });
+
+  it("saves the Claude Code usage toggle directly without a confirm step", async () => {
+    const savePreferences = vi.fn(async (patch) => ({
+      ...defaultPreferences,
+      ...patch,
+      lastSavedAt: new Date().toISOString()
+    }));
+    renderSettings({
+      savePreferences,
+      preferences: {
+        ...defaultPreferences,
+        claudeCodeUsageEnabled: false
+      }
+    });
+
+    await userEvent.click(screen.getByRole("switch", { name: "启用 Claude Code 查询" }));
+
+    await waitFor(() =>
+      expect(savePreferences).toHaveBeenCalledWith(
+        expect.objectContaining({ claudeCodeUsageEnabled: true })
+      )
+    );
+  });
+
+  it("renders the Claude Code disclosure row and toggle in English", () => {
+    renderSettings({
+      preferences: {
+        ...defaultPreferences,
+        language: "en-US",
+        claudeCodeUsageEnabled: false
+      }
+    });
+
+    expect(screen.getByText("Claude Code query")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Enable Claude Code query" })).toBeInTheDocument();
+  });
+
   it("persists pointer reordering immediately", async () => {
     const savePreferences = vi.fn().mockResolvedValue({
       ...defaultPreferences,
+      claudeCodeUsageEnabled: true,
       serviceOrder: ["claude-code", "codex"],
       lastSavedAt: new Date().toISOString()
     });
@@ -180,6 +254,7 @@ describe("SettingsView", () => {
       savePreferences,
       preferences: {
         ...defaultPreferences,
+        claudeCodeUsageEnabled: true,
         serviceOrder: ["codex", "claude-code"]
       }
     });
@@ -201,6 +276,7 @@ describe("SettingsView", () => {
     renderSettings({
       preferences: {
         ...defaultPreferences,
+        claudeCodeUsageEnabled: true,
         serviceOrder: ["codex", "claude-code"]
       }
     });
@@ -220,6 +296,7 @@ describe("SettingsView", () => {
     renderSettings({
       preferences: {
         ...defaultPreferences,
+        claudeCodeUsageEnabled: true,
         serviceOrder: ["codex", "claude-code"]
       }
     });
@@ -236,6 +313,7 @@ describe("SettingsView", () => {
     renderSettings({
       preferences: {
         ...defaultPreferences,
+        claudeCodeUsageEnabled: true,
         serviceOrder: ["codex", "claude-code"]
       }
     });
@@ -256,6 +334,7 @@ describe("SettingsView", () => {
       savePreferences,
       preferences: {
         ...defaultPreferences,
+        claudeCodeUsageEnabled: true,
         serviceOrder: ["codex", "claude-code"]
       }
     });
