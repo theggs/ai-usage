@@ -35,8 +35,8 @@ const inputClassName =
   "w-full rounded-xl border border-slate-200/90 bg-slate-50/70 px-3.5 py-2.5 text-[15px] font-medium text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-300 focus:bg-white";
 
 const refreshIntervalOptions = [5, 10, 15, 30] as const;
-const resolvePointerCoordinate = (value: number | undefined, fallback: number) =>
-  Number.isFinite(value) ? value : fallback;
+const resolvePointerCoordinate = (value: number | undefined, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
 type ProxyDraftState = Pick<UserPreferences, "networkProxyMode" | "networkProxyUrl">;
 type DragOverlayState = {

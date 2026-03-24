@@ -296,7 +296,9 @@ export const getServiceStatusCard = (
     items?: PanelPlaceholderItem[];
   } | null
 ): ServiceStatusCard => {
-  if (!panelState || panelState.items?.length === 0) {
+  const items = panelState?.items ?? [];
+
+  if (!panelState || items.length === 0) {
     const snapshotState = panelState?.snapshotState;
     const normalizedState =
       snapshotState === "failed"
@@ -316,13 +318,15 @@ export const getServiceStatusCard = (
     };
   }
 
+  const firstDimension = items[0]?.quotaDimensions[0];
+
   return {
     serviceId,
     serviceName,
     connectionState: panelState.snapshotState === "stale" ? "stale" : "connected",
     dataSource: panelState.activeSession?.source ?? "snapshot",
-    primaryMessage: panelState.statusMessage,
-    secondaryMessage: panelState.items[0]?.quotaDimensions[0]?.resetHint,
+    primaryMessage: panelState.statusMessage ?? "Connected",
+    secondaryMessage: firstDimension?.resetHint,
     sessionLabel: panelState.activeSession?.sessionLabel
   };
 };

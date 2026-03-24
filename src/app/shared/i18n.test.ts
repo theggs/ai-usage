@@ -70,6 +70,9 @@ describe("i18n fallback", () => {
             benefitLabel: "2x",
             matchedCampaignId: "codex-limited-time-promotion",
             messageKey: "promotionStatusActiveWindow",
+            detailTiming: {
+              mode: "continuous"
+            },
             isInlineVisible: true
           }
         ],

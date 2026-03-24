@@ -126,7 +126,7 @@ describe("AppShell", () => {
     );
     const setIntervalSpy = vi
       .spyOn(window, "setInterval")
-      .mockImplementation((() => 1 as unknown as ReturnType<typeof setInterval>) as typeof setInterval);
+      .mockImplementation(((() => 1) as unknown) as typeof window.setInterval);
 
     render(<AppShell />);
     await screen.findByRole("button", { name: "设置" });

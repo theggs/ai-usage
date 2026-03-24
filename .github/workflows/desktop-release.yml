@@ -1,0 +1,154 @@
+name: desktop-release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master"]
+    tags: ["*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.meta.outputs.app_version }}
+      release_suffix: ${{ steps.meta.outputs.release_suffix }}
+      release_tag: ${{ steps.meta.outputs.release_tag }}
+      release_title: ${{ steps.meta.outputs.release_title }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        shell: bash
+        run: |
+          app_version="$(ruby -rjson -e 'puts JSON.parse(File.read("package.json"))["version"]')"
+          short_sha="${GITHUB_SHA::7}"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            release_tag="${GITHUB_REF_NAME}"
+            release_title="AIUsage ${GITHUB_REF_NAME}"
+            release_suffix="${GITHUB_REF_NAME}"
+            prerelease=false
+          else
+            release_tag="nightly-${short_sha}"
+            release_title="AIUsage Nightly ${short_sha}"
+            release_suffix="nightly-${short_sha}"
+            prerelease=true
+          fi
+
+          {
+            echo "app_version=${app_version}"
+            echo "release_suffix=${release_suffix}"
+            echo "release_tag=${release_tag}"
+            echo "release_title=${release_title}"
+            echo "prerelease=${prerelease}"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            tauri_args: --bundles app
+          - os: windows-latest
+            tauri_args: --bundles nsis
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run frontend type checks
+        run: npm run lint
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build desktop application
+        run: npm run tauri:build -- ${{ matrix.tauri_args }}
+
+      - name: Package macOS release asset
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p artifacts/release
+          ditto -c -k --sequesterRsrc --keepParent target/release/bundle/macos/AIUsage.app \
+            "artifacts/release/AIUsage_${{ needs.prepare.outputs.release_suffix }}_macos.zip"
+
+      - name: Package Windows release asset
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/release | Out-Null
+          Get-ChildItem target/release/bundle/nsis/*.exe | Copy-Item -Destination artifacts/release
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}
+          path: artifacts/release/*
+          if-no-files-found: error
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [prepare, build]
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+          RELEASE_TITLE: ${{ needs.prepare.outputs.release_title }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          shopt -s nullglob
+          assets=(release-assets/*)
+
+          if [[ ${#assets[@]} -eq 0 ]]; then
+            echo "No release assets were produced." >&2
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+            gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE"
+          else
+            extra_args=()
+            if [[ "$PRERELEASE" == "true" ]]; then
+              extra_args+=(--prerelease)
+            fi
+
+            gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --title "$RELEASE_TITLE" \
+              --generate-notes \
+              "${extra_args[@]}"
+          fi
