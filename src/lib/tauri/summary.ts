@@ -201,7 +201,7 @@ export const getPanelHealthSummary = (items: PanelPlaceholderItem[]): PanelHealt
 };
 
 export const haveAlignedRefreshTimes = (items: PanelPlaceholderItem[]) => {
-  const parsed = items.map((item) => parseTimestamp(item.lastRefreshedAt)).filter((value): value is number => value !== undefined);
+  const parsed = items.map((item) => parseTimestamp(item.lastSuccessfulRefreshAt)).filter((value): value is number => value !== undefined);
   if (parsed.length <= 1) {
     return parsed.length === items.length;
   }
@@ -215,7 +215,7 @@ export const getSharedRefreshTimestamp = (items: PanelPlaceholderItem[]) => {
     return undefined;
   }
 
-  return parseTimestamp(items[0]?.lastRefreshedAt);
+  return parseTimestamp(items[0]?.lastSuccessfulRefreshAt);
 };
 
 export const getTrayVisualState = (

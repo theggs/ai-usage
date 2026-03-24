@@ -13,7 +13,7 @@ describe("claude-code panel state contract", () => {
     expect(typeof state.statusMessage).toBe("string");
     expect(Array.isArray(state.items)).toBe(true);
     expect(state.desktopSurface).toBeDefined();
-    expect(typeof state.updatedAt).toBe("string");
+    expect(typeof state.lastSuccessfulRefreshAt).toBe("string");
   });
 
   it("refreshClaudeCodePanelState returns a valid CodexPanelState", async () => {

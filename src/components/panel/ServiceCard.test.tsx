@@ -14,7 +14,7 @@ describe("ServiceCard", () => {
           iconKey: "codex",
           statusLabel: "refreshing",
           badgeLabel: "Live",
-          lastRefreshedAt: "1742321579",
+          lastSuccessfulRefreshAt: "1742321579",
           quotaDimensions: [
             {
               label: "codex / 5h",
@@ -42,7 +42,7 @@ describe("ServiceCard", () => {
           iconKey: "claude-code",
           statusLabel: "demo",
           badgeLabel: "Live",
-          lastRefreshedAt: "1742321579",
+          lastSuccessfulRefreshAt: "1742321579",
           quotaDimensions: [
             {
               label: "CLAUDE CODE / 5H",
@@ -81,7 +81,7 @@ describe("ServiceCard", () => {
           iconKey: "codex",
           statusLabel: "demo",
           badgeLabel: "Live",
-          lastRefreshedAt: "1742321579",
+          lastSuccessfulRefreshAt: "1742321579",
           quotaDimensions: [
             {
               label: "Custom Window",
@@ -109,7 +109,7 @@ describe("ServiceCard", () => {
           iconKey: "codex",
           statusLabel: "refreshing",
           badgeLabel: "Live",
-          lastRefreshedAt: "1742321579",
+          lastSuccessfulRefreshAt: "1742321579",
           quotaDimensions: [
             {
               label: "CODEX / 5H",
@@ -138,7 +138,7 @@ describe("ServiceCard", () => {
           iconKey: "claude-code",
           statusLabel: "refreshing",
           badgeLabel: "stale",
-          lastRefreshedAt: "1742321579",
+          lastSuccessfulRefreshAt: "1742321579",
           quotaDimensions: [
             {
               label: "CLAUDE CODE / 5H",
@@ -164,7 +164,7 @@ describe("ServiceCard", () => {
           iconKey: "codex",
           statusLabel: "refreshing",
           badgeLabel: "failed",
-          lastRefreshedAt: "1742321579",
+          lastSuccessfulRefreshAt: "1742321579",
           quotaDimensions: [
             {
               label: "CODEX / 5H",
@@ -192,7 +192,7 @@ describe("ServiceCard", () => {
           iconKey: "codex",
           statusLabel: "refreshing",
           badgeLabel: "Live",
-          lastRefreshedAt: "1742321579",
+          lastSuccessfulRefreshAt: "1742321579",
           quotaDimensions: [
             {
               label: "danger",
@@ -244,7 +244,7 @@ describe("ServiceCard", () => {
           iconKey: "codex",
           statusLabel: "refreshing",
           badgeLabel: "Live",
-          lastRefreshedAt: "1742321579",
+          lastSuccessfulRefreshAt: "1742321579",
           quotaDimensions: [
             {
               label: "CODEX / 5H",

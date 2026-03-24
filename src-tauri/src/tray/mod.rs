@@ -482,7 +482,7 @@ mod tests {
             }],
             status_label: "refreshing".into(),
             badge_label: Some("Live".into()),
-            last_refreshed_at: "0".into(),
+            last_successful_refresh_at: "0".into(),
         }
     }
 
@@ -502,7 +502,7 @@ mod tests {
             }],
             status_label: "refreshing".into(),
             badge_label: Some("Live".into()),
-            last_refreshed_at: "0".into(),
+            last_successful_refresh_at: "0".into(),
         }
     }
 
@@ -566,7 +566,7 @@ mod tests {
             }],
             status_label: "refreshing".into(),
             badge_label: Some("Live".into()),
-            last_refreshed_at: "0".into(),
+            last_successful_refresh_at: "0".into(),
         }
     }
 

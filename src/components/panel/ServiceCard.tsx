@@ -62,8 +62,8 @@ export const ServiceCard = ({
         ))}
       </div>
       {showLastRefreshed ? (
-        <p className={`mt-3 text-xs text-slate-500 ${alertLevel !== "normal" ? "pl-2" : ""}`} title={formatAbsoluteTime(service.lastRefreshedAt)}>
-          {copy.lastRefreshedAt}: {formatRelativeTime(copy, service.lastRefreshedAt)}
+        <p className={`mt-3 text-xs text-slate-500 ${alertLevel !== "normal" ? "pl-2" : ""}`} title={formatAbsoluteTime(service.lastSuccessfulRefreshAt)}>
+          {copy.lastRefreshedAt}: {formatRelativeTime(copy, service.lastSuccessfulRefreshAt)}
         </p>
       ) : null}
     </article>

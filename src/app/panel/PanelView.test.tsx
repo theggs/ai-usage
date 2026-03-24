@@ -103,7 +103,7 @@ describe("PanelView", () => {
     const now = new Date().toISOString();
     const state = createState({
       ...createDemoPanelState(),
-      items: createDemoPanelState().items.map((item) => ({ ...item, lastRefreshedAt: now }))
+      items: createDemoPanelState().items.map((item) => ({ ...item, lastSuccessfulRefreshAt: now }))
     });
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
@@ -112,7 +112,7 @@ describe("PanelView", () => {
           ...createDemoPanelState().items[0]!,
           serviceId: "claude-code",
           serviceName: "Claude Code",
-          lastRefreshedAt: now
+          lastSuccessfulRefreshAt: now
         }
       ]
     };
@@ -171,7 +171,7 @@ describe("PanelView", () => {
           ...createDemoPanelState().items[0]!,
           serviceId: "codex",
           serviceName: "Codex",
-          lastRefreshedAt: now,
+          lastSuccessfulRefreshAt: now,
           quotaDimensions: [
             {
               label: "CODEX / 5H",
@@ -187,7 +187,7 @@ describe("PanelView", () => {
           ...createDemoPanelState().items[0]!,
           serviceId: "claude-code",
           serviceName: "Claude Code",
-          lastRefreshedAt: now,
+          lastSuccessfulRefreshAt: now,
           quotaDimensions: [
             {
               label: "CLAUDE CODE / WEEK",
@@ -258,7 +258,7 @@ describe("PanelView", () => {
           ...createDemoPanelState().items[0]!,
           serviceId: "codex",
           serviceName: "Codex",
-          lastRefreshedAt: now,
+          lastSuccessfulRefreshAt: now,
           quotaDimensions: [
             {
               label: "CODEX / 5H",
@@ -274,7 +274,7 @@ describe("PanelView", () => {
           ...createDemoPanelState().items[0]!,
           serviceId: "claude-code",
           serviceName: "Claude Code",
-          lastRefreshedAt: now,
+          lastSuccessfulRefreshAt: now,
           quotaDimensions: [
             {
               label: "CLAUDE CODE / WEEK",

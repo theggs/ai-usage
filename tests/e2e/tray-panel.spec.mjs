@@ -26,7 +26,7 @@ let failed = 0;
 const nowSeconds = () => String(Math.floor(Date.now() / 1000));
 
 function panelState({ serviceId, serviceName, snapshotState, statusMessage, dimensions }) {
-  const updatedAt = nowSeconds();
+  const lastSuccessfulRefreshAt = nowSeconds();
   return {
     desktopSurface: {
       platform: "macos",
@@ -46,7 +46,7 @@ function panelState({ serviceId, serviceName, snapshotState, statusMessage, dime
             quotaDimensions: dimensions,
             statusLabel: "refreshing",
             badgeLabel: snapshotState === "fresh" ? "Live" : snapshotState,
-            lastRefreshedAt: updatedAt
+            lastSuccessfulRefreshAt
           }
         ]
       : [],
@@ -55,7 +55,7 @@ function panelState({ serviceId, serviceName, snapshotState, statusMessage, dime
     snapshotState,
     statusMessage,
     activeSession: null,
-    updatedAt
+    lastSuccessfulRefreshAt
   };
 }
 

@@ -34,7 +34,7 @@ export interface PanelPlaceholderItem {
   quotaDimensions: QuotaDimension[];
   statusLabel: PlaceholderStatus;
   badgeLabel?: string;
-  lastRefreshedAt: string;
+  lastSuccessfulRefreshAt: string;
 }
 
 export interface DesktopSurfaceState {
@@ -54,7 +54,7 @@ export interface CodexPanelState {
   snapshotState: CodexSnapshotState;
   statusMessage: string;
   activeSession?: ActiveCodexSession;
-  updatedAt: string;
+  lastSuccessfulRefreshAt: string;
 }
 
 export interface UserPreferences {

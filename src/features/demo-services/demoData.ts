@@ -28,7 +28,7 @@ const buildItems = (mode: FallbackSessionMode): CodexPanelState["items"] => {
       iconKey: "codex",
       statusLabel: "refreshing",
       badgeLabel: "Live",
-      lastRefreshedAt: now(),
+      lastSuccessfulRefreshAt: now(),
       quotaDimensions: [
         {
           label: "Local Messages / 5h",
@@ -99,7 +99,7 @@ export const createDemoPanelState = (
     snapshotState,
     statusMessage,
     activeSession,
-    updatedAt: now(),
+    lastSuccessfulRefreshAt: now(),
     items
   };
 };

@@ -46,7 +46,8 @@ pub struct PanelPlaceholderItem {
     pub quota_dimensions: Vec<QuotaDimension>,
     pub status_label: String,
     pub badge_label: Option<String>,
-    pub last_refreshed_at: String,
+    #[serde(alias = "lastRefreshedAt")]
+    pub last_successful_refresh_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,7 +82,8 @@ pub struct CodexPanelState {
     pub snapshot_state: String,
     pub status_message: String,
     pub active_session: Option<ActiveCodexSession>,
-    pub updated_at: String,
+    #[serde(alias = "updatedAt")]
+    pub last_successful_refresh_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

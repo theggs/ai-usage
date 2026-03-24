@@ -18,7 +18,7 @@ const items: PanelPlaceholderItem[] = [
     serviceName: "Codex",
     iconKey: "codex",
     statusLabel: "refreshing",
-    lastRefreshedAt: "1742321579",
+    lastSuccessfulRefreshAt: "1742321579",
     quotaDimensions: [
       {
         label: "codex / 5h",
