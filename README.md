@@ -13,10 +13,6 @@ It supports macOS (tested) and Windows (not yet tested; testing is welcome).
 - Customize tray summary behavior, panel order, language, autostart, refresh interval, and proxy settings
 - See clear disconnected or missing-session states when a service is unavailable
 
-## Get the App
-
-Download a prebuilt desktop package from the [GitHub Releases page](https://github.com/theggs/ai-usage/releases).
-
 ## Screenshots
 
 Menu bar:
@@ -41,6 +37,29 @@ Menu bar:
     </td>
   </tr>
 </table>
+
+## Get the App
+
+Download the package for your platform from the [GitHub Releases page](https://github.com/theggs/ai-usage/releases).
+
+macOS:
+
+1. Download the latest `AIUsage_*_macos.zip` file.
+2. Unzip the file to get `AIUsage.app`.
+3. Move `AIUsage.app` to `/Applications`.
+4. Open `AIUsage.app`.
+
+Because the current macOS app is not signed, macOS may block it from opening. If that happens, remove the quarantine attribute:
+
+```bash
+sudo xattr -d com.apple.quarantine "/Applications/AIUsage.app"
+```
+
+Windows:
+
+1. Download the latest Windows `.exe` installer.
+2. Run the installer.
+3. Launch `AIUsage` from the Start menu or installed location.
 
 ## Usage
 
