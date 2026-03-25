@@ -3,6 +3,13 @@
 AIUsage shows Codex and Claude Code quotas in your tray or menu bar.
 It supports macOS (tested) and Windows (not yet tested; testing is welcome).
 
+# NOTE: BE CAREFUL TO ENABLE CLAUDE CODE LIMITS WATCHING.
+According Anthropic Consumer Terms of Service 3.3, 3.7, any way to access claude code rate limits information via a 3rd party software may make the account be DISABLED.
+
+This software is designed to not enalbe claude code by default.
+
+Don't enable it if you warry about it.
+
 ## Features
 
 - Check Codex and Claude Code quota status from one desktop panel
