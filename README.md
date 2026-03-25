@@ -1,10 +1,12 @@
 # AIUsage
 
-AIUsage is a tray-first desktop app for checking AI CLI quota usage.
+AIUsage shows Codex and Claude Code quotas in your tray or menu bar.
+It supports macOS (tested) and Windows (not yet tested; testing is welcome).
 
 ## Features
 
 - Check Codex and Claude Code quota status from one desktop panel
+- Quickly check quotas and promotions for supported services
 - Review remaining quota, reset timing, and severity at a glance
 - Keep the app in the tray or menu bar instead of a full desktop window
 - Refresh service status on demand
@@ -17,13 +19,28 @@ Download a prebuilt desktop package from the [GitHub Releases page](https://gith
 
 ## Screenshots
 
-Quota panel:
+Menu bar:
 
-![AIUsage quota panel](./screenshots/panel-en.png)
+![AIUsage menu bar](./screenshots/menu-bar.png)
 
-Settings:
-
-![AIUsage settings](./screenshots/setting-en.png)
+<table>
+  <tr>
+    <td align="center">
+      <strong>Quota panel</strong>
+    </td>
+    <td align="center">
+      <strong>Settings</strong>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="./screenshots/panel-en.png" alt="AIUsage quota panel" width="320" />
+    </td>
+    <td align="center">
+      <img src="./screenshots/setting-en.png" alt="AIUsage settings" width="320" />
+    </td>
+  </tr>
+</table>
 
 ## Usage
 
