@@ -265,6 +265,66 @@ async function clickRefreshControl(ctx) {
   return false;
 }
 
+async function triggerRefresh(ctx) {
+  const triggeredByShortcut = await pressKey("r", ctx);
+  if (triggeredByShortcut) {
+    await sleep(600);
+    return true;
+  }
+
+  return clickRefreshControl(ctx);
+}
+
+async function dismissClaudeDisclosure(ctx) {
+  const dismissedByShortcut = await pressKey("d", ctx);
+  if (dismissedByShortcut) {
+    await sleep(600);
+    return true;
+  }
+
+  return (
+    (await clickAnyButton(["我知道了", "I understand"], ctx)) ||
+    (await clickWindowPoint(
+      CLAUDE_DISCLOSURE_DISMISS_POINT.x,
+      CLAUDE_DISCLOSURE_DISMISS_POINT.y,
+      ctx
+    ))
+  );
+}
+
+async function toggleClaudeCodeUsage(ctx) {
+  const toggledByShortcut = await pressKey("u", ctx);
+  if (toggledByShortcut) {
+    await sleep(600);
+    return true;
+  }
+
+  return (
+    (await clickAnyButton(
+      ["E2E Toggle Claude Code Usage", "启用 Claude Code 查询", "Enable Claude Code query"],
+      ctx
+    )) ||
+    (await clickWindowPoint(290, 554, ctx)) ||
+    (await clickWindowPoint(268, 554, ctx)) ||
+    (await clickWindowPoint(246, 554, ctx)) ||
+    (await clickWindowPoint(290, 522, ctx)) ||
+    (await clickWindowPoint(268, 522, ctx))
+  );
+}
+
+async function moveClaudeCodeFirst(ctx) {
+  const movedByShortcut = await pressKey("o", ctx);
+  if (movedByShortcut) {
+    await sleep(600);
+    return true;
+  }
+
+  return (
+    (await clickAnyButton(["E2E Move Claude Code First"], ctx)) ||
+    (await dragElement("Reorder Claude Code", "Codex", ctx))
+  );
+}
+
 async function test(name, fn) {
   try {
     await fn();
@@ -369,7 +429,7 @@ async function run() {
       writeFileSync(scenario.codexStatusFile, "Codex / 5h: 28% remaining (Resets in 1h)");
       let synced = false;
       for (let attempt = 0; attempt < 3 && !synced; attempt++) {
-        const clicked = await clickRefreshControl(ctx);
+        const clicked = await triggerRefresh(ctx);
         assert.ok(clicked, "should be able to click refresh button");
 
         try {
@@ -441,13 +501,7 @@ async function run() {
       ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
       await sleep(1200);
 
-      const dismissed =
-        (await clickAnyButton(["我知道了", "I understand"], ctx)) ||
-        (await clickWindowPoint(
-          CLAUDE_DISCLOSURE_DISMISS_POINT.x,
-          CLAUDE_DISCLOSURE_DISMISS_POINT.y,
-          ctx
-        ));
+      const dismissed = await dismissClaudeDisclosure(ctx);
       assert.ok(dismissed, "should be able to dismiss the Claude disclosure card");
 
       await pollFor(() => {
@@ -605,15 +659,7 @@ async function run() {
       await sleep(600);
       await screenshot(ctx, "test-settings-claude-usage-group.png");
 
-      const toggleClicked = await clickAnyButton(
-        ["E2E Toggle Claude Code Usage", "启用 Claude Code 查询", "Enable Claude Code query"],
-        ctx
-      )
-        || (await clickWindowPoint(290, 554, ctx))
-        || (await clickWindowPoint(268, 554, ctx))
-        || (await clickWindowPoint(246, 554, ctx))
-        || (await clickWindowPoint(290, 522, ctx))
-        || (await clickWindowPoint(268, 522, ctx));
+      const toggleClicked = await toggleClaudeCodeUsage(ctx);
       assert.ok(toggleClicked, "should be able to toggle Claude Code usage in settings");
 
       await pollFor(() => {
@@ -642,9 +688,7 @@ async function run() {
       assert.ok(settingsClicked, "should be able to open settings");
       await sleep(600);
 
-      const moved =
-        (await clickAnyButton(["E2E Move Claude Code First"], ctx)) ||
-        (await dragElement("Reorder Claude Code", "Codex", ctx));
+      const moved = await moveClaudeCodeFirst(ctx);
       assert.ok(moved, "should be able to reorder Claude Code above Codex");
 
       await pollFor(() => {

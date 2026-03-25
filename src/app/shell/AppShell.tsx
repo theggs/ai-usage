@@ -128,6 +128,40 @@ export const AppShell = () => {
   }, [currentView]);
 
   useEffect(() => {
+    if (!isE2EMode) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (event.key === "F5" || event.key.toLowerCase() === "r") {
+        event.preventDefault();
+        void refreshPanel();
+        return;
+      }
+
+      if (currentView === "panel" && (event.key === "F6" || event.key.toLowerCase() === "s")) {
+        event.preventDefault();
+        setCurrentView("settings");
+        setIsScrolled(false);
+        return;
+      }
+
+      if (currentView === "settings" && (event.key === "F7" || event.key.toLowerCase() === "b")) {
+        event.preventDefault();
+        setCurrentView("panel");
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentView, isE2EMode]);
+
+  useEffect(() => {
     if (promotionOverlayState !== "pinned") {
       return undefined;
     }

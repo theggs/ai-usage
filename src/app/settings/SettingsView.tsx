@@ -145,6 +145,53 @@ export const SettingsView = () => {
   }));
   const serviceOrderDisabled = serviceOptions.length < 2;
 
+  useEffect(() => {
+    if (!isE2EMode) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (event.key === "F9" || event.key.toLowerCase() === "u") {
+        event.preventDefault();
+        void applyImmediatePatch(
+          { claudeCodeUsageEnabled: !draftRef.current.claudeCodeUsageEnabled },
+          draftRef.current
+        );
+        return;
+      }
+
+      if (event.key === "F10" || event.key.toLowerCase() === "o") {
+        event.preventDefault();
+        if (serviceOrderDisabled) {
+          return;
+        }
+
+        const firstReorderableService = serviceOptions[1];
+        if (!firstReorderableService) {
+          return;
+        }
+
+        void applyImmediatePatch(
+          {
+            serviceOrder: reorder(
+              draftRef.current.serviceOrder,
+              firstReorderableService.id,
+              draftRef.current.serviceOrder[0] ?? firstReorderableService.id
+            )
+          },
+          { ...draftRef.current, serviceOrder: baseRef.current.serviceOrder }
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isE2EMode, serviceOptions, serviceOrderDisabled]);
+
   const previewOrder = (targetId: string) => {
     const draggedId = draggedServiceIdRef.current;
     if (!draggedId || draggedId === targetId) return;

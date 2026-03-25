@@ -16,6 +16,26 @@ let virtualKey: CGKeyCode
 switch keyName {
 case "escape", "esc":
     virtualKey = 53
+case "r":
+    virtualKey = 15
+case "d":
+    virtualKey = 2
+case "u":
+    virtualKey = 32
+case "o":
+    virtualKey = 31
+case "f5":
+    virtualKey = 96
+case "f6":
+    virtualKey = 97
+case "f7":
+    virtualKey = 98
+case "f8":
+    virtualKey = 100
+case "f9":
+    virtualKey = 101
+case "f10":
+    virtualKey = 109
 default:
     fputs("Unsupported key '\(keyName)'\n", stderr)
     exit(1)

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ServiceCard } from "../../components/panel/ServiceCard";
 import { useAppState } from "../shared/appState";
 import { getCopy, getServicePlaceholderCopy, getSnapshotMessage } from "../shared/i18n";
@@ -32,6 +33,26 @@ export const PanelView = () => {
   const hasAnyItems = allItems.length > 0;
   const showOnboarding = !hasAnyItems && !preferences?.onboardingDismissedAt;
   const showClaudeCodeDisclosure = showOnboarding && !preferences?.claudeCodeDisclosureDismissedAt;
+
+  useEffect(() => {
+    if (!showClaudeCodeDisclosure || !preferences) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (event.key === "F8" || event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        void savePreferences({ claudeCodeDisclosureDismissedAt: new Date().toISOString() });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [preferences, savePreferences, showClaudeCodeDisclosure]);
 
   return (
     <section className="grid gap-4 pb-5">
