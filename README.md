@@ -15,11 +15,14 @@ It supports macOS (tested) and Windows (not yet tested; testing is welcome).
 
 ## Screenshots
 
-Menu bar:
-
-![AIUsage menu bar](./screenshots/menu-bar.png)
-
 <table>
+  <tr>
+    <td align="center" colspan="2">
+      <strong>Menu bar</strong>
+      <br />
+      <img src="./screenshots/menu-bar.png" alt="AIUsage menu bar" width="560" />
+    </td>
+  </tr>
   <tr>
     <td align="center">
       <strong>Quota panel</strong>

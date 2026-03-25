@@ -23,7 +23,9 @@ describe("i18n fallback", () => {
 
     expect(zh.preferences).toBe("偏好设置");
     expect(zh.lastRefreshedAt).toBe("上次刷新");
-    expect(en.autostart).toBe("Autostart");
+    expect(en.autostart).toBe("Start on boot");
+    expect(en.summaryHidden).toBe("hidden");
+    expect(en.traySummaryIconOnly).toBe("icon only");
     expect(en.notificationActions).toBe("Notification");
   });
 
@@ -36,8 +38,8 @@ describe("i18n fallback", () => {
       .replace(/\s+/g, " ")
       .trim();
 
-    expect(dimension).toBe("5h window");
-    expect(warning).toBe("Codex 5h window is running low");
+    expect(dimension).toBe("5h limits");
+    expect(warning).toBe("Codex 5h limits running low");
     expect(warning.length).toBeLessThanOrEqual(32);
   });
 
@@ -108,7 +110,7 @@ describe("i18n fallback", () => {
         hiddenServiceCount: 1,
         fallbackState: null
       })
-    ).toBe("Codex discount window live 2x · Claude Code outside discount window 2x");
+    ).toBe("Codex promotion active 2x · Claude Code outside promotion window 2x");
   });
 
   it("returns localized labels for the promotion trigger and popover", () => {
@@ -133,6 +135,6 @@ describe("i18n fallback", () => {
       formatPromotionDetailTiming(getCopy("en-US"), {
         mode: "continuous"
       })
-    ).toBe("All-day discount");
+    ).toBe("All-day promotion");
   });
 });

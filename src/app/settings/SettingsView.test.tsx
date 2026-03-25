@@ -62,7 +62,7 @@ describe("SettingsView", () => {
     expect(screen.queryByText("连接")).not.toBeInTheDocument();
     expect(screen.queryByText("状态")).not.toBeInTheDocument();
 
-    expect(screen.getByRole("combobox", { name: "托盘摘要规则" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "菜单栏数值" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "菜单栏服务" })).toBeInTheDocument();
     expect(screen.getByLabelText("Codex")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "语言" })).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe("SettingsView", () => {
 
     const surfaces = document.querySelectorAll(".settings-surface");
     expect(surfaces).toHaveLength(2);
-    expect(screen.getByRole("combobox", { name: "托盘摘要规则" }).closest(".settings-surface")).toBe(
+    expect(screen.getByRole("combobox", { name: "菜单栏数值" }).closest(".settings-surface")).toBe(
       surfaces[0]
     );
     expect(screen.getByText("Claude Code 查询").closest(".settings-surface")).toBe(surfaces[1]);
@@ -83,12 +83,12 @@ describe("SettingsView", () => {
   it("keeps standard settings rows in an inline two-column layout at shell width", () => {
     renderSettings();
 
-    const traySummaryRow = screen.getByRole("combobox", { name: "托盘摘要规则" }).closest("label");
+    const traySummaryRow = screen.getByRole("combobox", { name: "菜单栏数值" }).closest("label");
     expect(traySummaryRow).toBeInTheDocument();
     expect(traySummaryRow?.className).toContain("grid-cols-[112px_minmax(0,1fr)]");
     expect(traySummaryRow?.className).not.toContain("md:grid-cols");
 
-    const controlWrapper = screen.getByRole("combobox", { name: "托盘摘要规则" }).parentElement;
+    const controlWrapper = screen.getByRole("combobox", { name: "菜单栏数值" }).parentElement;
     expect(controlWrapper?.className).toContain("justify-self-end");
     expect(controlWrapper?.className).toContain("max-w-[212px]");
   });
@@ -112,7 +112,7 @@ describe("SettingsView", () => {
   it("uses lighter control chrome and more compact service-order pills", () => {
     renderSettings();
 
-    const traySummary = screen.getByRole("combobox", { name: "托盘摘要规则" });
+    const traySummary = screen.getByRole("combobox", { name: "菜单栏数值" });
     expect(traySummary.className).toContain("rounded-xl");
     expect(traySummary.className).toContain("bg-slate-50/70");
     expect(traySummary.className).toContain("text-[15px]");
@@ -139,7 +139,7 @@ describe("SettingsView", () => {
 
     renderSettings({ savePreferences });
 
-    const traySummary = screen.getByRole("combobox", { name: "托盘摘要规则" });
+    const traySummary = screen.getByRole("combobox", { name: "菜单栏数值" });
     await userEvent.selectOptions(traySummary, "window-week");
     await waitFor(() =>
       expect(savePreferences).toHaveBeenCalledWith(expect.objectContaining({ traySummaryMode: "window-week" }))
@@ -472,7 +472,7 @@ describe("SettingsView", () => {
     expect(screen.getByRole("button", { name: "返回" })).toBeInTheDocument();
     expect(screen.queryByText(/^返回$/)).not.toBeInTheDocument();
 
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "托盘摘要规则" }), "window-week");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "菜单栏数值" }), "window-week");
     expect(screen.getByText("保存中...")).toBeInTheDocument();
 
     await act(async () => {

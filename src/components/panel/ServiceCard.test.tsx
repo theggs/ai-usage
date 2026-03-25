@@ -66,8 +66,8 @@ describe("ServiceCard", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Claude Code" })).toBeInTheDocument();
-    expect(screen.getByText("5h window")).toBeInTheDocument();
-    expect(screen.getByText("Weekly quota")).toBeInTheDocument();
+    expect(screen.getByText("5h limits")).toBeInTheDocument();
+    expect(screen.getByText("Weekly limits")).toBeInTheDocument();
     expect(screen.queryByText("CLAUDE CODE / 5H")).not.toBeInTheDocument();
   });
 

@@ -83,21 +83,21 @@ describe("PromotionStatusLine", () => {
 
     const popover = screen.getByTestId("promotion-status-popover");
     expect(screen.getByTestId("promotion-popover-item-codex")).toHaveTextContent(
-      "Codexdiscount window live2x"
+      "Codexpromotion active2x"
     );
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
-      "Claude Codeoutside discount window2x"
+      "Claude Codeoutside promotion window2x"
     );
     expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
-      "discount window live"
+      "promotion active"
     );
     expect(screen.getByTestId("promotion-popover-benefit-codex")).toHaveTextContent("2x");
     expect(screen.getByTestId("promotion-popover-status-claude-code")).toHaveTextContent(
-      "outside discount window"
+      "outside promotion window"
     );
     expect(screen.getByTestId("promotion-popover-benefit-claude-code")).toHaveTextContent("2x");
     expect(screen.getByTestId("promotion-popover-detail-codex")).toHaveTextContent(
-      "All-day discount"
+      "All-day promotion"
     );
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
       "2026.03.13-2026.03.28 · outside weekdays 20:00-02:00 (UTC+08:00)"

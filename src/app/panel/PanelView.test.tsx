@@ -502,7 +502,7 @@ describe("PanelView", () => {
     const { AppShell } = await import("../shell/AppShell");
     render(<AppShell />);
 
-    expect(await screen.findByText("Codex 5h window is running low")).toBeInTheDocument();
+    expect(await screen.findByText("Codex 5h limits running low")).toBeInTheDocument();
     expect(screen.queryByText("...")).not.toBeInTheDocument();
 
     vi.resetModules();

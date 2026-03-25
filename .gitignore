@@ -26,6 +26,7 @@ vitest.config.d.ts
 tailwind.config.js
 tailwind.config.d.ts
 screenshots/*
+!screenshots/menu-bar.png
 !screenshots/panel-en.png
 !screenshots/setting-en.png
 tests/e2e/screenshots/
