@@ -17,13 +17,15 @@
 
 import { spawn, execSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync, mkdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, statSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "../..");
 const SCREENSHOT_DIR = resolve(__dirname, "screenshots");
+const DEFAULT_TRAY_RECT = { x: 720, y: 0, width: 24, height: 24 };
 
 // --- Compile Swift helpers on first use ----------------------------------------
 
@@ -126,6 +128,26 @@ function refreshWindowInfo(ctx) {
   return nextWindowInfo;
 }
 
+function defaultE2EArtifacts() {
+  const dir = mkdtempSync(join(tmpdir(), "aiusage-e2e-driver-"));
+  const controlFile = join(dir, "control.json");
+  const windowStateFile = join(dir, "window-state.json");
+  writeFileSync(controlFile, JSON.stringify({ sequence: 0, action: "idle" }));
+  writeFileSync(windowStateFile, JSON.stringify({ visible: false, source: "none" }));
+  return { dir, controlFile, windowStateFile };
+}
+
+function readWindowStateFile(path) {
+  if (!existsSync(path)) {
+    return null;
+  }
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 // --- Public API ----------------------------------------------------------------
 
 /**
@@ -138,11 +160,23 @@ export async function launchApp(options = {}) {
 
   mkdirSync(SCREENSHOT_DIR, { recursive: true });
   ensureHelpers();
+  const artifacts = defaultE2EArtifacts();
+  const trayRect = options.trayRect ?? DEFAULT_TRAY_RECT;
 
   console.log("[e2e] Launching app...");
   const proc = spawn(binary, [], {
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, AIUSAGE_E2E: "1", ...(options.env ?? {}) },
+    env: {
+      ...process.env,
+      AIUSAGE_E2E: "1",
+      AI_USAGE_E2E_CONTROL_FILE: artifacts.controlFile,
+      AI_USAGE_E2E_WINDOW_STATE_FILE: artifacts.windowStateFile,
+      AI_USAGE_E2E_TRAY_X: String(trayRect.x),
+      AI_USAGE_E2E_TRAY_Y: String(trayRect.y),
+      AI_USAGE_E2E_TRAY_WIDTH: String(trayRect.width),
+      AI_USAGE_E2E_TRAY_HEIGHT: String(trayRect.height),
+      ...(options.env ?? {})
+    },
     detached: false,
   });
 
@@ -164,7 +198,15 @@ export async function launchApp(options = {}) {
   }
   console.log(`[e2e] Window found: id=${windowInfo.id}, owner=${windowInfo.owner}`);
 
-  return { proc, windowInfo };
+  return {
+    proc,
+    windowInfo,
+    trayRect,
+    controlFile: artifacts.controlFile,
+    windowStateFile: artifacts.windowStateFile,
+    e2eDir: artifacts.dir,
+    commandSequence: 0
+  };
 }
 
 /**
@@ -185,6 +227,52 @@ export async function screenshot(ctx, name) {
     }
   }
   throw new Error(`${name}: ${lastError?.message ?? "capture failed"}`);
+}
+
+export function readWindowState(ctx) {
+  return readWindowStateFile(ctx.windowStateFile);
+}
+
+export async function waitForWindowVisible(ctx, timeoutMs = 6000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const state = readWindowState(ctx);
+    if (state?.visible) {
+      refreshWindowInfo(ctx);
+      return state;
+    }
+    await sleep(150);
+  }
+  throw new Error("Window did not become visible in time");
+}
+
+export async function waitForWindowHidden(ctx, timeoutMs = 6000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const state = readWindowState(ctx);
+    if (state && state.visible === false) {
+      return state;
+    }
+    await sleep(150);
+  }
+  throw new Error("Window did not become hidden in time");
+}
+
+export async function toggleMainWindow(ctx) {
+  ctx.commandSequence += 1;
+  writeFileSync(
+    ctx.controlFile,
+    JSON.stringify({
+      sequence: ctx.commandSequence,
+      action: "toggle-main-window"
+    })
+  );
+
+  const targetVisible = !(readWindowState(ctx)?.visible ?? false);
+  if (targetVisible) {
+    return waitForWindowVisible(ctx);
+  }
+  return waitForWindowHidden(ctx);
 }
 
 /**
@@ -279,6 +367,23 @@ export async function clickWindowPoint(offsetX, offsetY, ctx) {
   }
 }
 
+export async function clickAbsolutePoint(x, y) {
+  const clickBin = resolve(__dirname, ".click-point");
+  try {
+    const result = execSync(`"${clickBin}" ${x} ${y}`, {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    await sleep(400);
+    return result === "clicked";
+  } catch (err) {
+    const stderr = err.stderr?.toString() ?? "";
+    console.log(`  ⚠ clickAbsolutePoint(${x}, ${y}) failed: ${stderr.trim()}`);
+    return false;
+  }
+}
+
 export async function moveWindowPoint(offsetX, offsetY, ctx) {
   const moveBin = resolve(__dirname, ".move-point");
   const { X, Y } = refreshWindowInfo(ctx).bounds;
@@ -343,6 +448,22 @@ export async function pressKey(key, ctx) {
   }
 }
 
+export async function activateFinder() {
+  try {
+    execSync('osascript -e \'tell application "Finder" to activate\'', {
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    await sleep(500);
+    return true;
+  } catch (err) {
+    const stderr = err.stderr?.toString() ?? "";
+    console.log(`  ⚠ activateFinder failed: ${stderr.trim()}`);
+    return false;
+  }
+}
+
 /**
  * Shut down the app and clean up.
  */
@@ -351,5 +472,8 @@ export async function shutdown(ctx) {
     ctx.proc.kill("SIGTERM");
     await sleep(500);
     try { ctx.proc.kill("SIGKILL"); } catch {}
+  }
+  if (ctx?.e2eDir) {
+    rmSync(ctx.e2eDir, { recursive: true, force: true });
   }
 }

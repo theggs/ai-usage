@@ -3,7 +3,7 @@
 :root {
   font-family: "SF Pro Display", "Segoe UI", sans-serif;
   color: #102a43;
-  background: linear-gradient(180deg, #f4f7f6 0%, #edf2f0 100%);
+  background: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -14,10 +14,12 @@ body {
   margin: 0;
   min-width: 360px;
   min-height: 100vh;
+  background: #ffffff;
 }
 
 #root {
   min-height: 100vh;
+  background: #ffffff;
 }
 
 button,

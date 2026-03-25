@@ -16,7 +16,8 @@ const {
   persistPreferences,
   applyAutostart,
   sendDemoNotification,
-  getRuntimeFlags
+  getRuntimeFlags,
+  hideMainWindow
 } = vi.hoisted(() => ({
   loadPanelState: vi.fn(),
   refreshPanelState: vi.fn(),
@@ -26,7 +27,8 @@ const {
   persistPreferences: vi.fn(),
   applyAutostart: vi.fn(),
   sendDemoNotification: vi.fn(),
-  getRuntimeFlags: vi.fn()
+  getRuntimeFlags: vi.fn(),
+  hideMainWindow: vi.fn()
 }));
 
 vi.mock("../../features/demo-services/panelController", () => ({
@@ -50,6 +52,10 @@ vi.mock("../../lib/tauri/client", () => ({
   tauriClient: {
     getRuntimeFlags
   }
+}));
+
+vi.mock("../../lib/tauri/windowShell", () => ({
+  hideMainWindow
 }));
 
 const makePreferences = (overrides: Partial<UserPreferences> = {}): UserPreferences => ({
@@ -114,6 +120,7 @@ describe("AppShell", () => {
     applyAutostart.mockReset().mockResolvedValue(makePreferences());
     sendDemoNotification.mockReset().mockResolvedValue(null);
     getRuntimeFlags.mockReset().mockResolvedValue({ isE2E: false });
+    hideMainWindow.mockReset().mockResolvedValue(true);
   });
 
   it("skips Claude Code loading during initialization when usage is disabled", async () => {
@@ -296,7 +303,31 @@ describe("AppShell", () => {
     expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
   });
 
-  it("closes the pinned promotion popover when Escape is pressed", async () => {
+  it("keeps the shell as a single visible surface without an outer framed container", async () => {
+    const { container } = render(<AppShell />);
+
+    await screen.findByRole("button", { name: "设置" });
+
+    expect(screen.getByTestId("app-shell-surface")).toBeInTheDocument();
+    expect(container.firstElementChild).toHaveClass("h-screen");
+    expect(container.querySelector(".shadow-sm")).toBeInTheDocument();
+  });
+
+  it("resets to the panel view when the shell regains focus", async () => {
+    render(<AppShell />);
+
+    await screen.findByRole("button", { name: "设置" });
+    await userEvent.click(screen.getByRole("button", { name: "设置" }));
+    expect(screen.getByRole("button", { name: "返回" })).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
+  });
+
+  it("hides the whole main window when Escape is pressed", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
     getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
@@ -314,9 +345,12 @@ describe("AppShell", () => {
     });
     expect(screen.getByTestId("promotion-status-popover")).toBeInTheDocument();
 
-    act(() => {
-      fireEvent.keyDown(document, { key: "Escape" });
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "Escape" });
+      await Promise.resolve();
     });
+
+    expect(hideMainWindow).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
   });
 });

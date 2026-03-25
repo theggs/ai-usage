@@ -18,15 +18,21 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
+  activateFinder,
   launchApp,
   screenshot,
   clickAnyButton,
+  clickAbsolutePoint,
   clickWindowPoint,
   dragElement,
   hoverAnyButton,
   moveWindowPoint,
   pressKey,
-  shutdown
+  readWindowState,
+  shutdown,
+  toggleMainWindow,
+  waitForWindowHidden,
+  waitForWindowVisible
 } from "./tauri-driver.mjs";
 
 let ctx;
@@ -234,7 +240,7 @@ async function pollFor(assertion, label, timeoutMs = 6000, intervalMs = 250) {
   let lastError;
   while (Date.now() - startedAt < timeoutMs) {
     try {
-      return assertion();
+      return await assertion();
     } catch (error) {
       lastError = error;
       await sleep(intervalMs);
@@ -245,6 +251,33 @@ async function pollFor(assertion, label, timeoutMs = 6000, intervalMs = 250) {
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function assertTrayAnchoredPlacement(state, trayRect) {
+  assert.equal(state.visible, true, "window should be visible");
+  assert.equal(state.source, "tray-anchor", "window should be placed from the tray anchor");
+  const expectedY = trayRect.y + trayRect.height + 8;
+  assert.equal(state.y, expectedY, "window should sit directly below the tray icon");
+  const expectedCenterX = trayRect.x + trayRect.width / 2;
+  const actualCenterX = state.x + state.width / 2;
+  assert.ok(
+    Math.abs(actualCenterX - expectedCenterX) <= 1,
+    `window center ${actualCenterX} should align with tray center ${expectedCenterX}`
+  );
+}
+
+async function openSettingsView(ctx) {
+  return (
+    (await clickAnyButton(["设置", "Settings"], ctx)) ||
+    (await clickWindowPoint(314, 86, ctx))
+  );
+}
+
+async function returnToPanelView(ctx) {
+  return (
+    (await clickAnyButton(["返回", "Back"], ctx)) ||
+    (await clickWindowPoint(314, 86, ctx))
+  );
 }
 
 async function clickRefreshControl(ctx) {
@@ -341,13 +374,26 @@ async function run() {
   let scenario;
   try {
     ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1" } });
+    await waitForWindowVisible(ctx);
     console.log("\n[e2e] Running tray-panel tests...\n");
 
-    await test("app window is visible with correct size", async () => {
+    await test("app window opens as a tray-anchored popover with the expected footprint", async () => {
       assert.ok(ctx.windowInfo, "window info should exist");
+      const windowState = readWindowState(ctx);
+      assert.ok(windowState, "window placement state should exist");
+      assertTrayAnchoredPlacement(windowState, ctx.trayRect);
       const { Width, Height } = ctx.windowInfo.bounds;
       assert.ok(Width >= 300 && Width <= 500, `width ${Width} out of range`);
       assert.ok(Height >= 500 && Height <= 800, `height ${Height} out of range`);
+    });
+
+    await test("tray toggle hides and reopens the same process window", async () => {
+      await toggleMainWindow(ctx);
+      const hiddenState = await waitForWindowHidden(ctx);
+      assert.equal(hiddenState.visible, false, "window should hide after toggling");
+
+      const reopenedState = await toggleMainWindow(ctx);
+      assertTrayAnchoredPlacement(reopenedState, ctx.trayRect);
     });
 
     await test("panel view renders correctly", async () => {
@@ -388,21 +434,59 @@ async function run() {
     });
 
     await test("settings button navigates to settings", async () => {
-      const clicked =
-        (await clickAnyButton(["设置", "Settings"], ctx)) ||
-        (await clickWindowPoint(314, 86, ctx));
+      const clicked = await openSettingsView(ctx);
       assert.ok(clicked, "should be able to click settings button");
       await sleep(500);
       await screenshot(ctx, "test-settings-grouped.png");
     });
 
     await test("back button returns to panel", async () => {
-      const clicked =
-        (await clickAnyButton(["返回", "Back"], ctx)) ||
-        (await clickWindowPoint(314, 86, ctx));
+      const clicked = await returnToPanelView(ctx);
       assert.ok(clicked, "should be able to click back button");
       await sleep(500);
       await screenshot(ctx, "test-panel-return.png");
+    });
+
+    await test("clicking outside hides the popover and tray toggle can reopen it", async () => {
+      const { X, Y, Height } = ctx.windowInfo.bounds;
+      const clickedOutside = await clickAbsolutePoint(Math.max(8, X - 24), Y + Math.min(Height, 120));
+      assert.ok(clickedOutside, "should be able to click outside the window");
+      await waitForWindowHidden(ctx);
+
+      await toggleMainWindow(ctx);
+      await waitForWindowVisible(ctx);
+      await screenshot(ctx, "test-panel-reopened-after-outside-click.png");
+    });
+
+    await test("switching to another app hides the popover and tray toggle can reopen it", async () => {
+      const switched = await activateFinder();
+      assert.ok(switched, "should be able to activate Finder");
+      await waitForWindowHidden(ctx);
+
+      await toggleMainWindow(ctx);
+      const reopenedState = await waitForWindowVisible(ctx);
+      assertTrayAnchoredPlacement(reopenedState, ctx.trayRect);
+    });
+
+    await test("closing from settings with Escape reopens on the panel and remains actionable within one second", async () => {
+      const settingsClicked = await openSettingsView(ctx);
+      assert.ok(settingsClicked, "should be able to open settings");
+      await sleep(400);
+
+      const escaped = await pressKey("escape", ctx);
+      assert.ok(escaped, "should be able to press Escape");
+      await waitForWindowHidden(ctx);
+
+      await toggleMainWindow(ctx);
+      await waitForWindowVisible(ctx);
+
+      await pollFor(async () => {
+        const settingsButton = await clickAnyButton(["设置", "Settings"], ctx);
+        assert.ok(settingsButton, "settings entry should be available after reopening");
+        const backClicked = await returnToPanelView(ctx);
+        assert.ok(backClicked, "back button should be available after reopening");
+        return true;
+      }, "panel should be actionable within one second after reopening", 1000, 150);
     });
 
     await test("refresh button is clickable", async () => {
@@ -652,9 +736,7 @@ async function run() {
       });
       ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
 
-      const settingsClicked =
-        (await clickAnyButton(["设置", "Settings"], ctx)) ||
-        (await clickWindowPoint(314, 86, ctx));
+      const settingsClicked = await openSettingsView(ctx);
       assert.ok(settingsClicked, "should be able to open settings");
       await sleep(600);
       await screenshot(ctx, "test-settings-claude-usage-group.png");
@@ -682,9 +764,7 @@ async function run() {
       });
       ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
 
-      const settingsClicked =
-        (await clickAnyButton(["Settings", "设置"], ctx)) ||
-        (await clickWindowPoint(314, 86, ctx));
+      const settingsClicked = await openSettingsView(ctx);
       assert.ok(settingsClicked, "should be able to open settings");
       await sleep(600);
 

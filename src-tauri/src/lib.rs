@@ -6,8 +6,46 @@ pub mod notifications;
 pub mod state;
 pub mod tray;
 
+use serde::Deserialize;
 use state::AppState;
 use tauri::{Manager, WindowEvent};
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct E2EControlCommand {
+    sequence: u64,
+    action: String,
+}
+
+fn start_e2e_control_loop(app: &tauri::AppHandle) {
+    let Ok(control_file) = std::env::var("AI_USAGE_E2E_CONTROL_FILE") else {
+        return;
+    };
+
+    let app_handle = app.clone();
+    let (tray_rect, event_position) = tray::e2e_startup_anchor();
+    std::thread::spawn(move || {
+        let mut last_sequence = 0_u64;
+        loop {
+            if let Ok(payload) = std::fs::read_to_string(&control_file) {
+                if let Ok(command) = serde_json::from_str::<E2EControlCommand>(&payload) {
+                    if command.sequence > last_sequence {
+                        last_sequence = command.sequence;
+                        if command.action == "toggle-main-window" {
+                            tray::toggle_main_window_with_event(
+                                &app_handle,
+                                tray_rect.clone(),
+                                event_position,
+                            );
+                        }
+                    }
+                }
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(150));
+        }
+    });
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -46,24 +84,28 @@ pub fn run() {
             tray::initialize_tray(app.handle(), &preferences, &tray_items);
             let test_mode = std::env::var("AIUSAGE_E2E").unwrap_or_default() == "1";
             if let Some(window) = app.get_webview_window("main") {
+                let window_handle = window.clone();
+                window.on_window_event(move |event| match event {
+                    WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        let _ = window_handle.hide();
+                        tray::record_e2e_window_hidden();
+                    }
+                    WindowEvent::Focused(is_focused)
+                        if tray::should_hide_on_focus_change(*is_focused) =>
+                    {
+                        let _ = window_handle.hide();
+                        tray::record_e2e_window_hidden();
+                    }
+                    _ => {}
+                });
+
                 if !test_mode {
-                    let window_handle = window.clone();
-                    window.on_window_event(move |event| match event {
-                        WindowEvent::CloseRequested { api, .. } => {
-                            api.prevent_close();
-                            let _ = window_handle.hide();
-                        }
-                        WindowEvent::Focused(is_focused)
-                            if tray::should_hide_on_focus_change(*is_focused) =>
-                        {
-                            let _ = window_handle.hide();
-                        }
-                        _ => {}
-                    });
                     let _ = window.hide();
                 } else {
-                    let _ = window.show();
-                    let _ = window.set_focus();
+                    start_e2e_control_loop(app.handle());
+                    let (tray_rect, event_position) = tray::e2e_startup_anchor();
+                    tray::toggle_main_window_with_event(app.handle(), tray_rect, event_position);
                 }
             }
             Ok(())
@@ -79,6 +121,7 @@ pub fn run() {
             commands::set_codex_account_enabled,
             commands::get_preferences,
             commands::get_runtime_flags,
+            commands::hide_main_window,
             commands::save_preferences,
             commands::set_autostart,
             commands::send_test_notification

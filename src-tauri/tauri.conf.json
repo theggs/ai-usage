@@ -14,9 +14,11 @@
       {
         "title": "AIUsage",
         "width": 360,
-        "height": 780,
+        "height": 792,
         "resizable": false,
-        "visible": false
+        "visible": false,
+        "decorations": false,
+        "shadow": true
       }
     ]
   },

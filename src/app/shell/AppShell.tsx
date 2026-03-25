@@ -24,6 +24,7 @@ import {
   getVisibleServiceScope,
   markPanelStateRefreshing
 } from "../../lib/tauri/summary";
+import { hideMainWindow } from "../../lib/tauri/windowShell";
 import {
   resolvePromotionDisplayDecision
 } from "../../features/promotions/resolver";
@@ -87,6 +88,7 @@ export const AppShell = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const lastStablePanelState = useRef<CodexPanelState | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const settingsScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const settingsHeaderTimerRef = useRef<number | null>(null);
   const promotionInteractionRef = useRef<HTMLDivElement | null>(null);
 
@@ -338,6 +340,46 @@ export const AppShell = () => {
     );
   };
 
+  const resetShellViewState = () => {
+    setCurrentView("panel");
+    setPromotionOverlayState("closed");
+    setIsScrolled(false);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+    if (settingsScrollContainerRef.current) {
+      settingsScrollContainerRef.current.scrollTop = 0;
+    }
+  };
+
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      resetShellViewState();
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    return () => window.removeEventListener("focus", handleWindowFocus);
+  }, []);
+
+  useEffect(() => {
+    const handleEscapeToHide = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      event.preventDefault();
+      setPromotionOverlayState("closed");
+      void hideMainWindow();
+    };
+
+    window.addEventListener("keydown", handleEscapeToHide);
+    return () => window.removeEventListener("keydown", handleEscapeToHide);
+  }, []);
+
   const copy = getCopy(preferences?.language ?? "zh-CN");
   const visiblePanelState = panelState ?? lastStablePanelState.current;
   const visibleServiceScope = getVisibleServiceScope(preferences);
@@ -417,10 +459,13 @@ export const AppShell = () => {
         closeSettings: () => { setCurrentView("panel"); setIsScrolled(false); }
       }}
     >
-      <main className="h-screen overflow-hidden bg-transparent p-3 text-slate-900">
-        <div className="mx-auto flex h-full w-full max-w-[380px] flex-col rounded-2xl border border-white/70 bg-white/90 p-3 shadow-sm">
+      <main className="h-screen overflow-hidden bg-white text-slate-900">
+        <div
+          data-testid="app-shell-surface"
+          className="flex h-full w-full flex-col overflow-hidden bg-white px-4 pb-4 pt-3"
+        >
           <div
-            className={`sticky top-0 z-10 -mx-3 -mt-3 mb-3 flex min-h-[3.75rem] items-center justify-between rounded-t-2xl bg-white px-4 py-3 transition-shadow ${isScrolled ? "border-b border-slate-200 shadow-sm" : ""}`}
+            className={`sticky top-0 z-10 -mx-4 mb-3 flex min-h-[3.75rem] items-center justify-between bg-white px-4 py-3 transition-shadow ${isScrolled ? "border-b border-slate-200 shadow-sm" : ""}`}
           >
             {currentView === "panel" ? (
               <>
@@ -498,18 +543,19 @@ export const AppShell = () => {
             className="relative flex-1 overflow-hidden"
           >
             {isLoading && !panelState && !preferences ? (
-              <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">{copy.loading}</div>
+              <div className="rounded-2xl bg-slate-50 p-8 text-center text-sm text-slate-500">{copy.loading}</div>
             ) : (
               <div
-                className={`flex h-full w-[200%] gap-6 transition-transform duration-300 ease-out ${currentView === "panel" ? "translate-x-0" : "-translate-x-[calc(50%+1.5rem)]"}`}
+                className={`flex h-full w-[200%] gap-4 transition-transform duration-300 ease-out ${currentView === "panel" ? "translate-x-0" : "-translate-x-[calc(50%+1rem)]"}`}
               >
                 <div
                   ref={scrollContainerRef}
-                  className="w-1/2 shrink-0 overflow-y-auto overflow-x-hidden"
+                  className="w-1/2 shrink-0 overflow-y-auto overflow-x-hidden pr-2"
                   onScroll={(event) => setIsScrolled(event.currentTarget.scrollTop > 4)}
                 >{<PanelView />}</div>
                 <div
-                  className="w-1/2 shrink-0 overflow-y-auto overflow-x-hidden"
+                  ref={settingsScrollContainerRef}
+                  className="w-1/2 shrink-0 overflow-y-auto overflow-x-hidden pr-2"
                   onScroll={(event) => setIsScrolled(event.currentTarget.scrollTop > 4)}
                 >{preferences ? <SettingsView /> : null}</div>
               </div>

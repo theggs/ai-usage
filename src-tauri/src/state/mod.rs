@@ -149,6 +149,16 @@ pub struct NotificationCheckResult {
     pub message_preview: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LastSuccessfulPopoverPlacement {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub monitor_name: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexAccount {
@@ -228,6 +238,7 @@ pub fn normalize_preferences(mut preferences: UserPreferences) -> UserPreference
 pub struct AppState {
     pub preferences: Mutex<UserPreferences>,
     pub codex_accounts: Mutex<Vec<CodexAccount>>,
+    pub last_successful_popover_placement: Mutex<Option<LastSuccessfulPopoverPlacement>>,
 }
 
 impl Default for AppState {
@@ -235,6 +246,7 @@ impl Default for AppState {
         Self {
             preferences: Mutex::new(default_preferences()),
             codex_accounts: Mutex::new(Vec::new()),
+            last_successful_popover_placement: Mutex::new(None),
         }
     }
 }

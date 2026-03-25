@@ -32,7 +32,10 @@ import {
   hoverAnyButton,
   moveWindowPoint,
   pressKey,
-  shutdown
+  toggleMainWindow,
+  shutdown,
+  waitForWindowHidden,
+  waitForWindowVisible
 } from "./tauri-driver.mjs";
 
 const nowSeconds = () => String(Math.floor(Date.now() / 1000));
@@ -173,6 +176,7 @@ async function run() {
       })
     });
     ctx = await launchApp({ env: scenario.env });
+    await waitForWindowVisible(ctx);
 
     // --- Panel view ---
     console.log("\n[screenshots] Panel view...");
@@ -208,8 +212,10 @@ async function run() {
         await sleep(500);
         const closedByEscape = await pressKey("escape", ctx);
         if (closedByEscape) {
-          await sleep(500);
-          await screenshot(ctx, "panel-promotion-closed-escape.png");
+          await waitForWindowHidden(ctx);
+          await toggleMainWindow(ctx);
+          await waitForWindowVisible(ctx);
+          await screenshot(ctx, "panel-reopened-after-escape.png");
         }
       }
     }

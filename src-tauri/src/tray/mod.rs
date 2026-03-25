@@ -1,10 +1,49 @@
-use crate::state::{PanelPlaceholderItem, UserPreferences};
+use crate::state::{AppState, LastSuccessfulPopoverPlacement, PanelPlaceholderItem, UserPreferences};
 use serde::Serialize;
 use tauri::{
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, Wry,
+    AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, Rect, Size, Wry,
 };
+
+const DEFAULT_POPOVER_WIDTH: u32 = 360;
+const DEFAULT_POPOVER_HEIGHT: u32 = 620;
+const POPOVER_VERTICAL_GAP: i32 = 8;
+const SAFE_DEFAULT_TOP_OFFSET: i32 = 12;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct WorkArea {
+    monitor_name: Option<String>,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct TrayAnchor {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PlacementSource {
+    TrayAnchor,
+    LastSuccessfulPosition,
+    SafeDefault,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct PopoverPlacement {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    monitor_name: Option<String>,
+    source: PlacementSource,
+}
 
 #[derive(Serialize)]
 struct E2ETraySurface<'a> {
@@ -12,6 +51,18 @@ struct E2ETraySurface<'a> {
     service_name: &'a str,
     title: Option<&'a str>,
     tooltip: &'a str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct E2EWindowPlacement<'a> {
+    visible: bool,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    source: &'a str,
+    monitor_name: Option<&'a str>,
 }
 
 fn write_e2e_tray_surface(
@@ -33,6 +84,324 @@ fn write_e2e_tray_surface(
 
     if let Ok(json) = serde_json::to_string(&payload) {
         let _ = std::fs::write(path, json);
+    }
+}
+
+fn write_e2e_window_placement(placement: Option<&PopoverPlacement>, visible: bool) {
+    let Ok(path) = std::env::var("AI_USAGE_E2E_WINDOW_STATE_FILE") else {
+        return;
+    };
+
+    let payload = if let Some(placement) = placement {
+        let source = match placement.source {
+            PlacementSource::TrayAnchor => "tray-anchor",
+            PlacementSource::LastSuccessfulPosition => "last-successful-position",
+            PlacementSource::SafeDefault => "safe-default",
+        };
+        E2EWindowPlacement {
+            visible,
+            x: placement.x,
+            y: placement.y,
+            width: placement.width,
+            height: placement.height,
+            source,
+            monitor_name: placement.monitor_name.as_deref(),
+        }
+    } else {
+        E2EWindowPlacement {
+            visible,
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            source: "none",
+            monitor_name: None,
+        }
+    };
+
+    if let Ok(json) = serde_json::to_string(&payload) {
+        let _ = std::fs::write(path, json);
+    }
+}
+
+pub fn record_e2e_window_hidden() {
+    write_e2e_window_placement(None, false);
+}
+
+pub fn e2e_startup_anchor() -> (Option<Rect>, Option<PhysicalPosition<f64>>) {
+    let x = std::env::var("AI_USAGE_E2E_TRAY_X")
+        .ok()
+        .and_then(|value| value.parse::<i32>().ok());
+    let y = std::env::var("AI_USAGE_E2E_TRAY_Y")
+        .ok()
+        .and_then(|value| value.parse::<i32>().ok());
+    let width = std::env::var("AI_USAGE_E2E_TRAY_WIDTH")
+        .ok()
+        .and_then(|value| value.parse::<u32>().ok());
+    let height = std::env::var("AI_USAGE_E2E_TRAY_HEIGHT")
+        .ok()
+        .and_then(|value| value.parse::<u32>().ok());
+
+    match (x, y, width, height) {
+        (Some(x), Some(y), Some(width), Some(height)) => {
+            let rect = Rect {
+                position: Position::Physical(PhysicalPosition::new(x, y)),
+                size: Size::Physical(PhysicalSize::new(width, height)),
+            };
+            let position = PhysicalPosition::new(
+                f64::from(x) + (f64::from(width) / 2.0),
+                f64::from(y) + (f64::from(height) / 2.0),
+            );
+            (Some(rect), Some(position))
+        }
+        _ => (None, None),
+    }
+}
+
+fn clamp_i32(value: i32, min: i32, max: i32) -> i32 {
+    if max < min {
+        min
+    } else {
+        value.clamp(min, max)
+    }
+}
+
+impl WorkArea {
+    fn max_x(&self) -> i32 {
+        self.x + self.width as i32
+    }
+
+    fn max_y(&self) -> i32 {
+        self.y + self.height as i32
+    }
+
+    fn contains_point(&self, x: i32, y: i32) -> bool {
+        x >= self.x && x < self.max_x() && y >= self.y && y < self.max_y()
+    }
+
+    fn center_distance_squared(&self, x: i32, y: i32) -> i64 {
+        let center_x = self.x + (self.width as i32 / 2);
+        let center_y = self.y + (self.height as i32 / 2);
+        let dx = i64::from(center_x - x);
+        let dy = i64::from(center_y - y);
+        dx * dx + dy * dy
+    }
+}
+
+impl TrayAnchor {
+    fn center_x(&self) -> i32 {
+        self.x + (self.width as i32 / 2)
+    }
+
+    fn center_y(&self) -> i32 {
+        self.y + (self.height as i32 / 2)
+    }
+
+    fn bottom(&self) -> i32 {
+        self.y + self.height as i32
+    }
+}
+
+fn work_area_from_monitor(monitor: &Monitor) -> WorkArea {
+    let work_area = monitor.work_area();
+    WorkArea {
+        monitor_name: monitor.name().cloned(),
+        x: work_area.position.x,
+        y: work_area.position.y,
+        width: work_area.size.width,
+        height: work_area.size.height,
+    }
+}
+
+fn to_physical_position(position: &Position) -> PhysicalPosition<i32> {
+    match position {
+        Position::Physical(position) => *position,
+        Position::Logical(position) => PhysicalPosition::new(position.x.round() as i32, position.y.round() as i32),
+    }
+}
+
+fn to_physical_size(size: &Size) -> PhysicalSize<u32> {
+    match size {
+        Size::Physical(size) => *size,
+        Size::Logical(size) => PhysicalSize::new(size.width.max(0.0).round() as u32, size.height.max(0.0).round() as u32),
+    }
+}
+
+fn tray_anchor_from_rect(rect: &Rect) -> TrayAnchor {
+    let position = to_physical_position(&rect.position);
+    let size = to_physical_size(&rect.size);
+    TrayAnchor {
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height,
+    }
+}
+
+fn select_work_area_for_point(x: i32, y: i32, work_areas: &[WorkArea]) -> Option<WorkArea> {
+    work_areas
+        .iter()
+        .find(|area| area.contains_point(x, y))
+        .cloned()
+        .or_else(|| {
+            work_areas
+                .iter()
+                .min_by_key(|area| area.center_distance_squared(x, y))
+                .cloned()
+        })
+}
+
+fn anchored_placement(
+    anchor: &TrayAnchor,
+    work_area: &WorkArea,
+    size: PhysicalSize<u32>,
+) -> PopoverPlacement {
+    let width = size.width.max(DEFAULT_POPOVER_WIDTH);
+    let height = size.height.max(DEFAULT_POPOVER_HEIGHT);
+    let unclamped_x = anchor.center_x() - (width as i32 / 2);
+    let max_x = work_area.max_x() - width as i32;
+    let x = clamp_i32(unclamped_x, work_area.x, max_x);
+    let max_y = work_area.max_y() - height as i32;
+    let y = clamp_i32(anchor.bottom() + POPOVER_VERTICAL_GAP, work_area.y, max_y);
+
+    PopoverPlacement {
+        x,
+        y,
+        width,
+        height,
+        monitor_name: work_area.monitor_name.clone(),
+        source: PlacementSource::TrayAnchor,
+    }
+}
+
+fn placement_from_last_success(
+    last: &LastSuccessfulPopoverPlacement,
+    work_areas: &[WorkArea],
+    size: PhysicalSize<u32>,
+) -> Option<PopoverPlacement> {
+    let width = size.width.max(last.width);
+    let height = size.height.max(last.height);
+    let work_area = work_areas
+        .iter()
+        .find(|area| area.monitor_name == last.monitor_name)
+        .cloned()
+        .or_else(|| select_work_area_for_point(last.x, last.y, work_areas))?;
+    let x = clamp_i32(last.x, work_area.x, work_area.max_x() - width as i32);
+    let y = clamp_i32(last.y, work_area.y, work_area.max_y() - height as i32);
+
+    Some(PopoverPlacement {
+        x,
+        y,
+        width,
+        height,
+        monitor_name: work_area.monitor_name.clone(),
+        source: PlacementSource::LastSuccessfulPosition,
+    })
+}
+
+fn safe_default_placement(work_area: &WorkArea, size: PhysicalSize<u32>) -> PopoverPlacement {
+    let width = size.width.max(DEFAULT_POPOVER_WIDTH);
+    let height = size.height.max(DEFAULT_POPOVER_HEIGHT);
+    let centered_x = work_area.x + ((work_area.width as i32 - width as i32) / 2);
+    let x = clamp_i32(centered_x, work_area.x, work_area.max_x() - width as i32);
+    let y = clamp_i32(work_area.y + SAFE_DEFAULT_TOP_OFFSET, work_area.y, work_area.max_y() - height as i32);
+
+    PopoverPlacement {
+        x,
+        y,
+        width,
+        height,
+        monitor_name: work_area.monitor_name.clone(),
+        source: PlacementSource::SafeDefault,
+    }
+}
+
+fn resolve_popover_placement(
+    tray_rect: Option<&Rect>,
+    work_areas: &[WorkArea],
+    last_successful: Option<&LastSuccessfulPopoverPlacement>,
+    current_size: PhysicalSize<u32>,
+    fallback_work_area: Option<&WorkArea>,
+) -> Option<PopoverPlacement> {
+    if let Some(rect) = tray_rect {
+        let anchor = tray_anchor_from_rect(rect);
+        if let Some(work_area) = select_work_area_for_point(anchor.center_x(), anchor.center_y(), work_areas) {
+            return Some(anchored_placement(&anchor, &work_area, current_size));
+        }
+    }
+
+    if let Some(last_successful) = last_successful {
+        if let Some(placement) = placement_from_last_success(last_successful, work_areas, current_size) {
+            return Some(placement);
+        }
+    }
+
+    fallback_work_area
+        .cloned()
+        .or_else(|| work_areas.first().cloned())
+        .map(|work_area| safe_default_placement(&work_area, current_size))
+}
+
+fn current_window_size(window: &tauri::WebviewWindow) -> PhysicalSize<u32> {
+    window
+        .outer_size()
+        .ok()
+        .filter(|size| size.width > 0 && size.height > 0)
+        .unwrap_or_else(|| PhysicalSize::new(DEFAULT_POPOVER_WIDTH, DEFAULT_POPOVER_HEIGHT))
+}
+
+fn persist_last_successful_placement(app: &AppHandle, placement: &PopoverPlacement) {
+    let app_state = app.state::<AppState>();
+    let mut last_successful = app_state.last_successful_popover_placement.lock().unwrap();
+    *last_successful = Some(LastSuccessfulPopoverPlacement {
+        x: placement.x,
+        y: placement.y,
+        width: placement.width,
+        height: placement.height,
+        monitor_name: placement.monitor_name.clone(),
+    });
+}
+
+fn fallback_work_area(
+    window: &tauri::WebviewWindow,
+    event_position: Option<PhysicalPosition<f64>>,
+    work_areas: &[WorkArea],
+) -> Option<WorkArea> {
+    event_position
+        .and_then(|position| window.monitor_from_point(position.x, position.y).ok().flatten())
+        .map(|monitor| work_area_from_monitor(&monitor))
+        .or_else(|| window.current_monitor().ok().flatten().map(|monitor| work_area_from_monitor(&monitor)))
+        .or_else(|| window.primary_monitor().ok().flatten().map(|monitor| work_area_from_monitor(&monitor)))
+        .or_else(|| work_areas.first().cloned())
+}
+
+fn apply_popover_placement(
+    app: &AppHandle,
+    window: &tauri::WebviewWindow,
+    tray_rect: Option<Rect>,
+    event_position: Option<PhysicalPosition<f64>>,
+) {
+    let work_areas = window
+        .available_monitors()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|monitor| work_area_from_monitor(&monitor))
+        .collect::<Vec<_>>();
+    let fallback_work_area = fallback_work_area(window, event_position, &work_areas);
+    let app_state = app.state::<AppState>();
+    let last_successful = app_state.last_successful_popover_placement.lock().unwrap().clone();
+    let current_size = current_window_size(window);
+
+    if let Some(placement) = resolve_popover_placement(
+        tray_rect.as_ref(),
+        &work_areas,
+        last_successful.as_ref(),
+        current_size,
+        fallback_work_area.as_ref(),
+    ) {
+        let _ = window.set_position(Position::Physical(PhysicalPosition::new(placement.x, placement.y)));
+        persist_last_successful_placement(app, &placement);
+        write_e2e_window_placement(Some(&placement), true);
     }
 }
 
@@ -444,10 +813,12 @@ pub fn initialize_tray(
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
+                rect,
+                position,
                 ..
             } = event
             {
-                toggle_main_window(tray.app_handle());
+                toggle_main_window_with_event(tray.app_handle(), Some(rect), Some(position));
             }
         })
         .build(app);
@@ -456,11 +827,22 @@ pub fn initialize_tray(
 }
 
 pub fn toggle_main_window(app: &AppHandle) {
+    toggle_main_window_with_event(app, None, None);
+}
+
+pub fn toggle_main_window_with_event(
+    app: &AppHandle,
+    tray_rect: Option<Rect>,
+    event_position: Option<PhysicalPosition<f64>>,
+) {
     if let Some(window) = app.get_webview_window("main") {
         let visible = window.is_visible().unwrap_or(false);
         if visible {
             let _ = window.hide();
+            write_e2e_window_placement(None, false);
         } else {
+            #[cfg(target_os = "macos")]
+            apply_popover_placement(app, &window, tray_rect, event_position);
             let _ = window.show();
             let _ = window.set_focus();
         }
@@ -474,11 +856,14 @@ pub fn should_hide_on_focus_change(is_focused: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        fallback_tray_icon_image, format_summary, items_for_menubar_service,
-        should_hide_on_focus_change, tinted_icon, tray_severity, tray_tooltip,
+        anchored_placement, fallback_tray_icon_image, format_summary, items_for_menubar_service,
+        placement_from_last_success, resolve_popover_placement, safe_default_placement,
+        should_hide_on_focus_change, tinted_icon, tray_anchor_from_rect, tray_severity,
+        tray_tooltip, PlacementSource, TrayAnchor, WorkArea,
     };
-    use crate::state::{PanelPlaceholderItem, QuotaDimension};
+    use crate::state::{LastSuccessfulPopoverPlacement, PanelPlaceholderItem, QuotaDimension};
     use tauri::image::Image;
+    use tauri::{PhysicalPosition, PhysicalSize, Position, Rect, Size};
 
     fn item(percent: u8) -> PanelPlaceholderItem {
         PanelPlaceholderItem {
@@ -716,5 +1101,147 @@ mod tests {
             format_summary("lowest-remaining", &filtered),
             Some("55%".into())
         );
+    }
+
+    fn work_area(x: i32, y: i32, width: u32, height: u32) -> WorkArea {
+        WorkArea {
+            monitor_name: Some(format!("{x}:{y}")),
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    #[test]
+    fn tray_anchor_prefers_horizontal_center_line_when_space_is_available() {
+        let rect = Rect {
+            position: Position::Physical(PhysicalPosition::new(300, 0)),
+            size: Size::Physical(PhysicalSize::new(20, 24)),
+        };
+        let anchor = tray_anchor_from_rect(&rect);
+        let placement = anchored_placement(
+            &anchor,
+            &work_area(0, 0, 800, 900),
+            PhysicalSize::new(360, 620),
+        );
+
+        assert_eq!(placement.x, 130);
+        assert_eq!(placement.y, 32);
+        assert_eq!(placement.source, PlacementSource::TrayAnchor);
+    }
+
+    #[test]
+    fn tray_anchor_clamps_inside_left_and_right_edges() {
+        let left = anchored_placement(
+            &TrayAnchor {
+                x: 0,
+                y: 0,
+                width: 20,
+                height: 24,
+            },
+            &work_area(0, 0, 500, 900),
+            PhysicalSize::new(360, 620),
+        );
+        let right = anchored_placement(
+            &TrayAnchor {
+                x: 470,
+                y: 0,
+                width: 20,
+                height: 24,
+            },
+            &work_area(0, 0, 500, 900),
+            PhysicalSize::new(360, 620),
+        );
+
+        assert_eq!(left.x, 0);
+        assert_eq!(right.x, 140);
+    }
+
+    #[test]
+    fn last_successful_placement_is_reused_and_clamped_when_tray_rect_is_missing() {
+        let placement = placement_from_last_success(
+            &LastSuccessfulPopoverPlacement {
+                x: 720,
+                y: 40,
+                width: 360,
+                height: 620,
+                monitor_name: Some("0:0".into()),
+            },
+            &[work_area(0, 0, 800, 900)],
+            PhysicalSize::new(360, 620),
+        )
+        .expect("last successful placement should resolve");
+
+        assert_eq!(placement.x, 440);
+        assert_eq!(placement.y, 40);
+        assert_eq!(placement.source, PlacementSource::LastSuccessfulPosition);
+    }
+
+    #[test]
+    fn safe_default_centers_the_panel_near_the_top_of_the_work_area() {
+        let placement = safe_default_placement(&work_area(100, 40, 700, 900), PhysicalSize::new(360, 620));
+
+        assert_eq!(placement.x, 270);
+        assert_eq!(placement.y, 52);
+        assert_eq!(placement.source, PlacementSource::SafeDefault);
+    }
+
+    #[test]
+    fn resolve_popover_placement_uses_safe_default_when_no_anchor_or_history_is_available() {
+        let fallback = work_area(0, 0, 800, 900);
+        let placement = resolve_popover_placement(
+            None,
+            std::slice::from_ref(&fallback),
+            None,
+            PhysicalSize::new(360, 620),
+            Some(&fallback),
+        )
+        .expect("safe default placement should resolve");
+
+        assert_eq!(placement.source, PlacementSource::SafeDefault);
+        assert_eq!(placement.x, 220);
+        assert_eq!(placement.y, 12);
+    }
+
+    #[test]
+    fn resolve_popover_placement_prefers_anchor_then_history_then_safe_default() {
+        let fallback = work_area(0, 0, 800, 900);
+        let rect = Rect {
+            position: Position::Physical(PhysicalPosition::new(300, 0)),
+            size: Size::Physical(PhysicalSize::new(20, 24)),
+        };
+        let anchor_first = resolve_popover_placement(
+            Some(&rect),
+            std::slice::from_ref(&fallback),
+            Some(&LastSuccessfulPopoverPlacement {
+                x: 40,
+                y: 40,
+                width: 360,
+                height: 620,
+                monitor_name: Some("0:0".into()),
+            }),
+            PhysicalSize::new(360, 620),
+            Some(&fallback),
+        )
+        .expect("anchor placement should resolve");
+
+        let history_second = resolve_popover_placement(
+            None,
+            std::slice::from_ref(&fallback),
+            Some(&LastSuccessfulPopoverPlacement {
+                x: 40,
+                y: 40,
+                width: 360,
+                height: 620,
+                monitor_name: Some("0:0".into()),
+            }),
+            PhysicalSize::new(360, 620),
+            Some(&fallback),
+        )
+        .expect("history placement should resolve");
+
+        assert_eq!(anchor_first.source, PlacementSource::TrayAnchor);
+        assert_eq!(history_second.source, PlacementSource::LastSuccessfulPosition);
     }
 }

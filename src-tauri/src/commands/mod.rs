@@ -15,7 +15,7 @@ use crate::tray::apply_display_mode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 const MIN_CLAUDE_REFRESH_COOLDOWN_SECS: u64 = 60;
 
@@ -609,6 +609,17 @@ pub fn get_preferences(state: State<'_, AppState>) -> UserPreferences {
 pub fn get_runtime_flags() -> RuntimeFlags {
     RuntimeFlags {
         is_e2_e: std::env::var("AI_USAGE_E2E_SHELL_HOOKS").unwrap_or_default() == "1",
+    }
+}
+
+#[tauri::command]
+pub fn hide_main_window(app: AppHandle) -> bool {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+        crate::tray::record_e2e_window_hidden();
+        true
+    } else {
+        false
     }
 }
 
