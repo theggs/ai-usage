@@ -23,7 +23,7 @@ jobs:
       release_title: ${{ steps.meta.outputs.release_title }}
       prerelease: ${{ steps.meta.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: meta
         shell: bash
@@ -63,11 +63,11 @@ jobs:
             tauri_args: --bundles nsis
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -105,7 +105,7 @@ jobs:
           Get-ChildItem target/release/bundle/nsis/*.exe | Copy-Item -Destination artifacts/release
 
       - name: Upload release assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-${{ matrix.os }}
           path: artifacts/release/*
@@ -115,10 +115,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [prepare, build]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download release assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: release-*
           path: release-assets

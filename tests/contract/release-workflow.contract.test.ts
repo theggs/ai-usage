@@ -7,6 +7,11 @@ describe("release workflow contract", () => {
 
     expect(workflow).toContain('branches: ["master"]');
     expect(workflow).toContain('tags: ["*"]');
+    expect(workflow).toContain("actions/checkout@v6");
+    expect(workflow).toContain("actions/setup-node@v6");
+    expect(workflow).toContain("node-version-file: .nvmrc");
+    expect(workflow).toContain("actions/upload-artifact@v6");
+    expect(workflow).toContain("actions/download-artifact@v7");
     expect(workflow).toContain("nightly-${short_sha}");
     expect(workflow).toContain("--generate-notes");
     expect(workflow).toContain("gh release create");

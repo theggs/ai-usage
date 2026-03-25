@@ -48,7 +48,7 @@ Build from source only if you want to contribute, test, or run the project local
 
 Requirements:
 
-- Node.js 20 LTS (`.nvmrc` is set to `20`)
+- Node.js 24 LTS (`.nvmrc` is set to `24`)
 - Rust stable toolchain
 - A local Codex CLI installation with an active `codex login` session
 - Tauri desktop build prerequisites for your platform

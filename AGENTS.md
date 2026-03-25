@@ -1,12 +1,13 @@
 # ai-usage Development Guidelines
 
 ## Active Technologies
-- Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh (009-ui-ux-polish)
+- Rust stable (edition 2021), TypeScript 5.x, Node.js 24 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh (009-ui-ux-polish)
 - Local preferences persistence via existing `save_preferences` / `preferencesStore`; no new storage layer (009-ui-ux-polish)
 - Existing local preferences persistence via `save_preferences` / `preferencesStore`, plus existing snapshot cache; no new storage layer (010-ui-ux-completion)
 - 现有 `preferences.json` 与 `snapshot-cache.json` 本地持久化；不新增存储层 (012-claude-code-usage-query-disclosure)
+- Rust stable (edition 2021), TypeScript 5.x, Node.js 24 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwright；优先复用内建 `Date` / `Intl` 时间能力，不新增运行时日期库 (013-promotion-status)
 
-- **Runtime**: Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS (via nvm, see `.nvmrc`)
+- **Runtime**: Rust stable (edition 2021), TypeScript 5.x, Node.js 24 LTS (via nvm, see `.nvmrc`)
 - **Framework**: Tauri 2 (tauri-build 2.0.0) + React 19
 - **Styling**: Tailwind CSS 4 (`@tailwindcss/vite` plugin + `@source` CSS directive)
 - **Testing**: Vitest, React Testing Library, Playwright
@@ -91,9 +92,7 @@ Rules:
 - 005-claude-code-support: Claude Code quota display, menubar service selection, panel display order
 
 ## Recent Changes
-- 012-claude-code-usage-query-disclosure: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
-- 012-claude-code-usage-query-disclosure: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
-- 010-ui-ux-completion: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 20 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwrigh
+- 013-promotion-status: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 24 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwright；优先复用内建 `Date` / `Intl` 时间能力，不新增运行时日期库
 
 ## Spec-Kit Workflow Constraints
 
@@ -102,6 +101,7 @@ Rules:
 - After `speckit-tasks`, verify that tasks cover not only feature implementation but also real-runtime validation, screenshot or visual review, and abnormal-path verification for the affected UX.
 - For drag-and-drop, overlays, animations, window transitions, or coordinate-sensitive UI work, do not treat Vitest/RTL passing as sufficient completion evidence. Real runtime verification is required before calling the work done.
 - For desktop UI changes, the first implementation pass must be followed by screenshot review or real-window inspection before polish is considered complete.
+- Before running any macOS GUI/E2E, screenshot, screen recording, or other frontmost-session-dependent check, first verify that the desktop session is truly interactive rather than only reachable over CLI: the display is awake and unlocked, `pmset -g assertions` does not indicate an inactive user session, and the run will not continue during display sleep. If needed, ask once per session whether the display should be explicitly woken and kept awake, such as with `caffeinate -d`; if the environment is unsuitable, stop and report an environment issue instead of treating failures as app regressions.
 - When using `speckit-analyze`, also check whether implementation-quality gates are missing from the plan or task breakdown, not just whether requirements are mapped.
 - Do not declare completion based only on code paths and unit tests. Completion requires that the user-facing problem is actually resolved in the running app.
 - See [spec-kit-workflow-constraints.md](/Users/chasewang/01workspace/projects/ai-usage/doc/engineering/spec-kit-workflow-constraints.md) for the full operating guide.
