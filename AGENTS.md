@@ -72,7 +72,6 @@ Rules:
 - No period at the end
 - Keep the subject line under 72 characters
 - Body is optional; use it for multi-faceted changes to list key items
-- Do not include AI tool names, model names, or "Co-Authored-By" lines
 
 ## Key Architecture Decisions
 
