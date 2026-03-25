@@ -822,6 +822,18 @@ pub fn load_snapshot(
 mod tests {
     use super::*;
 
+    fn shared_state_test_guard() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
+    }
+
+    fn reset_shared_test_state() {
+        clear_access_pause();
+        if let Ok(mut cache) = stale_cache().lock() {
+            *cache = None;
+        }
+    }
+
     fn prefs() -> UserPreferences {
         crate::state::default_preferences()
     }
@@ -961,6 +973,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn access_pause_blocks_automatic_refresh() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::AccessDenied;
         }
@@ -972,6 +986,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn active_rate_limit_until_only_returns_future_deadline() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::RateLimitedUntil(now_unix() + 120);
         }
@@ -1009,6 +1025,8 @@ Current WinHTTP proxy settings:
     // (f) transient failure with prior cache -> snapshot_state: "stale", cached dims returned
     #[test]
     fn transient_failure_with_cache_returns_stale() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         {
             let mut cache = stale_cache().lock().unwrap();
             *cache = Some(vec![QuotaDimension {
@@ -1058,6 +1076,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn session_recovery_preserves_cache() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         // Populate stale cache to simulate a prior successful fetch.
         {
             let mut cache = stale_cache().lock().unwrap();
@@ -1086,6 +1106,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn session_recovery_sets_pause_state() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::SessionRecovery;
         }
@@ -1099,6 +1121,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn session_recovery_does_not_block_auto_refresh() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         // Set SessionRecovery, then verify is_access_paused is false
         // (which is the guard that blocks automatic refresh).
         if let Ok(mut state) = pause_state().lock() {
@@ -1112,6 +1136,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn session_recovery_cleared_on_success() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::SessionRecovery;
         }
@@ -1127,6 +1153,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn session_recovery_empty_cache_returns_empty_snapshot() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         // Ensure cache is empty.
         *stale_cache().lock().unwrap() = None;
 
@@ -1175,6 +1203,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn session_recovery_then_429_enters_rate_limit() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::SessionRecovery;
         }
@@ -1190,6 +1220,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn session_recovery_then_403_enters_access_denied() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::SessionRecovery;
         }
@@ -1204,6 +1236,8 @@ Current WinHTTP proxy settings:
 
     #[test]
     fn rate_limit_expired_then_401_enters_session_recovery() {
+        let _guard = shared_state_test_guard();
+        reset_shared_test_state();
         // Set an expired rate limit.
         if let Ok(mut state) = pause_state().lock() {
             *state = PauseState::RateLimitedUntil(now_unix() - 1);
