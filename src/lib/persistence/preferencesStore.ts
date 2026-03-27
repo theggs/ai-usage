@@ -35,7 +35,8 @@ const normalizeNetworkProxyMode = (
 };
 
 const KNOWN_SERVICE_IDS = ["codex", "claude-code"] as const;
-const DEFAULT_MENUBAR_SERVICE = "codex";
+const KNOWN_MENUBAR_SERVICES = ["codex", "claude-code", "auto"] as const;
+const DEFAULT_MENUBAR_SERVICE: UserPreferences["menubarService"] = "codex";
 
 const normalizeServiceOrder = (value: string[] | undefined, current: UserPreferences["serviceOrder"]) => {
   const next = (value ?? current).filter((serviceId): serviceId is string => KNOWN_SERVICE_IDS.includes(serviceId as typeof KNOWN_SERVICE_IDS[number]));
@@ -52,11 +53,15 @@ const normalizeMenubarService = (
   value: string | undefined,
   serviceOrder: UserPreferences["serviceOrder"],
   claudeCodeUsageEnabled: boolean
-) => {
+) : UserPreferences["menubarService"] => {
   const candidate =
-    value && KNOWN_SERVICE_IDS.includes(value as typeof KNOWN_SERVICE_IDS[number])
+    value && KNOWN_MENUBAR_SERVICES.includes(value as typeof KNOWN_MENUBAR_SERVICES[number])
       ? value
       : DEFAULT_MENUBAR_SERVICE;
+
+  if (candidate === "auto") {
+    return "auto";
+  }
 
   if (!claudeCodeUsageEnabled && candidate === "claude-code") {
     return DEFAULT_MENUBAR_SERVICE;

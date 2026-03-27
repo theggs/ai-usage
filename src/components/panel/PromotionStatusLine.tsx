@@ -56,7 +56,7 @@ const PromotionPill = ({
         <img
           alt=""
           aria-hidden="true"
-          className="promotion-pill-icon"
+          className={`promotion-pill-icon promotion-pill-icon-${decision.serviceId}`}
           data-testid={`promotion-pill-icon-${decision.serviceId}`}
           src={iconSrc}
         />
@@ -91,7 +91,7 @@ const PromotionPopoverItem = ({
               <img
                 alt=""
                 aria-hidden="true"
-                className="promotion-pill-icon"
+                className={`promotion-pill-icon promotion-pill-icon-${decision.serviceId}`}
                 data-testid={`promotion-popover-icon-${decision.serviceId}`}
                 src={iconSrc}
               />

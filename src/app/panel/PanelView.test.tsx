@@ -307,6 +307,48 @@ describe("PanelView", () => {
     expect(screen.queryByRole("heading", { name: "Claude Code" })).not.toBeInTheDocument();
   });
 
+  it("keeps panel order and visible content unchanged when menubar service is auto", () => {
+    const codexState = {
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "codex",
+          serviceName: "Codex"
+        }
+      ]
+    };
+    const state = createState(codexState);
+    state.preferences = {
+      ...defaultPreferences,
+      menubarService: "auto",
+      claudeCodeUsageEnabled: true,
+      serviceOrder: ["claude-code", "codex"],
+      onboardingDismissedAt: new Date().toISOString()
+    };
+    state.claudeCodePanelState = {
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "claude-code",
+          serviceName: "Claude Code",
+          iconKey: "claude-code"
+        }
+      ]
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+    expect(headings).toEqual(["Claude Code", "Codex"]);
+    expect(screen.getAllByText(/上次刷新/)).toHaveLength(2);
+  });
+
   it("renders full-height accent strips only for warning and danger cards", () => {
     const now = new Date().toISOString();
     const state = createState({

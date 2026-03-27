@@ -34,6 +34,75 @@ fn default_claude_code_disclosure_dismissed_at() -> Option<String> {
 }
 
 const KNOWN_SERVICE_IDS: [&str; 2] = ["codex", "claude-code"];
+const KNOWN_MENUBAR_SERVICES: [&str; 3] = ["codex", "claude-code", "auto"];
+pub const AUTO_ACTIVITY_WINDOW_SECS: u64 = 5 * 60;
+pub const AUTO_ROTATION_INTERVAL_SECS: u64 = 15;
+pub const AUTO_SCAN_INTERVAL_SECS: u64 = 15;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ActivitySignalSource {
+    CodexStateSqlite,
+    CodexSessionIndex,
+    CodexLogsSqlite,
+    CodexSessionFile,
+    ClaudeProjectFile,
+    ClaudeHistoryFile,
+    ClaudeSessionEnv,
+    None,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ActivityConfidence {
+    High,
+    Medium,
+    Low,
+    None,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ServiceActivitySnapshot {
+    pub service_id: String,
+    pub last_activity_at: Option<u64>,
+    pub signal_source: ActivitySignalSource,
+    pub confidence: ActivityConfidence,
+    pub is_eligible_for_auto: bool,
+    pub last_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AutoMenubarMode {
+    Neutral,
+    Single,
+    Rotating,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoMenubarSelectionState {
+    pub mode: AutoMenubarMode,
+    pub current_service_id: Option<String>,
+    pub rotation_service_ids: Vec<String>,
+    pub last_resolved_at: u64,
+    pub last_rotated_at: Option<u64>,
+    pub retained_from_previous: bool,
+}
+
+impl Default for AutoMenubarSelectionState {
+    fn default() -> Self {
+        Self {
+            mode: AutoMenubarMode::Neutral,
+            current_service_id: None,
+            rotation_service_ids: Vec::new(),
+            last_resolved_at: 0,
+            last_rotated_at: None,
+            retained_from_previous: false,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -222,13 +291,17 @@ pub fn normalize_preferences(mut preferences: UserPreferences) -> UserPreference
     preferences.refresh_interval_minutes = preferences.refresh_interval_minutes.max(5);
     preferences.service_order = normalize_service_order(preferences.service_order);
 
+    if preferences.menubar_service == "auto" {
+        return preferences;
+    }
+
     if !preferences.claude_code_usage_enabled
         && preferences.menubar_service == "claude-code"
     {
         preferences.menubar_service = "codex".into();
     }
 
-    if !KNOWN_SERVICE_IDS.contains(&preferences.menubar_service.as_str()) {
+    if !KNOWN_MENUBAR_SERVICES.contains(&preferences.menubar_service.as_str()) {
         preferences.menubar_service = "codex".into();
     }
 
@@ -239,6 +312,7 @@ pub struct AppState {
     pub preferences: Mutex<UserPreferences>,
     pub codex_accounts: Mutex<Vec<CodexAccount>>,
     pub last_successful_popover_placement: Mutex<Option<LastSuccessfulPopoverPlacement>>,
+    pub auto_menubar_selection: Mutex<AutoMenubarSelectionState>,
 }
 
 impl Default for AppState {
@@ -247,6 +321,7 @@ impl Default for AppState {
             preferences: Mutex::new(default_preferences()),
             codex_accounts: Mutex::new(Vec::new()),
             last_successful_popover_placement: Mutex::new(None),
+            auto_menubar_selection: Mutex::new(AutoMenubarSelectionState::default()),
         }
     }
 }
@@ -305,5 +380,26 @@ mod tests {
         assert_eq!(prefs.menubar_service, "codex");
         assert_eq!(prefs.service_order, vec!["claude-code", "codex"]);
         assert_eq!(prefs.refresh_interval_minutes, 5);
+    }
+
+    #[test]
+    fn keeps_auto_menubar_selection_when_claude_is_disabled() {
+        let prefs = normalize_preferences(UserPreferences {
+            language: "zh-CN".into(),
+            refresh_interval_minutes: 15,
+            tray_summary_mode: "lowest-remaining".into(),
+            autostart_enabled: true,
+            notification_test_enabled: true,
+            last_saved_at: "2025-01-01T00:00:00.000Z".into(),
+            menubar_service: "auto".into(),
+            service_order: vec!["codex".into(), "claude-code".into()],
+            network_proxy_mode: "system".into(),
+            network_proxy_url: String::new(),
+            onboarding_dismissed_at: None,
+            claude_code_usage_enabled: false,
+            claude_code_disclosure_dismissed_at: None,
+        });
+
+        assert_eq!(prefs.menubar_service, "auto");
     }
 }

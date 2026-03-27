@@ -68,6 +68,7 @@ describe("PromotionStatusLine", () => {
     expect(screen.getByTestId("promotion-pill-row")).toBeInTheDocument();
     expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
     expect(screen.getByTestId("promotion-pill-icon-codex")).toBeInTheDocument();
+    expect(screen.getByTestId("promotion-pill-icon-codex")).toHaveClass("promotion-pill-icon-codex");
     expect(screen.queryByText("...")).not.toBeInTheDocument();
   });
 

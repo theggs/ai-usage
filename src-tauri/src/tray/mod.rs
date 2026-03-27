@@ -1,5 +1,10 @@
-use crate::state::{AppState, LastSuccessfulPopoverPlacement, PanelPlaceholderItem, UserPreferences};
+use crate::state::{
+    AppState, AutoMenubarSelectionState, LastSuccessfulPopoverPlacement, PanelPlaceholderItem,
+    UserPreferences,
+};
+use png::ColorType;
 use serde::Serialize;
+use std::io::Cursor;
 use tauri::{
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -10,6 +15,10 @@ const DEFAULT_POPOVER_WIDTH: u32 = 360;
 const DEFAULT_POPOVER_HEIGHT: u32 = 620;
 const POPOVER_VERTICAL_GAP: i32 = 8;
 const SAFE_DEFAULT_TOP_OFFSET: i32 = 12;
+const CLAUDE_CODE_BRAND_TINT: (u8, u8, u8) = (217, 119, 87);
+const CODEX_TRAY_ICON: &[u8] = include_bytes!("../../icons/services/service-codex-tray.png");
+const CLAUDE_CODE_TRAY_ICON: &[u8] =
+    include_bytes!("../../icons/services/service-claude-code-tray.png");
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct WorkArea {
@@ -49,6 +58,8 @@ struct PopoverPlacement {
 struct E2ETraySurface<'a> {
     severity: &'a str,
     service_name: &'a str,
+    display_service_id: Option<&'a str>,
+    icon_service_id: Option<&'a str>,
     title: Option<&'a str>,
     tooltip: &'a str,
 }
@@ -68,6 +79,8 @@ struct E2EWindowPlacement<'a> {
 fn write_e2e_tray_surface(
     severity: &str,
     service_name: &str,
+    display_service_id: Option<&str>,
+    icon_service_id: Option<&str>,
     title: Option<&str>,
     tooltip: &str,
 ) {
@@ -78,6 +91,8 @@ fn write_e2e_tray_surface(
     let payload = E2ETraySurface {
         severity,
         service_name,
+        display_service_id,
+        icon_service_id,
         title,
         tooltip,
     };
@@ -405,18 +420,29 @@ fn apply_popover_placement(
     }
 }
 
-fn items_for_menubar_service(
+fn resolve_display_service_id(
     preferences: &UserPreferences,
-    items: &[PanelPlaceholderItem],
-) -> Vec<PanelPlaceholderItem> {
-    let active_service = if !preferences.claude_code_usage_enabled
+    selection: Option<&AutoMenubarSelectionState>,
+) -> Option<String> {
+    if preferences.menubar_service == "auto" {
+        selection.and_then(|current| current.current_service_id.clone())
+    } else if !preferences.claude_code_usage_enabled
         && preferences.menubar_service == "claude-code"
     {
-        "codex"
+        Some("codex".into())
     } else {
-        preferences.menubar_service.as_str()
-    };
+        Some(preferences.menubar_service.clone())
+    }
+}
 
+fn items_for_menubar_service(
+    preferences: &UserPreferences,
+    selection: Option<&AutoMenubarSelectionState>,
+    items: &[PanelPlaceholderItem],
+) -> Vec<PanelPlaceholderItem> {
+    let Some(active_service) = resolve_display_service_id(preferences, selection) else {
+        return Vec::new();
+    };
     items
         .iter()
         .filter(|item| item.service_id == active_service)
@@ -551,9 +577,26 @@ fn tray_severity(items: &[PanelPlaceholderItem]) -> &'static str {
 }
 
 fn tray_tooltip(service_name: &str, summary: Option<&str>) -> String {
+    if service_name == "AIUsage" {
+        return match summary {
+            Some(value) if !value.is_empty() => format!("AIUsage · {value}"),
+            _ => "AIUsage".to_string(),
+        };
+    }
+
     match summary {
         Some(value) if !value.is_empty() => format!("AIUsage · {service_name} · {value}"),
         _ => format!("AIUsage · {service_name}"),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_tray_title(summary: Option<&str>) -> Option<String> {
+    match summary {
+        Some(value) if !value.is_empty() => Some(value.to_string()),
+        // Clearing the title with an empty string is more reliable than `None`
+        // for removing stale text from the macOS menu bar.
+        _ => Some(String::new()),
     }
 }
 
@@ -651,6 +694,39 @@ fn fallback_tray_icon_image(severity: &str) -> Image<'static> {
     Image::new_owned(rgba, size, size)
 }
 
+fn service_base_icon(service_id: &str) -> Option<Image<'static>> {
+    let bytes = match service_id {
+        "codex" => CODEX_TRAY_ICON,
+        "claude-code" => CLAUDE_CODE_TRAY_ICON,
+        _ => return None,
+    };
+
+    let decoder = png::Decoder::new(Cursor::new(bytes));
+    let mut reader = decoder.read_info().ok()?;
+    let mut buffer = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buffer).ok()?;
+    let source = &buffer[..info.buffer_size()];
+
+    let rgba = match info.color_type {
+        ColorType::Rgba => source.to_vec(),
+        ColorType::Rgb => source
+            .chunks_exact(3)
+            .flat_map(|pixel| [pixel[0], pixel[1], pixel[2], 255])
+            .collect(),
+        ColorType::Grayscale => source
+            .iter()
+            .flat_map(|value| [*value, *value, *value, 255])
+            .collect(),
+        ColorType::GrayscaleAlpha => source
+            .chunks_exact(2)
+            .flat_map(|pixel| [pixel[0], pixel[0], pixel[0], pixel[1]])
+            .collect(),
+        ColorType::Indexed => return None,
+    };
+
+    Some(Image::new_owned(rgba, info.width, info.height))
+}
+
 fn tinted_icon(base_icon: Image<'_>, tint: (u8, u8, u8), mix: f32) -> Image<'static> {
     let mut rgba = base_icon.rgba().to_vec();
     for pixel in rgba.chunks_exact_mut(4) {
@@ -689,7 +765,32 @@ fn tinted_icon(base_icon: Image<'_>, tint: (u8, u8, u8), mix: f32) -> Image<'sta
     Image::new_owned(rgba, base_icon.width(), base_icon.height())
 }
 
-fn tray_icon_image(app: &AppHandle, severity: &str) -> Image<'static> {
+fn solid_tinted_icon(base_icon: Image<'_>, tint: (u8, u8, u8)) -> Image<'static> {
+    let mut rgba = base_icon.rgba().to_vec();
+    for pixel in rgba.chunks_exact_mut(4) {
+        if pixel[3] == 0 {
+            continue;
+        }
+        pixel[0] = tint.0;
+        pixel[1] = tint.1;
+        pixel[2] = tint.2;
+    }
+    Image::new_owned(rgba, base_icon.width(), base_icon.height())
+}
+
+fn tray_icon_image(app: &AppHandle, service_id: Option<&str>, severity: &str) -> Image<'static> {
+    if let Some(base_icon) = service_id.and_then(service_base_icon) {
+        let base_icon = match service_id {
+            Some("claude-code") => solid_tinted_icon(base_icon, CLAUDE_CODE_BRAND_TINT),
+            _ => base_icon,
+        };
+        return match severity {
+            "warning" => tinted_icon(base_icon.clone(), (255, 196, 54), 0.52),
+            "danger" => tinted_icon(base_icon.clone(), (236, 96, 88), 0.42),
+            _ => base_icon.clone(),
+        };
+    }
+
     if let Some(base_icon) = app.default_window_icon() {
         return match severity {
             "warning" => tinted_icon(base_icon.clone(), (255, 196, 54), 0.68),
@@ -750,40 +851,49 @@ pub fn apply_display_mode(
     items: &[PanelPlaceholderItem],
 ) {
     if let Some(tray) = app.tray_by_id("main-tray") {
-        let filtered = items_for_menubar_service(preferences, items);
+        let selection = app
+            .state::<AppState>()
+            .auto_menubar_selection
+            .lock()
+            .unwrap()
+            .clone();
+        let filtered = items_for_menubar_service(preferences, Some(&selection), items);
+        let display_service_id = resolve_display_service_id(preferences, Some(&selection));
         let summary = format_summary(&preferences.tray_summary_mode, &filtered);
         let service_name = filtered
             .first()
             .map(|item| item.service_name.as_str())
-            .unwrap_or_else(|| match if !preferences.claude_code_usage_enabled
-                && preferences.menubar_service == "claude-code"
-            {
-                "codex"
-            } else {
-                preferences.menubar_service.as_str()
-            } {
-                "claude-code" => "Claude Code",
-                _ => "Codex",
+            .unwrap_or_else(|| match display_service_id.as_deref() {
+                Some("claude-code") => "Claude Code",
+                Some("codex") => "Codex",
+                _ => "AIUsage",
             });
         let severity = tray_severity(&filtered);
         let tooltip = tray_tooltip(service_name, summary.as_deref());
 
         #[cfg(target_os = "macos")]
-        match summary.as_deref() {
-            Some(text) => {
-                let _ = tray.set_title(Some(text));
-            }
-            None => {
-                let _ = tray.set_title::<&str>(None);
-            }
+        {
+            let title = macos_tray_title(summary.as_deref());
+            let _ = tray.set_title(title.as_deref());
         }
 
         #[cfg(not(target_os = "macos"))]
         let _ = tray.set_title::<&str>(None);
 
         let _ = tray.set_tooltip(Some(tooltip.clone()));
-        let _ = tray.set_icon(Some(tray_icon_image(app, severity)));
-        write_e2e_tray_surface(severity, service_name, summary.as_deref(), &tooltip);
+        let _ = tray.set_icon(Some(tray_icon_image(
+            app,
+            display_service_id.as_deref(),
+            severity,
+        )));
+        write_e2e_tray_surface(
+            severity,
+            service_name,
+            display_service_id.as_deref(),
+            display_service_id.as_deref(),
+            summary.as_deref(),
+            &tooltip,
+        );
     }
 }
 
@@ -799,10 +909,17 @@ pub fn initialize_tray(
 
     let mut builder = TrayIconBuilder::with_id("main-tray").tooltip("AIUsage");
 
-    let filtered = items_for_menubar_service(preferences, items);
+    let selection = app
+        .state::<AppState>()
+        .auto_menubar_selection
+        .lock()
+        .unwrap()
+        .clone();
+    let filtered = items_for_menubar_service(preferences, Some(&selection), items);
+    let display_service_id = resolve_display_service_id(preferences, Some(&selection));
     let summary = format_summary(&preferences.tray_summary_mode, &filtered);
     let severity = tray_severity(&filtered);
-    builder = builder.icon(tray_icon_image(app, severity));
+    builder = builder.icon(tray_icon_image(app, display_service_id.as_deref(), severity));
     if let Some(text) = summary.clone() {
         builder = builder.title(text);
     }
@@ -857,9 +974,10 @@ pub fn should_hide_on_focus_change(is_focused: bool) -> bool {
 mod tests {
     use super::{
         anchored_placement, fallback_tray_icon_image, format_summary, items_for_menubar_service,
-        placement_from_last_success, resolve_popover_placement, safe_default_placement,
-        should_hide_on_focus_change, tinted_icon, tray_anchor_from_rect, tray_severity,
-        tray_tooltip, PlacementSource, TrayAnchor, WorkArea,
+        placement_from_last_success, resolve_display_service_id, resolve_popover_placement,
+        safe_default_placement, service_base_icon, should_hide_on_focus_change, tinted_icon,
+        tray_anchor_from_rect, tray_severity, tray_tooltip, PlacementSource, TrayAnchor,
+        WorkArea,
     };
     use crate::state::{LastSuccessfulPopoverPlacement, PanelPlaceholderItem, QuotaDimension};
     use tauri::image::Image;
@@ -979,7 +1097,7 @@ mod tests {
         let mut prefs = crate::state::default_preferences();
         prefs.claude_code_usage_enabled = true;
         prefs.menubar_service = "claude-code".into();
-        let filtered = items_for_menubar_service(&prefs, &items);
+        let filtered = items_for_menubar_service(&prefs, None, &items);
         assert_eq!(
             format_summary("lowest-remaining", &filtered),
             Some("30%".into())
@@ -987,7 +1105,7 @@ mod tests {
 
         // When menubar_service is "codex", summary reflects Codex only.
         prefs.menubar_service = "codex".into();
-        let filtered = items_for_menubar_service(&prefs, &items);
+        let filtered = items_for_menubar_service(&prefs, None, &items);
         assert_eq!(
             format_summary("lowest-remaining", &filtered),
             Some("70%".into())
@@ -1003,7 +1121,7 @@ mod tests {
         let mut prefs = crate::state::default_preferences();
         prefs.claude_code_usage_enabled = true;
         prefs.menubar_service = "claude-code".into();
-        let filtered = items_for_menubar_service(&prefs, &items);
+        let filtered = items_for_menubar_service(&prefs, None, &items);
         assert_eq!(format_summary("lowest-remaining", &filtered), None);
     }
 
@@ -1017,7 +1135,7 @@ mod tests {
         prefs.claude_code_usage_enabled = true;
         prefs.menubar_service = "claude-code".into();
 
-        let filtered = items_for_menubar_service(&prefs, &items);
+        let filtered = items_for_menubar_service(&prefs, None, &items);
 
         assert_eq!(
             format_summary("lowest-remaining", &filtered),
@@ -1035,7 +1153,7 @@ mod tests {
         prefs.claude_code_usage_enabled = false;
         prefs.menubar_service = "claude-code".into();
 
-        let filtered = items_for_menubar_service(&prefs, &items);
+        let filtered = items_for_menubar_service(&prefs, None, &items);
 
         assert_eq!(
             format_summary("lowest-remaining", &filtered),
@@ -1053,6 +1171,34 @@ mod tests {
         assert_eq!(
             tray_tooltip("Claude Code", None),
             "AIUsage · Claude Code".to_string()
+        );
+        assert_eq!(tray_tooltip("AIUsage", None), "AIUsage".to_string());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_title_uses_empty_string_to_clear_stale_text() {
+        assert_eq!(super::macos_tray_title(Some("37%")).as_deref(), Some("37%"));
+        assert_eq!(super::macos_tray_title(None).as_deref(), Some(""));
+        assert_eq!(super::macos_tray_title(Some("")).as_deref(), Some(""));
+    }
+
+    #[test]
+    fn resolves_auto_selection_to_current_service_id() {
+        let mut prefs = crate::state::default_preferences();
+        prefs.menubar_service = "auto".into();
+        let selection = crate::state::AutoMenubarSelectionState {
+            mode: crate::state::AutoMenubarMode::Single,
+            current_service_id: Some("claude-code".into()),
+            rotation_service_ids: vec![],
+            last_resolved_at: 0,
+            last_rotated_at: None,
+            retained_from_previous: false,
+        };
+
+        assert_eq!(
+            resolve_display_service_id(&prefs, Some(&selection)).as_deref(),
+            Some("claude-code")
         );
     }
 
@@ -1089,12 +1235,42 @@ mod tests {
     }
 
     #[test]
+    fn loads_distinct_service_base_icons() {
+        let codex = service_base_icon("codex").expect("codex icon");
+        let claude = service_base_icon("claude-code").expect("claude icon");
+
+        assert_eq!(codex.width(), claude.width());
+        assert_eq!(codex.height(), claude.height());
+        assert_ne!(codex.rgba(), claude.rgba());
+    }
+
+    #[test]
+    fn solid_tint_preserves_alpha_while_applying_brand_color() {
+        let base = Image::new_owned(vec![255, 255, 255, 255, 255, 255, 255, 0], 2, 1);
+        let tinted = super::solid_tinted_icon(base, super::CLAUDE_CODE_BRAND_TINT);
+
+        assert_eq!(
+            tinted.rgba(),
+            &[
+                super::CLAUDE_CODE_BRAND_TINT.0,
+                super::CLAUDE_CODE_BRAND_TINT.1,
+                super::CLAUDE_CODE_BRAND_TINT.2,
+                255,
+                255,
+                255,
+                255,
+                0
+            ]
+        );
+    }
+
+    #[test]
     fn codex_service_id_matches_saved_menubar_preference_value() {
         let items = [item_for_service("codex", "Codex / 5h", 55)];
         let mut prefs = crate::state::default_preferences();
         prefs.menubar_service = "codex".into();
 
-        let filtered = items_for_menubar_service(&prefs, &items);
+        let filtered = items_for_menubar_service(&prefs, None, &items);
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(

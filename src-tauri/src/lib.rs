@@ -1,4 +1,5 @@
 pub mod autostart;
+pub mod agent_activity;
 pub mod claude_code;
 pub mod codex;
 pub mod commands;
@@ -47,6 +48,29 @@ fn start_e2e_control_loop(app: &tauri::AppHandle) {
     });
 }
 
+fn start_auto_menubar_loop(app: &tauri::AppHandle) {
+    let app_handle = app.clone();
+    std::thread::spawn(move || loop {
+        let app_state = app_handle.state::<AppState>();
+        let preferences = app_state.preferences.lock().unwrap().clone();
+
+        if preferences.menubar_service == "auto" {
+            let items = crate::commands::build_cached_tray_items(&preferences);
+            crate::commands::refresh_auto_menubar_selection(
+                &app_state,
+                &preferences,
+                &items,
+                crate::agent_activity::now_unix_secs(),
+            );
+            crate::tray::apply_display_mode(&app_handle, &preferences, &items);
+        }
+
+        std::thread::sleep(std::time::Duration::from_secs(
+            crate::state::AUTO_SCAN_INTERVAL_SECS,
+        ));
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -81,7 +105,14 @@ pub fn run() {
             let preferences = app_state.preferences.lock().unwrap().clone();
             let accounts = app_state.codex_accounts.lock().unwrap().clone();
             let tray_items = commands::build_tray_items(&preferences, &accounts, "startup");
+            commands::refresh_auto_menubar_selection(
+                &app_state,
+                &preferences,
+                &tray_items,
+                agent_activity::now_unix_secs(),
+            );
             tray::initialize_tray(app.handle(), &preferences, &tray_items);
+            start_auto_menubar_loop(app.handle());
             let test_mode = std::env::var("AIUSAGE_E2E").unwrap_or_default() == "1";
             if let Some(window) = app.get_webview_window("main") {
                 let window_handle = window.clone();

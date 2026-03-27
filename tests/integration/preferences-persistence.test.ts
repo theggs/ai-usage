@@ -19,6 +19,7 @@ describe("preferences persistence", () => {
       serviceOrder: ["claude-code", "codex", "claude-code", "unknown-service"],
       networkProxyMode: "manual",
       networkProxyUrl: "http://127.0.0.1:7890",
+      menubarService: "auto",
       onboardingDismissedAt: "2026-03-23T00:00:00.000Z",
       claudeCodeUsageEnabled: true,
       claudeCodeDisclosureDismissedAt: "2026-03-22T00:00:00.000Z"
@@ -28,6 +29,7 @@ describe("preferences persistence", () => {
     expect(saved.refreshIntervalMinutes).toBe(25);
     expect(loaded.language).toBe("en-US");
     expect(loaded.traySummaryMode).toBe("window-week");
+    expect(loaded.menubarService).toBe("auto");
     expect(loaded.serviceOrder).toEqual(["claude-code", "codex"]);
     expect(loaded.networkProxyMode).toBe("manual");
     expect(loaded.networkProxyUrl).toBe("http://127.0.0.1:7890");
@@ -54,6 +56,16 @@ describe("preferences persistence", () => {
     expect(loaded.claudeCodeUsageEnabled).toBe(false);
     expect(loaded.claudeCodeDisclosureDismissedAt).toBeUndefined();
     expect(loaded.serviceOrder).toEqual(["codex", "claude-code"]);
+  });
+
+  it("keeps auto valid even when Claude Code usage is disabled", () => {
+    const saved = savePreferences({
+      menubarService: "auto",
+      claudeCodeUsageEnabled: false
+    });
+
+    expect(saved.menubarService).toBe("auto");
+    expect(loadPreferences().menubarService).toBe("auto");
   });
 
   it("restores saved Codex accounts and enabled state", () => {
