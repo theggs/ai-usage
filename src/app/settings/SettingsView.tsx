@@ -143,6 +143,15 @@ export const SettingsView = () => {
     label: serviceId === "claude-code" ? copy.claudeCodeLabel : copy.codexLabel,
     shortLabel: serviceId === "claude-code" ? "Claude" : copy.codexLabel
   }));
+  const menubarOptions = visibleServiceScope.visibleMenubarServices.map((serviceId) => ({
+    id: serviceId,
+    label:
+      serviceId === "claude-code"
+        ? copy.claudeCodeLabel
+        : serviceId === "auto"
+          ? copy.menubarServiceAuto
+          : copy.codexLabel
+  }));
   const serviceOrderDisabled = serviceOptions.length < 2;
 
   useEffect(() => {
@@ -461,11 +470,16 @@ export const SettingsView = () => {
                 aria-label={copy.menubarService}
                 className={selectClassName}
                 value={draft.menubarService}
-                onChange={(event) => void applyImmediatePatch({ menubarService: event.target.value }, draft)}
+                onChange={(event) =>
+                  void applyImmediatePatch(
+                    { menubarService: event.target.value as UserPreferences["menubarService"] },
+                    draft
+                  )
+                }
               >
-                {visibleServiceScope.visibleMenubarServices.map((serviceId) => (
-                  <option key={serviceId} value={serviceId}>
-                    {serviceId === "claude-code" ? copy.claudeCodeLabel : copy.codexLabel}
+                {menubarOptions.map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {service.label}
                   </option>
                 ))}
               </select>

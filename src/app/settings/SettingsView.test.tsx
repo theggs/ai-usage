@@ -64,6 +64,7 @@ describe("SettingsView", () => {
 
     expect(screen.getByRole("combobox", { name: "菜单栏数值" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "菜单栏服务" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "自动" })).toBeInTheDocument();
     expect(screen.getByLabelText("Codex")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "语言" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "开机自启" })).toBeInTheDocument();
@@ -191,6 +192,7 @@ describe("SettingsView", () => {
     });
 
     expect(screen.queryByRole("option", { name: "Claude Code" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "自动" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Claude Code")).not.toBeInTheDocument();
   });
 
@@ -203,7 +205,27 @@ describe("SettingsView", () => {
     });
 
     expect(screen.getByRole("option", { name: "Claude Code" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "自动" })).toBeInTheDocument();
     expect(screen.getByLabelText("Claude Code")).toBeInTheDocument();
+  });
+
+  it("persists auto as a valid menubar service selection", async () => {
+    const savePreferences = vi.fn(async (patch) => ({
+      ...defaultPreferences,
+      claudeCodeUsageEnabled: true,
+      menubarService: "auto",
+      ...patch,
+      lastSavedAt: new Date().toISOString()
+    }));
+
+    renderSettings({ savePreferences });
+
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "菜单栏服务" }), "auto");
+
+    await waitFor(() =>
+      expect(savePreferences).toHaveBeenCalledWith(expect.objectContaining({ menubarService: "auto" }))
+    );
+    expect((screen.getByRole("combobox", { name: "菜单栏服务" }) as HTMLSelectElement).value).toBe("auto");
   });
 
   it("saves the Claude Code usage toggle directly without a confirm step", async () => {

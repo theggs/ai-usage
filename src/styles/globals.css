@@ -85,6 +85,11 @@ input[type="number"] {
   flex-shrink: 0;
 }
 
+.promotion-pill-icon-codex {
+  height: 0.95rem;
+  width: 0.95rem;
+}
+
 .promotion-pill-active-window {
   border-color: rgba(34, 197, 94, 0.2);
   background: rgba(220, 252, 231, 0.95);

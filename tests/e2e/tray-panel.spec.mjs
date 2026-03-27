@@ -2,11 +2,10 @@
 /**
  * E2E smoke tests for the real Tauri tray-panel app.
  *
- * Feature coverage targets for 010-ui-ux-completion:
- * - panel/settings navigation remains stable in the native shell
- * - panel refresh updates the real tray surface state
- * - Pointer sorting persists in the native shell
- * - onboarding and non-color alert labels render in the native shell
+ * Feature coverage targets for 015-agent-auto-menubar:
+ * - auto menubar mode follows recent local activity without extra setup
+ * - tray tooltip/title/icon ownership stay aligned with the current service
+ * - auto mode survives restart while panel/settings behavior stays stable
  *
  * Run:
  *   npm run test:e2e:tauri
@@ -14,7 +13,7 @@
 
 import { strict as assert } from "node:assert";
 import { setTimeout as sleep } from "node:timers/promises";
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -91,6 +90,11 @@ function createScenarioEnv({
   const dir = mkdtempSync(join(tmpdir(), "aiusage-e2e-"));
   const preferencesFile = join(dir, "preferences.json");
   const snapshotFile = join(dir, "snapshot-cache.json");
+  const codexHome = join(dir, "codex-home");
+  const claudeHome = join(dir, "claude-config");
+
+  ensureDir(codexHome);
+  ensureDir(claudeHome);
 
   writeFileSync(
     preferencesFile,
@@ -135,7 +139,10 @@ function createScenarioEnv({
     snapshotFile,
     env: {
       AI_USAGE_PREFERENCES_FILE: preferencesFile,
-      AI_USAGE_SNAPSHOT_CACHE_FILE: snapshotFile
+      AI_USAGE_SNAPSHOT_CACHE_FILE: snapshotFile,
+      AI_USAGE_CODEX_HOME: codexHome,
+      CLAUDE_CONFIG_DIR: claudeHome,
+      USER: "aiusage-e2e"
     },
     cleanup: () => rmSync(dir, { recursive: true, force: true })
   };
@@ -156,6 +163,11 @@ function createRefreshScenarioEnv({
   const snapshotFile = join(dir, "snapshot-cache.json");
   const codexStatusFile = join(dir, "codex-status.txt");
   const trayStateFile = join(dir, "tray-state.json");
+  const codexHome = join(dir, "codex-home");
+  const claudeHome = join(dir, "claude-config");
+
+  ensureDir(codexHome);
+  ensureDir(claudeHome);
 
   writeFileSync(
     preferencesFile,
@@ -225,10 +237,131 @@ function createRefreshScenarioEnv({
     env: {
       AI_USAGE_PREFERENCES_FILE: preferencesFile,
       AI_USAGE_SNAPSHOT_CACHE_FILE: snapshotFile,
+      AI_USAGE_CODEX_HOME: codexHome,
       AI_USAGE_CODEX_STATUS_FILE: codexStatusFile,
       AI_USAGE_CODEX_BIN: "/definitely/missing/codex",
       AI_USAGE_E2E_TRAY_STATE_FILE: trayStateFile,
-      CLAUDE_CONFIG_DIR: join(dir, "claude-config"),
+      CLAUDE_CONFIG_DIR: claudeHome,
+      USER: "aiusage-e2e"
+    },
+    cleanup: () => rmSync(dir, { recursive: true, force: true })
+  };
+}
+
+function writeJson(path, value) {
+  writeFileSync(path, JSON.stringify(value, null, 2));
+}
+
+function ensureDir(path) {
+  mkdirSync(path, { recursive: true });
+}
+
+function setPathTimestamp(path, seconds) {
+  utimesSync(path, seconds, seconds);
+}
+
+function createAutoScenarioEnv({
+  language = "en-US",
+  serviceOrder = ["codex", "claude-code"],
+  claudeCodeUsageEnabled = true,
+  codexRecentAt,
+  claudeRecentAt,
+  codexSnapshotState = "fresh",
+  codexDimensions = [
+    {
+      label: "Codex / 5h",
+      remainingPercent: 71,
+      remainingAbsolute: "71% remaining",
+      resetHint: "Resets in 2h",
+      status: "healthy",
+      progressTone: "success"
+    }
+  ],
+  claudeSnapshotState = "fresh",
+  claudeDimensions = [
+    {
+      label: "Claude Code / Week",
+      remainingPercent: 44,
+      remainingAbsolute: "44% remaining",
+      resetHint: "Resets in 3d",
+      status: "warning",
+      progressTone: "warning"
+    }
+  ]
+}) {
+  const dir = mkdtempSync(join(tmpdir(), "aiusage-e2e-auto-"));
+  const preferencesFile = join(dir, "preferences.json");
+  const snapshotFile = join(dir, "snapshot-cache.json");
+  const trayStateFile = join(dir, "tray-state.json");
+  const codexHome = join(dir, "codex-home");
+  const claudeHome = join(dir, "claude-home");
+
+  writeJson(preferencesFile, {
+    language,
+    refreshIntervalMinutes: 15,
+    traySummaryMode: "lowest-remaining",
+    autostartEnabled: false,
+    notificationTestEnabled: true,
+    lastSavedAt: new Date(0).toISOString(),
+    menubarService: "auto",
+    serviceOrder,
+    networkProxyMode: "system",
+    networkProxyUrl: "",
+    onboardingDismissedAt: new Date().toISOString(),
+    claudeCodeUsageEnabled,
+    claudeCodeDisclosureDismissedAt: new Date().toISOString()
+  });
+
+  writeJson(snapshotFile, {
+    services: {
+      codex: panelState({
+        serviceId: "codex",
+        serviceName: "Codex",
+        snapshotState: codexSnapshotState,
+        statusMessage: "Live Codex limits available.",
+        dimensions: codexDimensions
+      }),
+      "claude-code": panelState({
+        serviceId: "claude-code",
+        serviceName: "Claude Code",
+        snapshotState: claudeSnapshotState,
+        statusMessage: "Live Claude Code limits available.",
+        dimensions: claudeDimensions
+      })
+    }
+  });
+
+  ensureDir(codexHome);
+  ensureDir(claudeHome);
+
+  if (codexRecentAt != null) {
+    const sessionIndexPath = join(codexHome, "session_index.jsonl");
+    writeFileSync(
+      sessionIndexPath,
+      `${JSON.stringify({ id: "codex-thread", updated_at: new Date(codexRecentAt * 1000).toISOString() })}\n`
+    );
+    setPathTimestamp(sessionIndexPath, codexRecentAt);
+  }
+
+  if (claudeRecentAt != null) {
+    const historyPath = join(claudeHome, "history.jsonl");
+    writeFileSync(
+      historyPath,
+      `${JSON.stringify({ sessionId: "claude-session", timestamp: new Date(claudeRecentAt * 1000).toISOString() })}\n`
+    );
+    setPathTimestamp(historyPath, claudeRecentAt);
+  }
+
+  return {
+    dir,
+    preferencesFile,
+    trayStateFile,
+    env: {
+      AI_USAGE_PREFERENCES_FILE: preferencesFile,
+      AI_USAGE_SNAPSHOT_CACHE_FILE: snapshotFile,
+      AI_USAGE_E2E_TRAY_STATE_FILE: trayStateFile,
+      AI_USAGE_CODEX_HOME: codexHome,
+      CLAUDE_CONFIG_DIR: claudeHome,
       USER: "aiusage-e2e"
     },
     cleanup: () => rmSync(dir, { recursive: true, force: true })
@@ -251,6 +384,14 @@ async function pollFor(assertion, label, timeoutMs = 6000, intervalMs = 250) {
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function assertTraySurface(trayState, { title, tooltip, serviceName, displayServiceId, iconServiceId }) {
+  assert.equal(trayState.title ?? null, title ?? null);
+  assert.equal(trayState.tooltip, tooltip);
+  assert.equal(trayState.service_name, serviceName);
+  assert.equal(trayState.display_service_id ?? null, displayServiceId ?? null);
+  assert.equal(trayState.icon_service_id ?? null, iconServiceId ?? null);
 }
 
 function assertTrayAnchoredPlacement(state, trayRect) {
@@ -531,6 +672,101 @@ async function run() {
           }
         }
       }
+
+      scenario.cleanup();
+      scenario = null;
+    });
+
+    await test("auto mode follows the single recent service and keeps tray ownership aligned", async () => {
+      await shutdown(ctx);
+      const now = Math.floor(Date.now() / 1000);
+      scenario = createAutoScenarioEnv({
+        codexRecentAt: now,
+        claudeRecentAt: now - 900
+      });
+      ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
+
+      await pollFor(() => {
+        const trayState = readJson(scenario.trayStateFile);
+        assertTraySurface(trayState, {
+          title: "71%",
+          tooltip: "AIUsage · Codex · 71%",
+          serviceName: "Codex",
+          displayServiceId: "codex",
+          iconServiceId: "codex"
+        });
+        return trayState;
+      }, "auto mode should resolve Codex as the current tray service");
+
+      scenario.cleanup();
+      scenario = null;
+    });
+
+    await test("auto mode falls back to a neutral tray state before any display object exists", async () => {
+      await shutdown(ctx);
+      scenario = createAutoScenarioEnv({
+        codexRecentAt: undefined,
+        claudeRecentAt: undefined
+      });
+      ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
+
+      await pollFor(() => {
+        const trayState = readJson(scenario.trayStateFile);
+        assertTraySurface(trayState, {
+          title: null,
+          tooltip: "AIUsage",
+          serviceName: "AIUsage",
+          displayServiceId: null,
+          iconServiceId: null
+        });
+        return trayState;
+      }, "auto mode should stay neutral before any recent activity is available");
+
+      scenario.cleanup();
+      scenario = null;
+    });
+
+    await test("auto mode survives restart and keeps following the most recent service", async () => {
+      await shutdown(ctx);
+      const now = Math.floor(Date.now() / 1000);
+      scenario = createAutoScenarioEnv({
+        codexRecentAt: now - 900,
+        claudeRecentAt: now
+      });
+      ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
+
+      await pollFor(() => {
+        const trayState = readJson(scenario.trayStateFile);
+        assertTraySurface(trayState, {
+          title: "44%",
+          tooltip: "AIUsage · Claude Code · 44%",
+          serviceName: "Claude Code",
+          displayServiceId: "claude-code",
+          iconServiceId: "claude-code"
+        });
+        return trayState;
+      }, "auto mode should resolve Claude Code before restart");
+
+      await shutdown(ctx);
+      ctx = await launchApp({ env: { AI_USAGE_E2E_SHELL_HOOKS: "1", ...scenario.env } });
+
+      await pollFor(() => {
+        const preferences = readJson(scenario.preferencesFile);
+        assert.equal(preferences.menubarService, "auto");
+        return preferences;
+      }, "saved preferences should keep auto mode after restart");
+
+      await pollFor(() => {
+        const trayState = readJson(scenario.trayStateFile);
+        assertTraySurface(trayState, {
+          title: "44%",
+          tooltip: "AIUsage · Claude Code · 44%",
+          serviceName: "Claude Code",
+          displayServiceId: "claude-code",
+          iconServiceId: "claude-code"
+        });
+        return trayState;
+      }, "auto mode should continue following Claude Code after restart");
 
       scenario.cleanup();
       scenario = null;

@@ -6,6 +6,8 @@
 - Existing local preferences persistence via `save_preferences` / `preferencesStore`, plus existing snapshot cache; no new storage layer (010-ui-ux-completion)
 - 现有 `preferences.json` 与 `snapshot-cache.json` 本地持久化；不新增存储层 (012-claude-code-usage-query-disclosure)
 - Rust stable (edition 2021), TypeScript 5.x, Node.js 24 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwright；优先复用内建 `Date` / `Intl` 时间能力，不新增运行时日期库 (013-promotion-status)
+- Rust stable（edition 2021）、TypeScript 5.x、Node.js 24 LTS + Tauri 2、React 19、Tailwind CSS 4、Vitest、React Testing Library、Playwright；宿主侧新增 `rusqlite` 用于只读读取 Codex 本地 SQLite 元数据 (015-agent-auto-menubar)
+- 沿用现有 `preferences.json` 与 `snapshot-cache.json` 本地持久化；新增只读外部元数据来源 `~/.codex` / `~/.claude`；自动模式运行时状态仅保存在宿主内存中 (015-agent-auto-menubar)
 
 - **Runtime**: Rust stable (edition 2021), TypeScript 5.x, Node.js 24 LTS (via nvm, see `.nvmrc`)
 - **Framework**: Tauri 2 (tauri-build 2.0.0) + React 19
@@ -91,16 +93,17 @@ Rules:
 - 005-claude-code-support: Claude Code quota display, menubar service selection, panel display order
 
 ## Recent Changes
+- 015-agent-auto-menubar: Added Rust stable（edition 2021）、TypeScript 5.x、Node.js 24 LTS + Tauri 2、React 19、Tailwind CSS 4、Vitest、React Testing Library、Playwright；宿主侧新增 `rusqlite` 用于只读读取 Codex 本地 SQLite 元数据
 - 013-promotion-status: Added Rust stable (edition 2021), TypeScript 5.x, Node.js 24 LTS + Tauri 2, React 19, Tailwind CSS 4, Vitest, React Testing Library, Playwright；优先复用内建 `Date` / `Intl` 时间能力，不新增运行时日期库
 
 ## Spec-Kit Workflow Constraints
 
 - `spec-kit` artifacts define product intent and acceptance scope, but they do not replace professional implementation judgment for UI behavior, state cleanup, layout stability, or interaction feedback.
 - After `speckit-plan`, any UI-heavy or interaction-heavy feature must include an explicit implementation risk review before coding starts. Capture likely runtime risks, environment traps, and behaviors that cannot be trusted to JSDOM alone.
-- After `speckit-tasks`, verify that tasks cover not only feature implementation but also real-runtime validation, screenshot or visual review, and abnormal-path verification for the affected UX.
-- For drag-and-drop, overlays, animations, window transitions, or coordinate-sensitive UI work, do not treat Vitest/RTL passing as sufficient completion evidence. Real runtime verification is required before calling the work done.
-- For desktop UI changes, the first implementation pass must be followed by screenshot review or real-window inspection before polish is considered complete.
-- Before running any macOS GUI/E2E, screenshot, screen recording, or other frontmost-session-dependent check, first verify that the desktop session is truly interactive rather than only reachable over CLI: the display is awake and unlocked, `pmset -g assertions` does not indicate an inactive user session, and the run will not continue during display sleep. If needed, ask once per session whether the display should be explicitly woken and kept awake, such as with `caffeinate -d`; if the environment is unsuitable, stop and report an environment issue instead of treating failures as app regressions.
+- After `speckit-tasks`, verify that tasks cover feature implementation, code-level validation, and abnormal-path verification for the affected UX. Only add real-runtime validation, screenshot review, or visual review tasks when the user explicitly asks for them or gives permission.
+- For drag-and-drop, overlays, animations, window transitions, or coordinate-sensitive UI work, do not treat Vitest/RTL passing as the same thing as real runtime evidence. However, do not run E2E, screenshot, or other real-runtime verification unless the user explicitly requests it or gives permission.
+- For desktop UI changes, screenshot review or real-window inspection is opt-in. Only perform it when the user explicitly asks for it or gives permission for that round of work.
+- Before running any macOS GUI/E2E, screenshot, screen recording, or other frontmost-session-dependent check, first obtain the user's request or explicit permission. After that, verify that the desktop session is truly interactive rather than only reachable over CLI: the display is awake and unlocked, `pmset -g assertions` does not indicate an inactive user session, and the run will not continue during display sleep. If needed, ask once per session whether the display should be explicitly woken and kept awake, such as with `caffeinate -d`; if the environment is unsuitable, stop and report an environment issue instead of treating failures as app regressions.
 - When using `speckit-analyze`, also check whether implementation-quality gates are missing from the plan or task breakdown, not just whether requirements are mapped.
-- Do not declare completion based only on code paths and unit tests. Completion requires that the user-facing problem is actually resolved in the running app.
+- Do not claim real-runtime or E2E validation unless it was actually run. When E2E or real-window verification was not requested or not permitted, complete the task with code-level verification and explicitly note that real-runtime validation was not performed.
 - See [spec-kit-workflow-constraints.md](/Users/chasewang/01workspace/projects/ai-usage/doc/engineering/spec-kit-workflow-constraints.md) for the full operating guide.

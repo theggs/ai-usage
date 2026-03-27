@@ -1,3 +1,6 @@
+use crate::agent_activity::{
+    collect_service_activity_snapshots, resolve_auto_menubar_selection,
+};
 use crate::autostart::set_autostart_status;
 use crate::claude_code::{
     clear_access_pause as clear_claude_code_access_pause,
@@ -7,9 +10,9 @@ use crate::claude_code::{
 use crate::codex::{load_snapshot, save_accounts, save_preferences as persist_preferences_file};
 use crate::notifications::send_demo_notification;
 use crate::state::{
-    ActiveCodexSession, AppState, CodexAccount, CodexAccountDraft, CodexPanelState,
-    DesktopSurfaceState, NotificationCheckResult, PanelPlaceholderItem, PreferencePatch,
-    UserPreferences,
+    ActiveCodexSession, AppState, AutoMenubarSelectionState, CodexAccount, CodexAccountDraft,
+    CodexPanelState, DesktopSurfaceState, NotificationCheckResult, PanelPlaceholderItem,
+    PreferencePatch, UserPreferences,
 };
 use crate::tray::apply_display_mode;
 use serde::{Deserialize, Serialize};
@@ -75,6 +78,22 @@ fn write_snapshot_cache(cache: &SnapshotCache) {
     if let Ok(payload) = serde_json::to_string(cache) {
         let _ = std::fs::write(path, payload);
     }
+}
+
+fn read_cached_items_for_service(service_id: &str) -> Vec<PanelPlaceholderItem> {
+    read_snapshot_cache()
+        .services
+        .get(service_id)
+        .map(|state| state.items.clone())
+        .unwrap_or_default()
+}
+
+pub fn build_cached_tray_items(preferences: &UserPreferences) -> Vec<PanelPlaceholderItem> {
+    let mut items = read_cached_items_for_service("codex");
+    if is_claude_code_usage_enabled(preferences) {
+        items.extend(read_cached_items_for_service("claude-code"));
+    }
+    items
 }
 
 fn save_to_snapshot_cache(service_id: &str, state: &CodexPanelState) {
@@ -493,6 +512,23 @@ fn persist_preferences(preferences: &UserPreferences) {
     }
 }
 
+pub fn refresh_auto_menubar_selection(
+    state: &AppState,
+    preferences: &UserPreferences,
+    items: &[PanelPlaceholderItem],
+    now_secs: u64,
+) -> AutoMenubarSelectionState {
+    let mut selection = state.auto_menubar_selection.lock().unwrap();
+    if preferences.menubar_service != "auto" {
+        return selection.clone();
+    }
+
+    let snapshots = collect_service_activity_snapshots(preferences, items, now_secs);
+    let next = resolve_auto_menubar_selection(&selection, &snapshots, now_secs);
+    *selection = next.clone();
+    next
+}
+
 fn normalize_text(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
@@ -555,6 +591,7 @@ pub fn refresh_codex_panel_state(app: AppHandle, state: State<'_, AppState>) -> 
     let result = build_panel_state(&preferences, &accounts, &now_iso());
     save_to_snapshot_cache("codex", &result);
     let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
+    refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
     apply_display_mode(&app, &preferences, &items);
     result
 }
@@ -641,6 +678,7 @@ pub fn save_preferences(
         let accounts = state.codex_accounts.lock().unwrap().clone();
         build_tray_items(&next, &accounts, &refreshed_at)
     };
+    refresh_auto_menubar_selection(&state, &next, &merged_items, now_unix_secs());
     apply_display_mode(&app, &next, &merged_items);
     persist_preferences(&next);
     *state.preferences.lock().unwrap() = next.clone();
@@ -656,6 +694,7 @@ pub fn set_autostart(app: AppHandle, state: State<'_, AppState>, enabled: bool) 
         let accounts = state.codex_accounts.lock().unwrap().clone();
         build_tray_items(&next, &accounts, &refreshed_at)
     };
+    refresh_auto_menubar_selection(&state, &next, &merged_items, now_unix_secs());
     apply_display_mode(&app, &next, &merged_items);
     persist_preferences(&next);
     *state.preferences.lock().unwrap() = next.clone();
@@ -696,6 +735,7 @@ pub fn refresh_claude_code_panel_state(
         let result = claude_code_disabled_panel_state(&preferences, &now_iso());
         let accounts = state.codex_accounts.lock().unwrap().clone();
         let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
+        refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
         apply_display_mode(&app, &preferences, &items);
         return result;
     }
@@ -705,6 +745,7 @@ pub fn refresh_claude_code_panel_state(
         {
             let accounts = state.codex_accounts.lock().unwrap().clone();
             let items = build_tray_items(&preferences, &accounts, &cached.last_successful_refresh_at);
+            refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
             apply_display_mode(&app, &preferences, &items);
             return cached;
         }
@@ -717,6 +758,7 @@ pub fn refresh_claude_code_panel_state(
     save_to_snapshot_cache("claude-code", &result);
     let accounts = state.codex_accounts.lock().unwrap().clone();
     let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
+    refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
     apply_display_mode(&app, &preferences, &items);
     result
 }
@@ -902,6 +944,34 @@ mod tests {
 
         assert_eq!(items.len(), 1);
         assert!(items.iter().all(|item| item.service_id != "claude-code"));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn build_cached_tray_items_reads_snapshot_cache_without_live_refresh() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-tray-cached-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        let refreshed_at = now_iso();
+        save_to_snapshot_cache("codex", &make_panel_state("codex", &refreshed_at));
+        save_to_snapshot_cache("claude-code", &make_panel_state("claude-code", &refreshed_at));
+
+        let mut preferences = crate::state::default_preferences();
+        preferences.menubar_service = "auto".into();
+        preferences.claude_code_usage_enabled = true;
+
+        let items = build_cached_tray_items(&preferences);
+
+        assert_eq!(items.len(), 2);
+        assert!(items.iter().any(|item| item.service_id == "codex"));
+        assert!(items.iter().any(|item| item.service_id == "claude-code"));
 
         let _ = std::fs::remove_dir_all(&tmp);
         env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");

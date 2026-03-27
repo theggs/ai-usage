@@ -7,6 +7,7 @@ import {
   getQuotaStatus,
   getServiceAlertLevel,
   getServiceStatusCard,
+  getVisibleServiceScope,
   getTrayVisualState,
   haveAlignedRefreshTimes
 } from "./summary";
@@ -91,6 +92,19 @@ describe("formatTraySummary", () => {
     expect(state.summaryText).toBe("6%");
     expect(state.tooltipText).toBe("AIUsage · Codex · 6%");
     expect(state.severity).toBe("danger");
+  });
+
+  it("keeps auto visible in the menubar scope even when Claude Code is disabled", () => {
+    expect(
+      getVisibleServiceScope({
+        serviceOrder: ["codex", "claude-code"],
+        claudeCodeUsageEnabled: false
+      })
+    ).toMatchObject({
+      visiblePanelServiceOrder: ["codex"],
+      visibleMenubarServices: ["codex", "auto"],
+      hasVisibleClaudeCode: false
+    });
   });
 
   it("normalizes explicit empty service status cards without unrelated fallback copy", () => {

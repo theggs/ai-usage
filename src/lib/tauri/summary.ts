@@ -34,6 +34,7 @@ export interface VisibleServiceScope {
 }
 
 const SERVICE_IDS = ["codex", "claude-code"] as const;
+const MENUBAR_AUTO_SERVICE = "auto";
 
 export const getVisibleServiceScope = (
   preferences?: Pick<UserPreferences, "serviceOrder" | "claudeCodeUsageEnabled"> | null
@@ -45,7 +46,7 @@ export const getVisibleServiceScope = (
 
   return {
     visiblePanelServiceOrder,
-    visibleMenubarServices: visiblePanelServiceOrder,
+    visibleMenubarServices: [...visiblePanelServiceOrder, MENUBAR_AUTO_SERVICE],
     hasVisibleClaudeCode: visiblePanelServiceOrder.includes("claude-code")
   };
 };

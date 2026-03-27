@@ -86,6 +86,7 @@ export type CopyTree = {
   dailyQuotaLabel: string;
   monthlyQuotaLabel: string;
   menubarService: string;
+  menubarServiceAuto: string;
   serviceOrder: string;
   claudeCodeLabel: string;
   codexLabel: string;
@@ -228,6 +229,7 @@ const baseCopy: CopyTree = {
   dailyQuotaLabel: "Daily limits",
   monthlyQuotaLabel: "Monthly limits",
   menubarService: "Menubar service",
+  menubarServiceAuto: "Automatic",
   serviceOrder: "Panel order",
   claudeCodeLabel: "Claude Code",
   codexLabel: "Codex",
@@ -373,6 +375,7 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     dailyQuotaLabel: "每日限额",
     monthlyQuotaLabel: "每月限额",
     menubarService: "菜单栏服务",
+    menubarServiceAuto: "自动",
     serviceOrder: "面板顺序",
     claudeCodeLabel: "Claude Code",
     codexLabel: "Codex",

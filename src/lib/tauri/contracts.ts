@@ -1,4 +1,5 @@
 export type PlatformTarget = "macos" | "windows";
+export type MenubarService = "codex" | "claude-code" | "auto";
 export type SummaryMode =
   | "icon-only"
   | "lowest-remaining"
@@ -64,7 +65,7 @@ export interface UserPreferences {
   autostartEnabled: boolean;
   notificationTestEnabled: boolean;
   lastSavedAt: string;
-  menubarService: string;
+  menubarService: MenubarService;
   serviceOrder: string[];
   networkProxyMode: "system" | "manual" | "off";
   networkProxyUrl: string;
@@ -79,7 +80,7 @@ export interface PreferencePatch {
   traySummaryMode?: UserPreferences["traySummaryMode"];
   autostartEnabled?: boolean;
   notificationTestEnabled?: boolean;
-  menubarService?: string;
+  menubarService?: UserPreferences["menubarService"];
   serviceOrder?: string[];
   networkProxyMode?: UserPreferences["networkProxyMode"];
   networkProxyUrl?: string;
