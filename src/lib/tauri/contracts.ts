@@ -13,6 +13,19 @@ export type NotificationResultState = "sent" | "blocked" | "failed";
 export type CodexAccountStatus = "reserved" | "ready";
 export type CodexConnectionState = "connected" | "disconnected" | "unavailable" | "failed";
 export type CodexSnapshotState = "fresh" | "stale" | "empty" | "failed" | "pending";
+
+export type SnapshotStatus =
+  | { kind: "Fresh" }
+  | { kind: "CliNotFound" }
+  | { kind: "NotLoggedIn" }
+  | { kind: "NoCredentials" }
+  | { kind: "SessionRecovery" }
+  | { kind: "RateLimited"; retry_after_minutes: number }
+  | { kind: "AccessDenied" }
+  | { kind: "ProxyInvalid" }
+  | { kind: "TemporarilyUnavailable"; detail: string }
+  | { kind: "NoData" }
+  | { kind: "Disabled" };
 export type CodexWindowKind = "rolling-hours" | "weekly" | "other";
 export type CodexLimitStatus = "healthy" | "warning" | "exhausted" | "unknown";
 export type QuotaProgressTone = "success" | "warning" | "danger" | "muted";
@@ -52,8 +65,7 @@ export interface CodexPanelState {
   items: PanelPlaceholderItem[];
   configuredAccountCount: number;
   enabledAccountCount: number;
-  snapshotState: CodexSnapshotState;
-  statusMessage: string;
+  status: SnapshotStatus;
   activeSession?: ActiveCodexSession;
   lastSuccessfulRefreshAt: string;
 }

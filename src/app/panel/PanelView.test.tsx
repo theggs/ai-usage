@@ -48,8 +48,7 @@ describe("PanelView", () => {
   it("renders pending sync messaging explicitly", () => {
     const state = createState({
       ...createDemoPanelState(),
-      snapshotState: "pending",
-      statusMessage: "Connect a local Codex session to sync live limits.",
+      status: { kind: "NoData" },
       items: []
     });
 
@@ -60,16 +59,14 @@ describe("PanelView", () => {
     );
 
     expect(screen.queryByText("等待同步")).not.toBeInTheDocument();
-    expect(screen.getByText("暂时无法连接")).toBeInTheDocument();
+    expect(screen.getByText("暂无数据")).toBeInTheDocument();
   });
 
   it("shows a distinct paused message for claude code access denial", () => {
     const state = createState();
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
-      snapshotState: "failed",
-      statusMessage:
-        "Claude Code access was denied. Automatic refresh is paused until you retry manually or update proxy settings.",
+      status: { kind: "AccessDenied" },
       items: []
     };
 
@@ -86,9 +83,7 @@ describe("PanelView", () => {
     const state = createState();
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
-      snapshotState: "stale",
-      statusMessage:
-        "Claude Code rate limited the request. Automatic refresh is paused for about 30 minutes; no cached quota is available yet.",
+      status: { kind: "RateLimited", retry_after_minutes: 30 },
       items: []
     };
 
@@ -98,7 +93,8 @@ describe("PanelView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(screen.getByText("需要先登录")).toBeInTheDocument();
+    expect(screen.getByText("请求限流")).toBeInTheDocument();
+    expect(screen.getByText(/已暂停自动刷新，请稍后手动重试/)).toBeInTheDocument();
   });
 
   it("shows refresh time inside each service card even when timestamps are aligned", () => {
@@ -142,7 +138,7 @@ describe("PanelView", () => {
     const state = createState({
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty"
+      status: { kind: "CliNotFound" }
     });
     state.preferences = {
       ...defaultPreferences,
@@ -152,8 +148,7 @@ describe("PanelView", () => {
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty",
-      statusMessage: "No Claude Code credentials"
+      status: { kind: "NoCredentials" }
     };
 
     render(
@@ -176,7 +171,7 @@ describe("PanelView", () => {
     const state = createState({
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty"
+      status: { kind: "CliNotFound" }
     });
     state.preferences = {
       ...defaultPreferences,
@@ -187,8 +182,7 @@ describe("PanelView", () => {
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty",
-      statusMessage: "No Claude Code credentials"
+      status: { kind: "NoCredentials" }
     };
     state.savePreferences = savePreferences;
 
@@ -210,7 +204,7 @@ describe("PanelView", () => {
     const state = createState({
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty"
+      status: { kind: "CliNotFound" }
     });
     state.preferences = {
       ...defaultPreferences,
@@ -222,8 +216,7 @@ describe("PanelView", () => {
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty",
-      statusMessage: "No Claude Code credentials"
+      status: { kind: "NoCredentials" }
     };
 
     render(
@@ -240,7 +233,7 @@ describe("PanelView", () => {
     const state = createState({
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty"
+      status: { kind: "CliNotFound" }
     });
     state.preferences = {
       ...defaultPreferences,
@@ -250,8 +243,7 @@ describe("PanelView", () => {
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty",
-      statusMessage: "No Claude Code credentials"
+      status: { kind: "NoCredentials" }
     };
     state.isClaudeCodeRefreshing = true;
 
@@ -284,8 +276,7 @@ describe("PanelView", () => {
     };
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
-      snapshotState: "stale",
-      statusMessage: "Cached Claude Code quota.",
+      status: { kind: "SessionRecovery" },
       items: [
         {
           ...createDemoPanelState().items[0]!,
@@ -403,12 +394,11 @@ describe("PanelView", () => {
     expect(healthyCard?.querySelector("[aria-hidden='true']")).toBeNull();
   });
 
-  it("opens settings from service placeholders after onboarding is dismissed", async () => {
+  it("opens settings from proxy-invalid placeholder after onboarding is dismissed", async () => {
     const state = createState({
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "stale",
-      statusMessage: "The CLI is installed, but there is no readable signed-in session yet."
+      status: { kind: "NotLoggedIn" }
     });
     state.preferences = {
       ...defaultPreferences,
@@ -418,8 +408,7 @@ describe("PanelView", () => {
     state.claudeCodePanelState = {
       ...createDemoPanelState(),
       items: [],
-      snapshotState: "empty",
-      statusMessage: "No Claude Code credentials"
+      status: { kind: "ProxyInvalid" }
     };
 
     render(
@@ -429,10 +418,10 @@ describe("PanelView", () => {
     );
 
     expect(screen.queryByText("先连接第一个 AI 服务")).not.toBeInTheDocument();
-    expect(screen.getByText("CLI 未安装")).toBeInTheDocument();
+    expect(screen.getByText("代理无效")).toBeInTheDocument();
     expect(screen.getByText("需要先登录")).toBeInTheDocument();
 
-    await userEvent.click(screen.getAllByRole("button", { name: "前往设置" })[0]!);
+    await userEvent.click(screen.getByRole("button", { name: "前往设置" }));
 
     expect(state.openSettings).toHaveBeenCalled();
   });

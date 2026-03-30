@@ -1,5 +1,6 @@
+use crate::snapshot::{ServiceSnapshot, SnapshotStatus};
 use crate::state::QuotaDimension;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
 use std::env;
@@ -12,15 +13,6 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const RATE_LIMIT_REQUEST_ID: u64 = 2;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CodexSnapshot {
-    pub snapshot_state: String,
-    pub connection_state: String,
-    pub status_message: String,
-    pub dimensions: Vec<QuotaDimension>,
-    pub source: String,
-}
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponseEnvelope {
@@ -338,33 +330,27 @@ fn run_app_server_request(bin: &str) -> Result<GetAccountRateLimitsResponse, Str
     Err("Failed to open Codex app-server stdin.".into())
 }
 
-fn snapshot_from_text(text: &str, source: &str) -> CodexSnapshot {
+fn snapshot_from_text(text: &str, source: &str) -> ServiceSnapshot {
     match parse_status_snapshot(text) {
-        Ok(dimensions) if dimensions.is_empty() => CodexSnapshot {
-            snapshot_state: "empty".into(),
-            connection_state: "connected".into(),
-            status_message: "Codex status snapshot did not expose any limit rows.".into(),
+        Ok(dimensions) if dimensions.is_empty() => ServiceSnapshot {
+            status: SnapshotStatus::NoData,
             dimensions,
             source: source.into(),
         },
-        Ok(dimensions) => CodexSnapshot {
-            snapshot_state: "fresh".into(),
-            connection_state: "connected".into(),
-            status_message: "Live Codex limits available.".into(),
+        Ok(dimensions) => ServiceSnapshot {
+            status: SnapshotStatus::Fresh,
             dimensions,
             source: source.into(),
         },
-        Err(message) => CodexSnapshot {
-            snapshot_state: "failed".into(),
-            connection_state: "failed".into(),
-            status_message: message,
+        Err(detail) => ServiceSnapshot {
+            status: SnapshotStatus::TemporarilyUnavailable { detail },
             dimensions: Vec::new(),
             source: source.into(),
         },
     }
 }
 
-fn read_snapshot_source() -> Result<Option<CodexSnapshot>, String> {
+fn read_snapshot_source() -> Result<Option<ServiceSnapshot>, String> {
     if let Ok(text) = env::var("AI_USAGE_CODEX_STATUS_TEXT") {
         return Ok(Some(snapshot_from_text(
             &text,
@@ -497,30 +483,25 @@ fn normalize_rate_limits(response: GetAccountRateLimitsResponse) -> Vec<QuotaDim
     dimensions
 }
 
-fn snapshot_from_rate_limits(response: GetAccountRateLimitsResponse) -> CodexSnapshot {
+fn snapshot_from_rate_limits(response: GetAccountRateLimitsResponse) -> ServiceSnapshot {
     let dimensions = normalize_rate_limits(response);
 
     if dimensions.is_empty() {
-        CodexSnapshot {
-            snapshot_state: "empty".into(),
-            connection_state: "connected".into(),
-            status_message: "Codex CLI is logged in, but no live limit windows are available yet."
-                .into(),
+        ServiceSnapshot {
+            status: SnapshotStatus::NoData,
             dimensions,
             source: "codex app-server".into(),
         }
     } else {
-        CodexSnapshot {
-            snapshot_state: "fresh".into(),
-            connection_state: "connected".into(),
-            status_message: "Live Codex limits available from the local Codex CLI session.".into(),
+        ServiceSnapshot {
+            status: SnapshotStatus::Fresh,
             dimensions,
             source: "codex app-server".into(),
         }
     }
 }
 
-fn read_live_snapshot() -> Result<CodexSnapshot, String> {
+fn read_live_snapshot() -> Result<ServiceSnapshot, String> {
     let bin = codex_bin();
     match run_app_server_request(&bin) {
         Ok(response) => Ok(snapshot_from_rate_limits(response)),
@@ -531,14 +512,8 @@ fn read_live_snapshot() -> Result<CodexSnapshot, String> {
                 return Err(format!("Codex app-server failed while logged in: {detail}"));
             }
 
-            Ok(CodexSnapshot {
-                snapshot_state: "stale".into(),
-                connection_state: "disconnected".into(),
-                status_message: if login_message.is_empty() {
-                    "Codex CLI is installed, but no readable logged-in session is available.".into()
-                } else {
-                    format!("Codex CLI session is not ready: {login_message}")
-                },
+            Ok(ServiceSnapshot {
+                status: SnapshotStatus::NotLoggedIn,
                 dimensions: Vec::new(),
                 source: "codex app-server".into(),
             })
@@ -546,16 +521,14 @@ fn read_live_snapshot() -> Result<CodexSnapshot, String> {
     }
 }
 
-pub fn load_snapshot() -> CodexSnapshot {
+pub fn load_snapshot() -> ServiceSnapshot {
     let bin = codex_bin();
 
     if codex_cli_is_available(&bin) {
         return match read_live_snapshot() {
             Ok(snapshot) => snapshot,
-            Err(message) => CodexSnapshot {
-                snapshot_state: "failed".into(),
-                connection_state: "failed".into(),
-                status_message: message,
+            Err(detail) => ServiceSnapshot {
+                status: SnapshotStatus::TemporarilyUnavailable { detail },
                 dimensions: Vec::new(),
                 source: "codex app-server".into(),
             },
@@ -564,17 +537,13 @@ pub fn load_snapshot() -> CodexSnapshot {
 
     match read_snapshot_source() {
         Ok(Some(snapshot)) => snapshot,
-        Ok(None) => CodexSnapshot {
-            snapshot_state: "stale".into(),
-            connection_state: "unavailable".into(),
-            status_message: "Codex CLI is not available on this device.".into(),
+        Ok(None) => ServiceSnapshot {
+            status: SnapshotStatus::CliNotFound,
             dimensions: Vec::new(),
             source: "codex-cli".into(),
         },
-        Err(message) => CodexSnapshot {
-            snapshot_state: "failed".into(),
-            connection_state: "failed".into(),
-            status_message: message,
+        Err(detail) => ServiceSnapshot {
+            status: SnapshotStatus::TemporarilyUnavailable { detail },
             dimensions: Vec::new(),
             source: "codex-cli".into(),
         },
@@ -673,6 +642,7 @@ pub fn save_preferences(preferences: &crate::state::UserPreferences) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::{load_preferences, load_snapshot, parse_status_snapshot, save_preferences};
+    use crate::snapshot::SnapshotStatus;
     use std::env;
     use std::fs;
     use std::path::PathBuf;
@@ -820,11 +790,10 @@ mod tests {
 
         let snapshot = load_snapshot();
 
-        assert_eq!(snapshot.snapshot_state, "failed");
-        assert_eq!(snapshot.connection_state, "failed");
-        assert!(snapshot
-            .status_message
-            .contains("Failed to read Codex status snapshot file"));
+        assert!(matches!(snapshot.status, SnapshotStatus::TemporarilyUnavailable { .. }));
+        if let SnapshotStatus::TemporarilyUnavailable { detail } = &snapshot.status {
+            assert!(detail.contains("Failed to read Codex status snapshot file"));
+        }
 
         clear_snapshot_env();
     }
@@ -852,8 +821,7 @@ mod tests {
 
         let snapshot = load_snapshot();
 
-        assert_eq!(snapshot.snapshot_state, "fresh");
-        assert_eq!(snapshot.connection_state, "connected");
+        assert!(snapshot.status.is_fresh());
         assert_eq!(snapshot.source, "codex app-server");
         assert_eq!(snapshot.dimensions.len(), 2);
         assert_eq!(snapshot.dimensions[0].label, "Codex / 5h");
@@ -872,9 +840,7 @@ mod tests {
 
         let snapshot = load_snapshot();
 
-        assert_eq!(snapshot.snapshot_state, "stale");
-        assert_eq!(snapshot.connection_state, "disconnected");
-        assert!(snapshot.status_message.contains("Not logged in"));
+        assert_eq!(snapshot.status, SnapshotStatus::NotLoggedIn);
 
         let _ = fs::remove_file(script);
         clear_snapshot_env();
@@ -896,9 +862,7 @@ mod tests {
 
         let snapshot = load_snapshot();
 
-        assert_eq!(snapshot.snapshot_state, "failed");
-        assert_eq!(snapshot.connection_state, "failed");
-        assert!(snapshot.status_message.contains("logged in"));
+        assert!(matches!(snapshot.status, SnapshotStatus::TemporarilyUnavailable { .. }));
 
         let _ = fs::remove_file(script);
         clear_snapshot_env();

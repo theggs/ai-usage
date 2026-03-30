@@ -18,8 +18,7 @@ describe("system integrations", () => {
 
     const state = await tauriClient.getCodexPanelState();
 
-    expect(state.snapshotState).toBe("stale");
-    expect(state.statusMessage).toContain("Codex CLI");
+    expect(state.status.kind).toBe("NotLoggedIn");
     expect(state.activeSession).toBeUndefined();
   });
 

@@ -5,6 +5,7 @@ import type {
   QuotaDimension,
   QuotaProgressTone,
   ServiceStatusCard,
+  SnapshotStatus,
   SummaryMode,
   UserPreferences
 } from "./contracts";
@@ -287,12 +288,40 @@ export const getTrayVisualState = (
   };
 };
 
+const statusToConnectionState = (status?: SnapshotStatus): ServiceStatusCard["connectionState"] => {
+  if (!status) return "disconnected";
+  switch (status.kind) {
+    case "Fresh": return "connected";
+    case "CliNotFound": case "NoCredentials": return "empty";
+    case "NotLoggedIn": case "SessionRecovery": return "stale";
+    case "AccessDenied": case "ProxyInvalid": return "failed";
+    default: return "disconnected";
+  }
+};
+
+const statusToPrimaryMessage = (status?: SnapshotStatus): string => {
+  if (!status) return "Not connected";
+  switch (status.kind) {
+    case "Fresh": return "Connected";
+    case "CliNotFound": return "CLI not installed";
+    case "NotLoggedIn": return "Sign in required";
+    case "NoCredentials": return "Not connected";
+    case "SessionRecovery": return "Recovering session";
+    case "RateLimited": return "Rate limited";
+    case "AccessDenied": return "Access denied";
+    case "ProxyInvalid": return "Proxy invalid";
+    case "TemporarilyUnavailable": return `Temporarily unavailable: ${status.detail}`;
+    case "NoData": return "No data yet";
+    case "Disabled": return "Disabled";
+    default: return "Not connected";
+  }
+};
+
 export const getServiceStatusCard = (
   serviceId: string,
   serviceName: string,
   panelState: {
-    snapshotState?: string;
-    statusMessage?: string;
+    status?: SnapshotStatus;
     activeSession?: { sessionLabel?: string; source?: string } | null;
     items?: PanelPlaceholderItem[];
   } | null
@@ -300,21 +329,12 @@ export const getServiceStatusCard = (
   const items = panelState?.items ?? [];
 
   if (!panelState || items.length === 0) {
-    const snapshotState = panelState?.snapshotState;
-    const normalizedState =
-      snapshotState === "failed"
-        ? "failed"
-        : snapshotState === "stale"
-          ? "stale"
-          : snapshotState === "empty"
-            ? "empty"
-            : "disconnected";
     return {
       serviceId,
       serviceName,
-      connectionState: normalizedState,
+      connectionState: statusToConnectionState(panelState?.status),
       dataSource: panelState?.activeSession?.source ?? "local",
-      primaryMessage: panelState?.statusMessage || "Not connected",
+      primaryMessage: statusToPrimaryMessage(panelState?.status),
       sessionLabel: panelState?.activeSession?.sessionLabel
     };
   }
@@ -324,9 +344,9 @@ export const getServiceStatusCard = (
   return {
     serviceId,
     serviceName,
-    connectionState: panelState.snapshotState === "stale" ? "stale" : "connected",
+    connectionState: panelState.status?.kind === "Fresh" ? "connected" : "stale",
     dataSource: panelState.activeSession?.source ?? "snapshot",
-    primaryMessage: panelState.statusMessage ?? "Connected",
+    primaryMessage: statusToPrimaryMessage(panelState.status),
     secondaryMessage: firstDimension?.resetHint,
     sessionLabel: panelState.activeSession?.sessionLabel
   };

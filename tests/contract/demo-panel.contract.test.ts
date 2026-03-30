@@ -7,8 +7,8 @@ describe("codex panel contract", () => {
 
     const state = await tauriClient.getCodexPanelState();
 
-    expect(["fresh", "pending", "stale", "failed"]).toContain(state.snapshotState);
-    expect(state.statusMessage.length).toBeGreaterThan(0);
+    expect(state.status).toBeDefined();
+    expect(typeof state.status.kind).toBe("string");
     expect(state.enabledAccountCount).toBe(0);
   });
 

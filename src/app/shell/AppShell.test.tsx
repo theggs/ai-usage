@@ -178,8 +178,7 @@ describe("AppShell", () => {
     persistPreferences.mockResolvedValue(nextPreferences);
     loadClaudeCodePanelState.mockResolvedValue(
       makeClaudePanelState({
-        snapshotState: "stale",
-        statusMessage: "Cached Claude Code quota."
+        status: { kind: "SessionRecovery" }
       })
     );
     refreshClaudeCodePanelState.mockReturnValue(refreshDeferred.promise);

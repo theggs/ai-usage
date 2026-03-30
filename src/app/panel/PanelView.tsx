@@ -1,8 +1,24 @@
 import { useEffect } from "react";
 import { ServiceCard } from "../../components/panel/ServiceCard";
 import { useAppState } from "../shared/appState";
-import { getCopy, getServicePlaceholderCopy, getSnapshotMessage } from "../shared/i18n";
+import type { SnapshotStatus } from "../../lib/tauri/contracts";
+import { getCopy, getPlaceholderCopy, getSnapshotMessage } from "../shared/i18n";
 import { getVisibleServiceScope } from "../../lib/tauri/summary";
+
+const SERVICE_DISPLAY_NAMES: Record<string, string> = {
+  codex: "Codex",
+  "claude-code": "Claude Code"
+};
+
+const shouldShowSettingsLink = (status: SnapshotStatus) => {
+  switch (status.kind) {
+    case "ProxyInvalid":
+    case "AccessDenied":
+      return true;
+    default:
+      return false;
+  }
+};
 
 export const PanelView = () => {
   const {
@@ -17,7 +33,7 @@ export const PanelView = () => {
   const copy = getCopy(preferences?.language ?? "zh-CN");
   const visibleServiceScope = getVisibleServiceScope(preferences);
   const serviceOrder = visibleServiceScope.visiblePanelServiceOrder;
-  const statusMessage = getSnapshotMessage(copy, panelState?.snapshotState, true);
+  const statusMessage = getSnapshotMessage(copy, panelState?.status?.kind === "Fresh" ? "fresh" : "empty", true);
 
   const stateByServiceId: Record<string, typeof panelState> = {
     codex: panelState,
@@ -136,21 +152,25 @@ export const PanelView = () => {
               </div>
             );
           }
-          const placeholder = getServicePlaceholderCopy(copy, serviceId, state.snapshotState, state.statusMessage);
+          const placeholder = getPlaceholderCopy(copy, state.status);
+          const serviceName = SERVICE_DISPLAY_NAMES[serviceId] ?? serviceId;
           return (
             <div
               key={`${serviceId}-not-connected`}
-              className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-left text-sm text-slate-500"
+              className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-left text-sm text-slate-500"
             >
-              <div className="font-semibold text-slate-900">{placeholder.title}</div>
-              <p className="mt-2">{placeholder.body || statusMessage}</p>
-              <button
-                className="mt-4 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700"
-                onClick={openSettings}
-                type="button"
-              >
-                {copy.goToSettings}
-              </button>
+              <h3 className="text-base font-semibold text-slate-950">{serviceName}</h3>
+              <div className="mt-2 font-medium text-slate-700">{placeholder.title}</div>
+              <p className="mt-1">{placeholder.body || statusMessage}</p>
+              {shouldShowSettingsLink(state.status) && (
+                <button
+                  className="mt-4 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700"
+                  onClick={openSettings}
+                  type="button"
+                >
+                  {copy.goToSettings}
+                </button>
+              )}
             </div>
           );
         })}

@@ -15,9 +15,8 @@ describe("claude-code panel state contract", () => {
     const state = await tauriClient.getClaudeCodePanelState();
 
     // Required fields must be present.
-    expect(typeof state.snapshotState).toBe("string");
-    expect(["fresh", "stale", "empty", "failed", "pending"]).toContain(state.snapshotState);
-    expect(typeof state.statusMessage).toBe("string");
+    expect(state.status).toBeDefined();
+    expect(typeof state.status.kind).toBe("string");
     expect(Array.isArray(state.items)).toBe(true);
     expect(state.desktopSurface).toBeDefined();
     expect(typeof state.lastSuccessfulRefreshAt).toBe("string");
@@ -33,7 +32,7 @@ describe("claude-code panel state contract", () => {
     const state = await tauriClient.refreshClaudeCodePanelState();
 
     expect(Array.isArray(state.items)).toBe(true);
-    expect(["fresh", "stale", "empty", "failed", "pending"]).toContain(state.snapshotState);
+    expect(state.status).toBeDefined();
     expect(state.desktopSurface).toBeDefined();
   });
 
@@ -70,8 +69,7 @@ describe("claude-code panel state contract", () => {
     const state = await tauriClient.getClaudeCodePanelState();
 
     expect(state.items).toEqual([]);
-    expect(state.snapshotState).toBe("empty");
-    expect(state.statusMessage).toContain("disabled");
+    expect(state.status.kind).toBe("Disabled");
   });
 
   it("reuses the current Claude Code result when refresh hits the cooldown window", async () => {
@@ -85,6 +83,6 @@ describe("claude-code panel state contract", () => {
     const second = await tauriClient.refreshClaudeCodePanelState();
 
     expect(second.lastSuccessfulRefreshAt).toBe(first.lastSuccessfulRefreshAt);
-    expect(second.snapshotState).toBe(first.snapshotState);
+    expect(second.status.kind).toBe(first.status.kind);
   });
 });

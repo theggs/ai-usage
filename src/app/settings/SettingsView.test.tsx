@@ -448,8 +448,7 @@ describe("SettingsView", () => {
     renderSettings({
       claudeCodePanelState: {
         ...createDemoPanelState(),
-        statusMessage: "Claude Code session is being restored.",
-        snapshotState: "stale",
+        status: { kind: "SessionRecovery" },
         items: []
       }
     });
