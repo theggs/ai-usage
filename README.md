@@ -17,6 +17,7 @@ Don't enable it if you warry about it.
 - Review remaining quota, reset timing, and severity at a glance
 - Keep the app in the tray or menu bar instead of a full desktop window
 - Refresh service status on demand
+- Automatically show the most recently active service in the menu bar, with its icon
 - Customize tray summary behavior, panel order, language, autostart, refresh interval, and proxy settings
 - See clear disconnected or missing-session states when a service is unavailable
 
