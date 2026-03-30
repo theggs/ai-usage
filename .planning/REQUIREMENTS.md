@@ -1,0 +1,120 @@
+# Requirements: ai-usage v2
+
+**Defined:** 2026-03-31
+**Core Value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
+
+## v1 Requirements
+
+Requirements for this milestone. Each maps to roadmap phases.
+
+### Provider Architecture
+
+- [ ] **PROV-01**: All provider metadata (id, display name, fetch strategies, dashboard URL) is defined in a single ProviderDescriptor registry — no hardcoded service ID lists elsewhere
+- [ ] **PROV-02**: Adding a new provider requires only a new ProviderDescriptor entry and a fetch implementation — no changes to UI framework, preferences normalization, or snapshot cache logic
+- [ ] **PROV-03**: Existing Codex provider is migrated to the ProviderDescriptor registry with identical behavior
+- [ ] **PROV-04**: Existing Claude Code provider is migrated to the ProviderDescriptor registry with identical behavior
+- [ ] **PROV-05**: Provider fetch uses an ordered strategy chain (e.g., env → keychain → file → CLI → API); first success stops the chain
+- [ ] **PROV-06**: Frontend state manages providers via a dynamic map (not per-service variables), supporting N providers without code changes
+- [ ] **PROV-07**: Snapshot cache includes a schema version field; incompatible cache is discarded gracefully on upgrade
+- [ ] **PROV-08**: Preferences normalization handles dynamic provider enable/disable flags from the registry — both Rust and TypeScript normalizers stay in sync
+
+### New Providers
+
+- [ ] **NPROV-01**: Kimi Code provider displays quota/usage data in the panel (pending API research confirmation)
+- [ ] **NPROV-02**: GLM Coding Plan provider displays quota/usage data in the panel (pending API research confirmation)
+- [ ] **NPROV-03**: New providers appear in the service order configuration and can be reordered
+- [ ] **NPROV-04**: New providers use the same SnapshotStatus enum and visual treatment as existing providers
+- [ ] **NPROV-05**: If a provider's API is unreachable or undocumented, the UI shows a clear "not available" state (not a blank panel)
+
+### Smart Alerts
+
+- [ ] **ALERT-01**: Burn rate is calculated from `remainingPercent` + `resetsAt` + snapshot timestamp, showing consumption pace relative to window progress
+- [ ] **ALERT-02**: Depletion ETA is displayed in human-readable form (e.g., "runs out in ~3h" or "will last until reset")
+- [ ] **ALERT-03**: Warning thresholds are time-aware — "80% remaining with 4h left" is healthy; "10% remaining with 4h left" is danger
+- [ ] **ALERT-04**: When `resetsAt` is unavailable, warning falls back to existing static percentage thresholds (>50% / 20-50% / <20%)
+- [ ] **ALERT-05**: Pace classification uses at least 3 levels (on track / behind / far behind) visible in the UI
+
+### About Page
+
+- [ ] **ABOUT-01**: Independent About page accessible from the app (not a Settings tab)
+- [ ] **ABOUT-02**: Displays app version and build info (from Tauri package metadata)
+- [ ] **ABOUT-03**: Displays GitHub repository URL as a clickable link
+- [ ] **ABOUT-04**: Displays open-source license of the app itself
+- [ ] **ABOUT-05**: Displays dependency license summary with copyleft/viral license audit results (generated at build time)
+- [ ] **ABOUT-06**: Layout is extensible for future fields (website, author email, etc.) via key-value list pattern
+
+## v2 Requirements
+
+Deferred to future milestones. Tracked but not in current roadmap.
+
+### Enhanced Monitoring
+
+- **MON-01**: Statuspage.io integration for provider incident badges
+- **MON-02**: Quota usage history with sparkline visualization
+- **MON-03**: Cost / token billing tracking per provider
+
+### Platform Extensions
+
+- **PLAT-01**: Bundled CLI tool for querying quota from terminal/scripts
+- **PLAT-02**: macOS WidgetKit desktop widget support
+- **PLAT-03**: Custom icon rendering per provider with animation
+
+### UX Polish
+
+- **UX-01**: Suppress panel refresh while user is reading (read-guard)
+- **UX-02**: Cloud preference sync across devices
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Browser cookie-based auth | Privacy-hostile; macOS-only; fragile |
+| Cost/token billing tracking | Most providers don't expose billing APIs |
+| WidgetKit / desktop widgets | Tauri 2 doesn't support natively |
+| Statuspage.io monitoring | Adds third-party dependency; defer |
+| Custom animated icons per provider | High complexity, marginal benefit |
+| CLI tool | Separate release artifact; no validated demand |
+| Cloud preference sync | Requires auth + remote storage; no demand |
+| Real-time chat/notification push | Not a collaboration tool |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PROV-01 | TBD | Pending |
+| PROV-02 | TBD | Pending |
+| PROV-03 | TBD | Pending |
+| PROV-04 | TBD | Pending |
+| PROV-05 | TBD | Pending |
+| PROV-06 | TBD | Pending |
+| PROV-07 | TBD | Pending |
+| PROV-08 | TBD | Pending |
+| NPROV-01 | TBD | Pending |
+| NPROV-02 | TBD | Pending |
+| NPROV-03 | TBD | Pending |
+| NPROV-04 | TBD | Pending |
+| NPROV-05 | TBD | Pending |
+| ALERT-01 | TBD | Pending |
+| ALERT-02 | TBD | Pending |
+| ALERT-03 | TBD | Pending |
+| ALERT-04 | TBD | Pending |
+| ALERT-05 | TBD | Pending |
+| ABOUT-01 | TBD | Pending |
+| ABOUT-02 | TBD | Pending |
+| ABOUT-03 | TBD | Pending |
+| ABOUT-04 | TBD | Pending |
+| ABOUT-05 | TBD | Pending |
+| ABOUT-06 | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 24 total
+- Mapped to phases: 0
+- Unmapped: 24
+
+---
+*Requirements defined: 2026-03-31*
+*Last updated: 2026-03-31 after initial definition*
