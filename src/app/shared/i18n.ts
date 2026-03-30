@@ -1,4 +1,4 @@
-import type { CodexSnapshotState, UserPreferences } from "../../lib/tauri/contracts";
+import type { CodexSnapshotState, SnapshotStatus, UserPreferences } from "../../lib/tauri/contracts";
 import type {
   PromotionDetailTiming,
   PromotionDisplayDecision,
@@ -124,10 +124,24 @@ export type CopyTree = {
   skipGuide: string;
   serviceNotInstalledTitle: string;
   serviceNotInstalledBody: string;
+  claudeCodeNotConnectedTitle: string;
+  claudeCodeNotConnectedBody: string;
   serviceSignedOutTitle: string;
   serviceSignedOutBody: string;
   serviceDisconnectedTitle: string;
   serviceDisconnectedBody: string;
+  statusSessionRecoveryTitle: string;
+  statusSessionRecoveryBody: string;
+  statusRateLimitedTitle: string;
+  statusRateLimitedBody: string;
+  statusAccessDeniedTitle: string;
+  statusAccessDeniedBody: string;
+  statusProxyInvalidTitle: string;
+  statusProxyInvalidBody: string;
+  statusTemporarilyUnavailableTitle: string;
+  statusTemporarilyUnavailableBody: string;
+  statusNoDataTitle: string;
+  statusNoDataBody: string;
   statusLow: string;
   statusCritical: string;
   reorderHandle: string;
@@ -269,10 +283,24 @@ const baseCopy: CopyTree = {
   skipGuide: "Skip for now",
   serviceNotInstalledTitle: "CLI not installed",
   serviceNotInstalledBody: "Install the CLI first, then come back here to connect it.",
+  claudeCodeNotConnectedTitle: "Not connected",
+  claudeCodeNotConnectedBody: "Install Claude Code CLI and log in, then come back here to connect it.",
   serviceSignedOutTitle: "Sign in required",
   serviceSignedOutBody: "The CLI is installed, but there is no readable signed-in session yet.",
   serviceDisconnectedTitle: "Connection unavailable",
   serviceDisconnectedBody: "The app could not read a live session yet. Open settings to check the integration.",
+  statusSessionRecoveryTitle: "Recovering session",
+  statusSessionRecoveryBody: "Session is being restored. It usually recovers after you open the CLI.",
+  statusRateLimitedTitle: "Rate limited",
+  statusRateLimitedBody: "Automatic refresh is paused; try a manual refresh later.",
+  statusAccessDeniedTitle: "Access denied",
+  statusAccessDeniedBody: "Automatic refresh is paused. Try a manual refresh. If the problem persists, check your proxy or account settings.",
+  statusProxyInvalidTitle: "Proxy invalid",
+  statusProxyInvalidBody: "Use a full proxy URL or switch back to system proxy detection.",
+  statusTemporarilyUnavailableTitle: "Temporarily unavailable",
+  statusTemporarilyUnavailableBody: "The service is temporarily unavailable. It may recover on the next refresh.",
+  statusNoDataTitle: "No data yet",
+  statusNoDataBody: "The service is connected but no quota data is available yet.",
   statusLow: "Low",
   statusCritical: "Critical",
   reorderHandle: "Reorder",
@@ -415,10 +443,24 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     skipGuide: "暂时跳过",
     serviceNotInstalledTitle: "CLI 未安装",
     serviceNotInstalledBody: "请先安装对应 CLI，安装后再回到这里完成连接。",
+    claudeCodeNotConnectedTitle: "未连接",
+    claudeCodeNotConnectedBody: "请先安装 Claude Code CLI 并登录，安装后再回到这里完成连接。",
     serviceSignedOutTitle: "需要先登录",
     serviceSignedOutBody: "CLI 已安装，但当前没有可读取的登录会话。",
     serviceDisconnectedTitle: "暂时无法连接",
     serviceDisconnectedBody: "应用还无法读取到实时会话，请前往设置检查连接状态。",
+    statusSessionRecoveryTitle: "会话恢复中",
+    statusSessionRecoveryBody: "会话恢复中，打开对应 CLI 后通常会自动恢复。",
+    statusRateLimitedTitle: "请求限流",
+    statusRateLimitedBody: "已暂停自动刷新，请稍后手动重试。",
+    statusAccessDeniedTitle: "访问被拒绝",
+    statusAccessDeniedBody: "已暂停自动刷新，请手动重试。如果问题持续，请检查代理或账户设置。",
+    statusProxyInvalidTitle: "代理无效",
+    statusProxyInvalidBody: "请填写完整代理 URL，或切回系统代理检测。",
+    statusTemporarilyUnavailableTitle: "暂时不可用",
+    statusTemporarilyUnavailableBody: "服务暂时不可用，下次刷新时可能恢复。",
+    statusNoDataTitle: "暂无数据",
+    statusNoDataBody: "服务已连接，但尚无可用的额度数据。",
     statusLow: "偏低",
     statusCritical: "紧张",
     reorderHandle: "拖动排序",
@@ -510,82 +552,35 @@ export const getSnapshotMessage = (
 export const getCopy = (language: UserPreferences["language"]) =>
   resolveCopyTree(localeCopy[language] ?? localeCopy["en-US"]);
 
-export const getClaudeCodePlaceholderMessage = (
+export const getPlaceholderCopy = (
   copy: CopyTree,
-  snapshotState?: string | null,
-  statusMessage?: string | null
+  status: SnapshotStatus
 ) => {
-  const normalized = normalizeSnapshotState(snapshotState);
-  const message = statusMessage?.trim() ?? "";
-
-  if (message.includes("access was denied")) {
-    return copy.claudeCodeAccessPaused;
+  switch (status.kind) {
+    case "CliNotFound":
+      return { title: copy.serviceNotInstalledTitle, body: copy.serviceNotInstalledBody };
+    case "NotLoggedIn":
+      return { title: copy.serviceSignedOutTitle, body: copy.serviceSignedOutBody };
+    case "NoCredentials":
+      return { title: copy.claudeCodeNotConnectedTitle, body: copy.claudeCodeNotConnectedBody };
+    case "SessionRecovery":
+      return { title: copy.statusSessionRecoveryTitle, body: copy.statusSessionRecoveryBody };
+    case "RateLimited":
+      return { title: copy.statusRateLimitedTitle, body: copy.statusRateLimitedBody };
+    case "AccessDenied":
+      return { title: copy.statusAccessDeniedTitle, body: copy.statusAccessDeniedBody };
+    case "ProxyInvalid":
+      return { title: copy.statusProxyInvalidTitle, body: copy.statusProxyInvalidBody };
+    case "TemporarilyUnavailable":
+      return { title: copy.statusTemporarilyUnavailableTitle, body: copy.statusTemporarilyUnavailableBody };
+    case "NoData":
+      return { title: copy.statusNoDataTitle, body: copy.statusNoDataBody };
+    case "Disabled":
+      return { title: copy.statusNoDataTitle, body: copy.statusNoDataBody };
+    case "Fresh":
+    default:
+      return { title: copy.serviceDisconnectedTitle, body: copy.serviceDisconnectedBody };
   }
-
-  if (message.includes("Proxy configuration is invalid")) {
-    return copy.claudeCodeProxyInvalid;
-  }
-
-  if (message.includes("rate limited")) {
-    return copy.claudeCodeRateLimited;
-  }
-
-  if (message.includes("session is being restored")) {
-    if (message.includes("Open Claude Code to restore")) {
-      return copy.claudeCodeSessionRecoveryEmpty;
-    }
-    return copy.claudeCodeSessionRecovery;
-  }
-
-  if (normalized === "empty" || message.includes("No Claude Code credentials")) {
-    return copy.claudeCodeNotConnected;
-  }
-
-  return message || copy.claudeCodeNotConnected;
-};
-
-export const getServicePlaceholderCopy = (
-  copy: CopyTree,
-  serviceId: string,
-  snapshotState?: string | null,
-  statusMessage?: string | null
-) => {
-  const message = statusMessage?.trim() ?? "";
-  const normalized = normalizeSnapshotState(snapshotState);
-
-  if (serviceId === "claude-code") {
-    if (normalized === "empty" || message.includes("No Claude Code credentials")) {
-      return {
-        title: copy.serviceNotInstalledTitle,
-        body: copy.serviceNotInstalledBody
-      };
-    }
-    if (message.includes("session") || normalized === "stale") {
-      return {
-        title: copy.serviceSignedOutTitle,
-        body: copy.serviceSignedOutBody
-      };
-    }
-  }
-
-  if (normalized === "empty") {
-    return {
-      title: copy.serviceNotInstalledTitle,
-      body: copy.serviceNotInstalledBody
-    };
-  }
-
-  if (normalized === "stale" || message.includes("logged-in session")) {
-    return {
-      title: copy.serviceSignedOutTitle,
-      body: copy.serviceSignedOutBody
-    };
-  }
-
-  return {
-    title: copy.serviceDisconnectedTitle,
-    body: copy.serviceDisconnectedBody
-  };
 };
 
 /**

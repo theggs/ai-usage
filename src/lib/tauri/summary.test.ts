@@ -110,8 +110,7 @@ describe("formatTraySummary", () => {
   it("normalizes explicit empty service status cards without unrelated fallback copy", () => {
     expect(
       getServiceStatusCard("claude-code", "Claude Code", {
-        snapshotState: "empty",
-        statusMessage: "No Claude Code credentials",
+        status: { kind: "NoCredentials" },
         items: []
       })
     ).toMatchObject({

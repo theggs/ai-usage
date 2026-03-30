@@ -9,6 +9,7 @@ use crate::claude_code::{
 };
 use crate::codex::{load_snapshot, save_accounts, save_preferences as persist_preferences_file};
 use crate::notifications::send_demo_notification;
+use crate::snapshot::SnapshotStatus;
 use crate::state::{
     ActiveCodexSession, AppState, AutoMenubarSelectionState, CodexAccount, CodexAccountDraft,
     CodexPanelState, DesktopSurfaceState, NotificationCheckResult, PanelPlaceholderItem,
@@ -104,10 +105,10 @@ fn save_to_snapshot_cache(service_id: &str, state: &CodexPanelState) {
 
 fn effective_refresh_timestamp(
     service_id: &str,
-    snapshot_state: &str,
+    status: &SnapshotStatus,
     refreshed_at: &str,
 ) -> String {
-    if snapshot_state == "fresh" {
+    if status.is_fresh() {
         return refreshed_at.into();
     }
 
@@ -119,8 +120,7 @@ fn effective_refresh_timestamp(
 }
 
 /// Returns a cached panel state if it exists and is fresh enough
-/// (i.e., `now - last_successful_refresh_at < refresh_interval`).  The returned state
-/// has its `snapshot_state` set to `"stale"` so the UI knows it is cached.
+/// (i.e., `now - last_successful_refresh_at < refresh_interval`).
 fn load_from_snapshot_cache(
     service_id: &str,
     refresh_interval_minutes: u16,
@@ -138,12 +138,7 @@ fn load_from_snapshot_cache(
     let interval_secs = u64::from(refresh_interval_minutes) * 60;
 
     if age_secs < interval_secs {
-        let mut restored = entry.clone();
-        // Mark as stale so the user knows this is cached data, not a live fetch.
-        if restored.snapshot_state == "fresh" {
-            restored.snapshot_state = "stale".into();
-        }
-        Some(restored)
+        Some(entry.clone())
     } else {
         None
     }
@@ -172,10 +167,11 @@ fn normalize_summary_mode(summary_mode: &str) -> String {
     summary_mode.to_string()
 }
 
-fn normalize_icon_state(snapshot_state: &str) -> String {
-    match snapshot_state {
-        "fresh" => "idle".into(),
-        _ => "attention".into(),
+fn normalize_icon_state(status: &SnapshotStatus) -> String {
+    if status.is_fresh() {
+        "idle".into()
+    } else {
+        "attention".into()
     }
 }
 
@@ -226,13 +222,13 @@ fn build_panel_state(
 
     let snapshot = load_snapshot();
     let effective_refreshed_at =
-        effective_refresh_timestamp("codex", &snapshot.snapshot_state, refreshed_at);
-    let active_session = if snapshot.connection_state == "connected" {
+        effective_refresh_timestamp("codex", &snapshot.status, refreshed_at);
+    let active_session = if snapshot.status.is_fresh() {
         Some(ActiveCodexSession {
             session_id: "local-codex-session".into(),
             account_id: None,
             session_label: "Local Codex CLI".into(),
-            connection_state: snapshot.connection_state.clone(),
+            connection_state: "connected".into(),
             last_checked_at: effective_refreshed_at.clone(),
             source: snapshot.source.clone(),
         })
@@ -250,10 +246,10 @@ fn build_panel_state(
             icon_key: "codex".into(),
             quota_dimensions: normalize_dimensions(&snapshot.dimensions),
             status_label: "refreshing".into(),
-            badge_label: Some(if snapshot.snapshot_state == "fresh" {
+            badge_label: Some(if snapshot.status.is_fresh() {
                 "Live".into()
             } else {
-                snapshot.snapshot_state.clone()
+                "stale".into()
             }),
             last_successful_refresh_at: effective_refreshed_at.clone(),
         }]
@@ -266,7 +262,7 @@ fn build_panel_state(
             } else {
                 "windows".into()
             },
-            icon_state: normalize_icon_state(&snapshot.snapshot_state),
+            icon_state: normalize_icon_state(&snapshot.status),
             summary_mode: normalize_summary_mode(&preferences.tray_summary_mode),
             summary_text: None,
             panel_visible: false,
@@ -275,8 +271,7 @@ fn build_panel_state(
         items,
         configured_account_count,
         enabled_account_count,
-        snapshot_state: snapshot.snapshot_state,
-        status_message: snapshot.status_message,
+        status: snapshot.status,
         active_session,
         last_successful_refresh_at: effective_refreshed_at,
     }
@@ -328,7 +323,7 @@ pub fn build_claude_code_items(
 ) -> Vec<PanelPlaceholderItem> {
     let snapshot = load_claude_code_snapshot(preferences, refresh_kind);
     let effective_refreshed_at =
-        effective_refresh_timestamp("claude-code", &snapshot.snapshot_state, refreshed_at);
+        effective_refresh_timestamp("claude-code", &snapshot.status, refreshed_at);
     if snapshot.dimensions.is_empty() {
         return Vec::new();
     }
@@ -339,10 +334,10 @@ pub fn build_claude_code_items(
         icon_key: "claude-code".into(),
         quota_dimensions: normalize_dimensions(&snapshot.dimensions),
         status_label: "refreshing".into(),
-        badge_label: Some(if snapshot.snapshot_state == "fresh" {
+        badge_label: Some(if snapshot.status.is_fresh() {
             "Live".into()
         } else {
-            snapshot.snapshot_state.clone()
+            "stale".into()
         }),
         last_successful_refresh_at: effective_refreshed_at,
     }]
@@ -359,10 +354,9 @@ fn build_claude_code_panel_state(
     )
 }
 
-fn empty_claude_code_panel_state(
+fn claude_code_disabled_panel_state(
     preferences: &UserPreferences,
     refreshed_at: &str,
-    status_message: &str,
 ) -> CodexPanelState {
     CodexPanelState {
         desktop_surface: DesktopSurfaceState {
@@ -380,22 +374,10 @@ fn empty_claude_code_panel_state(
         items: Vec::new(),
         configured_account_count: 0,
         enabled_account_count: 0,
-        snapshot_state: "empty".into(),
-        status_message: status_message.into(),
+        status: SnapshotStatus::Disabled,
         active_session: None,
         last_successful_refresh_at: refreshed_at.into(),
     }
-}
-
-fn claude_code_disabled_panel_state(
-    preferences: &UserPreferences,
-    refreshed_at: &str,
-) -> CodexPanelState {
-    empty_claude_code_panel_state(
-        preferences,
-        refreshed_at,
-        "Claude Code usage query is disabled.",
-    )
 }
 
 fn build_claude_code_panel_state_with_kind(
@@ -405,7 +387,7 @@ fn build_claude_code_panel_state_with_kind(
 ) -> CodexPanelState {
     let snapshot = load_claude_code_snapshot(preferences, refresh_kind);
     let effective_refreshed_at =
-        effective_refresh_timestamp("claude-code", &snapshot.snapshot_state, refreshed_at);
+        effective_refresh_timestamp("claude-code", &snapshot.status, refreshed_at);
     let items = if snapshot.dimensions.is_empty() {
         Vec::new()
     } else {
@@ -416,10 +398,10 @@ fn build_claude_code_panel_state_with_kind(
             icon_key: "claude-code".into(),
             quota_dimensions: normalize_dimensions(&snapshot.dimensions),
             status_label: "refreshing".into(),
-            badge_label: Some(if snapshot.snapshot_state == "fresh" {
+            badge_label: Some(if snapshot.status.is_fresh() {
                 "Live".into()
             } else {
-                snapshot.snapshot_state.clone()
+                "stale".into()
             }),
             last_successful_refresh_at: effective_refreshed_at.clone(),
         }]
@@ -432,7 +414,7 @@ fn build_claude_code_panel_state_with_kind(
             } else {
                 "windows".into()
             },
-            icon_state: normalize_icon_state(&snapshot.snapshot_state),
+            icon_state: normalize_icon_state(&snapshot.status),
             summary_mode: normalize_summary_mode(&preferences.tray_summary_mode),
             summary_text: None,
             panel_visible: false,
@@ -441,8 +423,7 @@ fn build_claude_code_panel_state_with_kind(
         items,
         configured_account_count: 0,
         enabled_account_count: 0,
-        snapshot_state: snapshot.snapshot_state,
-        status_message: snapshot.status_message,
+        status: snapshot.status,
         active_session: None,
         last_successful_refresh_at: effective_refreshed_at,
     }
@@ -801,8 +782,7 @@ mod tests {
             }],
             configured_account_count: 0,
             enabled_account_count: 0,
-            snapshot_state: "fresh".into(),
-            status_message: "ok".into(),
+            status: SnapshotStatus::Fresh,
             active_session: None,
             last_successful_refresh_at: last_successful_refresh_at.into(),
         }
@@ -825,7 +805,6 @@ mod tests {
         let loaded = load_from_snapshot_cache("test-svc", 15);
         assert!(loaded.is_some());
         let loaded = loaded.unwrap();
-        assert_eq!(loaded.snapshot_state, "stale"); // marked stale
         assert_eq!(loaded.items.len(), 1);
 
         // Non-existent service returns None.
@@ -877,15 +856,19 @@ mod tests {
         save_to_snapshot_cache("claude-code", &previous);
 
         assert_eq!(
-            effective_refresh_timestamp("claude-code", "stale", "200"),
+            effective_refresh_timestamp(
+                "claude-code",
+                &SnapshotStatus::TemporarilyUnavailable { detail: "test".into() },
+                "200"
+            ),
             "100"
         );
         assert_eq!(
-            effective_refresh_timestamp("claude-code", "failed", "200"),
+            effective_refresh_timestamp("claude-code", &SnapshotStatus::AccessDenied, "200"),
             "100"
         );
         assert_eq!(
-            effective_refresh_timestamp("claude-code", "fresh", "200"),
+            effective_refresh_timestamp("claude-code", &SnapshotStatus::Fresh, "200"),
             "200"
         );
 

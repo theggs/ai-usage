@@ -1,3 +1,4 @@
+use crate::snapshot::SnapshotStatus;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 
@@ -158,8 +159,7 @@ pub struct CodexPanelState {
     pub items: Vec<PanelPlaceholderItem>,
     pub configured_account_count: usize,
     pub enabled_account_count: usize,
-    pub snapshot_state: String,
-    pub status_message: String,
+    pub status: SnapshotStatus,
     pub active_session: Option<ActiveCodexSession>,
     #[serde(alias = "updatedAt")]
     pub last_successful_refresh_at: String,

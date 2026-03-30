@@ -74,17 +74,11 @@ export const createDemoPanelState = (
         }
       : undefined;
 
-  const snapshotState =
-    mode === "pending" ? "pending" :
-    mode === "failed" ? "failed" :
-    mode === "disconnected" ? "stale" :
-    "fresh";
-
-  const statusMessage =
-    mode === "pending" ? "Open a readable local Codex CLI session to sync live limits." :
-    mode === "failed" ? "Failed to read live Codex CLI limits." :
-    mode === "disconnected" ? "The local Codex CLI is installed, but no readable logged-in session is available." :
-    "Live Codex limits available.";
+  const status =
+    mode === "pending" ? { kind: "NoData" as const } :
+    mode === "failed" ? { kind: "TemporarilyUnavailable" as const, detail: "demo failure" } :
+    mode === "disconnected" ? { kind: "NotLoggedIn" as const } :
+    { kind: "Fresh" as const };
 
   return {
     desktopSurface: {
@@ -96,8 +90,7 @@ export const createDemoPanelState = (
     },
     configuredAccountCount: 0,
     enabledAccountCount: 0,
-    snapshotState,
-    statusMessage,
+    status,
     activeSession,
     lastSuccessfulRefreshAt: now(),
     items

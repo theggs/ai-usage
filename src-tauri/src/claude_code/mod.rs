@@ -2,6 +2,7 @@
 // Reads OAuth credentials from the host system and calls the Anthropic usage API.
 // The OAuth token is never stored in app memory between refresh cycles.
 
+use crate::snapshot::{ServiceSnapshot, SnapshotStatus};
 use crate::state::{QuotaDimension, UserPreferences};
 use serde::Deserialize;
 use std::env;
@@ -10,12 +11,6 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
-
-// ---------------------------------------------------------------------------
-// Public snapshot type alias
-// ---------------------------------------------------------------------------
-
-pub use crate::codex::CodexSnapshot as ClaudeCodeSnapshot;
 
 // ---------------------------------------------------------------------------
 // Internal structures — never exposed outside this module
@@ -151,46 +146,28 @@ fn active_rate_limit_until() -> Option<i64> {
     })
 }
 
-fn pause_snapshot(source: String) -> ClaudeCodeSnapshot {
-    ClaudeCodeSnapshot {
-        snapshot_state: "failed".into(),
-        connection_state: "failed".into(),
-        status_message:
-            "Claude Code access was denied. Automatic refresh is paused until you retry manually or update proxy settings."
-                .into(),
+fn pause_snapshot(source: String) -> ServiceSnapshot {
+    ServiceSnapshot {
+        status: SnapshotStatus::AccessDenied,
         dimensions: Vec::new(),
         source,
     }
 }
 
-fn format_rate_limit_retry_hint(until: i64) -> String {
+fn rate_limit_retry_minutes(until: i64) -> u32 {
     let remaining_secs = until.saturating_sub(now_unix());
-    let minutes = ((remaining_secs + 59) / 60).max(1);
-    format!("{minutes} minutes")
-}
-
-fn rate_limited_status_message(until: i64, has_cached_data: bool) -> String {
-    let retry_hint = format_rate_limit_retry_hint(until);
-    if has_cached_data {
-        format!(
-            "Claude Code rate limited the request. Automatic refresh is paused for about {retry_hint}; showing cached quota."
-        )
-    } else {
-        format!(
-            "Claude Code rate limited the request. Automatic refresh is paused for about {retry_hint}; no cached quota is available yet."
-        )
-    }
+    ((remaining_secs + 59) / 60).max(1) as u32
 }
 
 fn rate_limited_snapshot(
     source: String,
     dimensions: Vec<QuotaDimension>,
     until: i64,
-) -> ClaudeCodeSnapshot {
-    ClaudeCodeSnapshot {
-        snapshot_state: "stale".into(),
-        connection_state: "connected".into(),
-        status_message: rate_limited_status_message(until, !dimensions.is_empty()),
+) -> ServiceSnapshot {
+    ServiceSnapshot {
+        status: SnapshotStatus::RateLimited {
+            retry_after_minutes: rate_limit_retry_minutes(until),
+        },
         dimensions,
         source,
     }
@@ -652,14 +629,9 @@ fn call_usage_api(
     }
 }
 
-fn invalid_proxy_snapshot(source: String, preferences: &UserPreferences) -> ClaudeCodeSnapshot {
-    ClaudeCodeSnapshot {
-        snapshot_state: "failed".into(),
-        connection_state: "failed".into(),
-        status_message: format!(
-            "Proxy configuration is invalid for mode {}. Use a full proxy URL or switch back to system proxy detection.",
-            preferences.network_proxy_mode
-        ),
+fn invalid_proxy_snapshot(source: String) -> ServiceSnapshot {
+    ServiceSnapshot {
+        status: SnapshotStatus::ProxyInvalid,
         dimensions: Vec::new(),
         source,
     }
@@ -672,16 +644,12 @@ fn invalid_proxy_snapshot(source: String, preferences: &UserPreferences) -> Clau
 pub fn load_snapshot(
     preferences: &UserPreferences,
     refresh_kind: RefreshKind,
-) -> ClaudeCodeSnapshot {
+) -> ServiceSnapshot {
     let (token, source) = match read_oauth_token() {
         Some(pair) => pair,
         None => {
-            return ClaudeCodeSnapshot {
-                snapshot_state: "empty".into(),
-                connection_state: "unavailable".into(),
-                status_message:
-                    "No Claude Code credentials found. Install and log in to Claude Code CLI."
-                        .into(),
+            return ServiceSnapshot {
+                status: SnapshotStatus::NoCredentials,
                 dimensions: Vec::new(),
                 source: "none".into(),
             };
@@ -712,10 +680,8 @@ pub fn load_snapshot(
             if let Ok(mut cache) = stale_cache().lock() {
                 *cache = Some(dimensions.clone());
             }
-            ClaudeCodeSnapshot {
-                snapshot_state: "fresh".into(),
-                connection_state: "connected".into(),
-                status_message: "Live Claude Code quota available.".into(),
+            ServiceSnapshot {
+                status: SnapshotStatus::Fresh,
                 dimensions,
                 source,
             }
@@ -725,26 +691,15 @@ pub fn load_snapshot(
                 *state = PauseState::SessionRecovery;
             }
             // Preserve stale cache — do NOT clear it.
-            let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
-            match cached {
-                Some(dimensions) => ClaudeCodeSnapshot {
-                    snapshot_state: "stale".into(),
-                    connection_state: "disconnected".into(),
-                    status_message:
-                        "Claude Code session is being restored. It usually recovers after you open Claude Code."
-                            .into(),
-                    dimensions,
-                    source,
-                },
-                None => ClaudeCodeSnapshot {
-                    snapshot_state: "empty".into(),
-                    connection_state: "disconnected".into(),
-                    status_message:
-                        "Claude Code session is being restored. Open Claude Code to restore the session."
-                            .into(),
-                    dimensions: Vec::new(),
-                    source,
-                },
+            let cached = stale_cache()
+                .lock()
+                .ok()
+                .and_then(|guard| guard.clone())
+                .unwrap_or_default();
+            ServiceSnapshot {
+                status: SnapshotStatus::SessionRecovery,
+                dimensions: cached,
+                source,
             }
         }
         Err(ApiError::Status(403)) => {
@@ -766,49 +721,30 @@ pub fn load_snapshot(
             rate_limited_snapshot(source, cached, until)
         }
         Err(ApiError::Status(status)) => {
-            let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
-            match cached {
-                Some(dimensions) => ClaudeCodeSnapshot {
-                    snapshot_state: "stale".into(),
-                    connection_state: "connected".into(),
-                    status_message: format!(
-                        "Claude Code is temporarily unavailable (HTTP {status}); showing cached quota."
-                    ),
-                    dimensions,
-                    source,
+            let cached = stale_cache()
+                .lock()
+                .ok()
+                .and_then(|guard| guard.clone())
+                .unwrap_or_default();
+            ServiceSnapshot {
+                status: SnapshotStatus::TemporarilyUnavailable {
+                    detail: format!("HTTP {status}"),
                 },
-                None => ClaudeCodeSnapshot {
-                    snapshot_state: "stale".into(),
-                    connection_state: "connected".into(),
-                    status_message: format!(
-                        "Claude Code is temporarily unavailable (HTTP {status}), and no cached quota is available yet."
-                    ),
-                    dimensions: Vec::new(),
-                    source,
-                },
+                dimensions: cached,
+                source,
             }
         }
-        Err(ApiError::ProxyConfiguration(_kind)) => invalid_proxy_snapshot(source, preferences),
-        Err(ApiError::RequestFailed(_reason)) => {
-            let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
-            match cached {
-                Some(dimensions) => ClaudeCodeSnapshot {
-                    snapshot_state: "stale".into(),
-                    connection_state: "connected".into(),
-                    status_message:
-                        "Claude Code API temporarily unavailable; showing cached quota.".into(),
-                    dimensions,
-                    source,
-                },
-                None => ClaudeCodeSnapshot {
-                    snapshot_state: "stale".into(),
-                    connection_state: "connected".into(),
-                    status_message:
-                        "Claude Code request could not be completed, and no cached quota is available yet."
-                            .into(),
-                    dimensions: Vec::new(),
-                    source,
-                },
+        Err(ApiError::ProxyConfiguration(_kind)) => invalid_proxy_snapshot(source),
+        Err(ApiError::RequestFailed(detail)) => {
+            let cached = stale_cache()
+                .lock()
+                .ok()
+                .and_then(|guard| guard.clone())
+                .unwrap_or_default();
+            ServiceSnapshot {
+                status: SnapshotStatus::TemporarilyUnavailable { detail },
+                dimensions: cached,
+                source,
             }
         }
     }
@@ -979,8 +915,7 @@ Current WinHTTP proxy settings:
             *state = PauseState::AccessDenied;
         }
         let snapshot = pause_snapshot("keychain".into());
-        assert_eq!(snapshot.snapshot_state, "failed");
-        assert!(snapshot.status_message.contains("paused"));
+        assert_eq!(snapshot.status, SnapshotStatus::AccessDenied);
         clear_access_pause();
     }
 
@@ -1001,30 +936,26 @@ Current WinHTTP proxy settings:
     }
 
     #[test]
-    fn rate_limited_snapshot_reports_stale_and_pause_message() {
+    fn rate_limited_snapshot_reports_rate_limited_status() {
         let snapshot = rate_limited_snapshot("keychain".into(), Vec::new(), now_unix() + 300);
-        assert_eq!(snapshot.snapshot_state, "stale");
-        assert_eq!(snapshot.connection_state, "connected");
-        assert!(snapshot.status_message.contains("rate limited"));
-        assert!(snapshot.status_message.contains("paused"));
+        assert!(
+            matches!(snapshot.status, SnapshotStatus::RateLimited { retry_after_minutes } if retry_after_minutes > 0)
+        );
     }
 
     #[test]
-    fn auth_error_produces_failed_state() {
-        let snapshot = ClaudeCodeSnapshot {
-            snapshot_state: "failed".into(),
-            connection_state: "disconnected".into(),
-            status_message: "test".into(),
+    fn auth_error_produces_access_denied() {
+        let snapshot = ServiceSnapshot {
+            status: SnapshotStatus::AccessDenied,
             dimensions: Vec::new(),
             source: "test".into(),
         };
-        assert_eq!(snapshot.snapshot_state, "failed");
-        assert_eq!(snapshot.connection_state, "disconnected");
+        assert_eq!(snapshot.status, SnapshotStatus::AccessDenied);
     }
 
-    // (f) transient failure with prior cache -> snapshot_state: "stale", cached dims returned
+    // (f) transient failure with prior cache -> cached dims preserved
     #[test]
-    fn transient_failure_with_cache_returns_stale() {
+    fn transient_failure_with_cache_returns_cached_dims() {
         let _guard = shared_state_test_guard();
         reset_shared_test_state();
         {
@@ -1042,17 +973,17 @@ Current WinHTTP proxy settings:
         let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
 
         let snapshot = match cached {
-            Some(dimensions) => ClaudeCodeSnapshot {
-                snapshot_state: "stale".into(),
-                connection_state: "connected".into(),
-                status_message: "stale".into(),
+            Some(dimensions) => ServiceSnapshot {
+                status: SnapshotStatus::TemporarilyUnavailable {
+                    detail: "test".into(),
+                },
                 dimensions,
                 source: "test".into(),
             },
             None => panic!("expected cached dimensions"),
         };
 
-        assert_eq!(snapshot.snapshot_state, "stale");
+        assert!(matches!(snapshot.status, SnapshotStatus::TemporarilyUnavailable { .. }));
         assert_eq!(snapshot.dimensions.len(), 1);
         assert_eq!(snapshot.dimensions[0].remaining_percent, Some(42));
         *stale_cache().lock().unwrap() = None;
@@ -1163,38 +1094,14 @@ Current WinHTTP proxy settings:
         }
 
         let cached = stale_cache().lock().ok().and_then(|guard| guard.clone());
-        let snapshot = match cached {
-            Some(dimensions) => ClaudeCodeSnapshot {
-                snapshot_state: "stale".into(),
-                connection_state: "disconnected".into(),
-                status_message: "Claude Code session is being restored. It usually recovers after you open Claude Code.".into(),
-                dimensions,
-                source: "test".into(),
-            },
-            None => ClaudeCodeSnapshot {
-                snapshot_state: "empty".into(),
-                connection_state: "disconnected".into(),
-                status_message: "Claude Code session is being restored. Open Claude Code to restore the session.".into(),
-                dimensions: Vec::new(),
-                source: "test".into(),
-            },
+        let snapshot = ServiceSnapshot {
+            status: SnapshotStatus::SessionRecovery,
+            dimensions: cached.unwrap_or_default(),
+            source: "test".into(),
         };
 
-        assert_eq!(snapshot.snapshot_state, "empty");
-        assert_eq!(snapshot.connection_state, "disconnected");
+        assert_eq!(snapshot.status, SnapshotStatus::SessionRecovery);
         assert!(snapshot.dimensions.is_empty());
-        // Verify no technical jargon in the message
-        let msg = &snapshot.status_message;
-        assert!(!msg.contains("token"), "message must not contain 'token'");
-        assert!(
-            !msg.contains("keychain"),
-            "message must not contain 'keychain'"
-        );
-        assert!(!msg.contains("401"), "message must not contain '401'");
-        assert!(
-            !msg.contains("credentials"),
-            "message must not contain 'credentials'"
-        );
 
         clear_access_pause();
     }

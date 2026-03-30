@@ -57,8 +57,7 @@ const createDisabledClaudePanelState = (preferences: UserPreferences): CodexPane
   items: [],
   configuredAccountCount: 0,
   enabledAccountCount: 0,
-  snapshotState: "empty",
-  statusMessage: "Claude Code usage query is disabled.",
+  status: { kind: "Disabled" },
   activeSession: undefined,
   lastSuccessfulRefreshAt: String(Math.floor(Date.now() / 1000))
 });
@@ -73,7 +72,7 @@ const createMockClaudePanelState = (preferences: UserPreferences): CodexPanelSta
       serviceName: "Claude Code",
       iconKey: "claude-code"
     })),
-    statusMessage: "Live Claude Code quota available."
+    status: { kind: "Fresh" }
   };
 };
 
