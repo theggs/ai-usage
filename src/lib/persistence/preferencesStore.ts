@@ -1,5 +1,5 @@
 import { defaultPreferences } from "../../features/preferences/defaultPreferences";
-import type { PreferencePatch, UserPreferences } from "../tauri/contracts";
+import type { MenubarService, PreferencePatch, UserPreferences } from "../tauri/contracts";
 
 const STORAGE_KEY = "ai-usage.preferences";
 const MIN_REFRESH_INTERVAL = 5;
@@ -54,9 +54,9 @@ const normalizeMenubarService = (
   serviceOrder: UserPreferences["serviceOrder"],
   claudeCodeUsageEnabled: boolean
 ) : UserPreferences["menubarService"] => {
-  const candidate =
+  const candidate: MenubarService =
     value && KNOWN_MENUBAR_SERVICES.includes(value as typeof KNOWN_MENUBAR_SERVICES[number])
-      ? value
+      ? (value as MenubarService)
       : DEFAULT_MENUBAR_SERVICE;
 
   if (candidate === "auto") {
@@ -71,7 +71,7 @@ const normalizeMenubarService = (
     return candidate;
   }
 
-  return serviceOrder[0] ?? DEFAULT_MENUBAR_SERVICE;
+  return (serviceOrder[0] as MenubarService | undefined) ?? DEFAULT_MENUBAR_SERVICE;
 };
 
 export const normalizePreferences = (
