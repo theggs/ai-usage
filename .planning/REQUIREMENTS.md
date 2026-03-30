@@ -85,36 +85,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROV-01 | TBD | Pending |
-| PROV-02 | TBD | Pending |
-| PROV-03 | TBD | Pending |
-| PROV-04 | TBD | Pending |
-| PROV-05 | TBD | Pending |
-| PROV-06 | TBD | Pending |
-| PROV-07 | TBD | Pending |
-| PROV-08 | TBD | Pending |
-| NPROV-01 | TBD | Pending |
-| NPROV-02 | TBD | Pending |
-| NPROV-03 | TBD | Pending |
-| NPROV-04 | TBD | Pending |
-| NPROV-05 | TBD | Pending |
-| ALERT-01 | TBD | Pending |
-| ALERT-02 | TBD | Pending |
-| ALERT-03 | TBD | Pending |
-| ALERT-04 | TBD | Pending |
-| ALERT-05 | TBD | Pending |
-| ABOUT-01 | TBD | Pending |
-| ABOUT-02 | TBD | Pending |
-| ABOUT-03 | TBD | Pending |
-| ABOUT-04 | TBD | Pending |
-| ABOUT-05 | TBD | Pending |
-| ABOUT-06 | TBD | Pending |
+| PROV-01 | Phase 1 | Pending |
+| PROV-02 | Phase 1 | Pending |
+| PROV-06 | Phase 1 | Pending |
+| PROV-07 | Phase 1 | Pending |
+| PROV-08 | Phase 1 | Pending |
+| PROV-03 | Phase 2 | Pending |
+| PROV-04 | Phase 2 | Pending |
+| PROV-05 | Phase 2 | Pending |
+| NPROV-01 | Phase 3 | Pending |
+| NPROV-02 | Phase 3 | Pending |
+| NPROV-03 | Phase 3 | Pending |
+| NPROV-04 | Phase 3 | Pending |
+| NPROV-05 | Phase 3 | Pending |
+| ALERT-01 | Phase 4 | Pending |
+| ALERT-02 | Phase 4 | Pending |
+| ALERT-03 | Phase 5 | Pending |
+| ALERT-04 | Phase 5 | Pending |
+| ALERT-05 | Phase 5 | Pending |
+| ABOUT-01 | Phase 6 | Pending |
+| ABOUT-02 | Phase 6 | Pending |
+| ABOUT-03 | Phase 6 | Pending |
+| ABOUT-04 | Phase 6 | Pending |
+| ABOUT-05 | Phase 6 | Pending |
+| ABOUT-06 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after initial definition*
+*Last updated: 2026-03-31 after roadmap creation*
