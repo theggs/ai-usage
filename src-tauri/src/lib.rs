@@ -145,6 +145,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_provider_state,
+            commands::refresh_provider_state,
             commands::get_codex_panel_state,
             commands::refresh_codex_panel_state,
             commands::get_claude_code_panel_state,

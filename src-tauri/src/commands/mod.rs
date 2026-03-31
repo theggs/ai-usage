@@ -2,13 +2,10 @@ use crate::agent_activity::{
     collect_service_activity_snapshots, resolve_auto_menubar_selection,
 };
 use crate::autostart::set_autostart_status;
-use crate::claude_code::{
-    clear_access_pause as clear_claude_code_access_pause,
-    load_snapshot as load_claude_code_snapshot, seed_stale_cache as seed_claude_code_stale_cache,
-    RefreshKind as ClaudeCodeRefreshKind,
-};
-use crate::codex::{load_snapshot, save_accounts, save_preferences as persist_preferences_file};
+use crate::claude_code::clear_access_pause as clear_claude_code_access_pause;
+use crate::codex::{save_accounts, save_preferences as persist_preferences_file};
 use crate::notifications::send_demo_notification;
+use crate::pipeline;
 use crate::snapshot::SnapshotStatus;
 use crate::state::{
     ActiveCodexSession, AppState, AutoMenubarSelectionState, CodexAccount, CodexAccountDraft,
@@ -104,9 +101,12 @@ fn read_cached_items_for_service(service_id: &str) -> Vec<PanelPlaceholderItem> 
 }
 
 pub fn build_cached_tray_items(preferences: &UserPreferences) -> Vec<PanelPlaceholderItem> {
-    let mut items = read_cached_items_for_service("codex");
-    if is_claude_code_usage_enabled(preferences) {
-        items.extend(read_cached_items_for_service("claude-code"));
+    let mut items = Vec::new();
+    for pid in crate::registry::provider_ids() {
+        if !is_provider_enabled(preferences, pid) {
+            continue;
+        }
+        items.extend(read_cached_items_for_service(pid));
     }
     items
 }
@@ -224,155 +224,26 @@ fn normalize_dimensions(
         .collect()
 }
 
-fn build_panel_state(
-    preferences: &UserPreferences,
-    accounts: &[CodexAccount],
-    refreshed_at: &str,
-) -> CodexPanelState {
-    let configured_account_count = accounts.len();
-    let enabled_accounts = accounts
-        .iter()
-        .filter(|account| account.enabled)
-        .cloned()
-        .collect::<Vec<_>>();
-    let enabled_account_count = enabled_accounts.len();
-
-    let snapshot = load_snapshot();
-    let effective_refreshed_at =
-        effective_refresh_timestamp("codex", &snapshot.status, refreshed_at);
-    let active_session = if snapshot.status.is_fresh() {
-        Some(ActiveCodexSession {
-            session_id: "local-codex-session".into(),
-            account_id: None,
-            session_label: "Local Codex CLI".into(),
-            connection_state: "connected".into(),
-            last_checked_at: effective_refreshed_at.clone(),
-            source: snapshot.source.clone(),
-        })
-    } else {
-        None
-    };
-
-    let items = if snapshot.dimensions.is_empty() {
-        Vec::new()
-    } else {
-        vec![PanelPlaceholderItem {
-            service_id: "codex".into(),
-            service_name: "Codex".into(),
-            account_label: None,
-            icon_key: "codex".into(),
-            quota_dimensions: normalize_dimensions(&snapshot.dimensions),
-            status_label: "refreshing".into(),
-            badge_label: Some(if snapshot.status.is_fresh() {
-                "Live".into()
-            } else {
-                "stale".into()
-            }),
-            last_successful_refresh_at: effective_refreshed_at.clone(),
-        }]
-    };
-
-    CodexPanelState {
-        desktop_surface: DesktopSurfaceState {
-            platform: if cfg!(target_os = "macos") {
-                "macos".into()
-            } else {
-                "windows".into()
-            },
-            icon_state: normalize_icon_state(&snapshot.status),
-            summary_mode: normalize_summary_mode(&preferences.tray_summary_mode),
-            summary_text: None,
-            panel_visible: false,
-            last_opened_at: None,
-        },
-        items,
-        configured_account_count,
-        enabled_account_count,
-        status: snapshot.status,
-        active_session,
-        last_successful_refresh_at: effective_refreshed_at,
+fn is_provider_enabled(preferences: &UserPreferences, provider_id: &str) -> bool {
+    if provider_id == "codex" {
+        return true; // Codex always enabled
     }
-}
-
-pub fn build_tray_items(
-    preferences: &UserPreferences,
-    accounts: &[CodexAccount],
-    refreshed_at: &str,
-) -> Vec<PanelPlaceholderItem> {
-    // Tray initialization uses the snapshot cache when available to avoid
-    // unnecessary API calls on startup (especially during dev hot-reloads).
-    let codex_items = if let Some(cached) =
-        load_from_snapshot_cache("codex", preferences.refresh_interval_minutes)
-    {
-        cached.items
-    } else {
-        let result = build_panel_state(preferences, accounts, refreshed_at);
-        save_to_snapshot_cache("codex", &result);
-        result.items
-    };
-
-    let mut items = codex_items;
-    if is_claude_code_usage_enabled(preferences) {
-        let claude_items = if let Some(cached) =
-            load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
-        {
-            let dims: Vec<_> = cached
-                .items
-                .iter()
-                .flat_map(|item| item.quota_dimensions.clone())
-                .collect();
-            seed_claude_code_stale_cache(dims);
-            cached.items
-        } else {
-            let result = build_claude_code_panel_state(preferences, refreshed_at);
-            save_to_snapshot_cache("claude-code", &result);
-            result.items
-        };
-        items.extend(claude_items);
+    if provider_id == "claude-code" {
+        return is_claude_code_usage_enabled(preferences);
     }
-    items
+    *preferences.provider_enabled.get(provider_id).unwrap_or(&false)
 }
 
-pub fn build_claude_code_items(
-    preferences: &UserPreferences,
-    refreshed_at: &str,
-    refresh_kind: ClaudeCodeRefreshKind,
-) -> Vec<PanelPlaceholderItem> {
-    let snapshot = load_claude_code_snapshot(preferences, refresh_kind);
-    let effective_refreshed_at =
-        effective_refresh_timestamp("claude-code", &snapshot.status, refreshed_at);
-    if snapshot.dimensions.is_empty() {
-        return Vec::new();
+fn provider_refresh_cooldown_hit(provider_id: &str) -> bool {
+    if provider_id == "claude-code" {
+        return claude_refresh_cooldown_hit();
     }
-    vec![PanelPlaceholderItem {
-        service_id: "claude-code".into(),
-        service_name: "Claude Code".into(),
-        account_label: None,
-        icon_key: "claude-code".into(),
-        quota_dimensions: normalize_dimensions(&snapshot.dimensions),
-        status_label: "refreshing".into(),
-        badge_label: Some(if snapshot.status.is_fresh() {
-            "Live".into()
-        } else {
-            "stale".into()
-        }),
-        last_successful_refresh_at: effective_refreshed_at,
-    }]
+    false // No cooldown for other providers currently
 }
 
-fn build_claude_code_panel_state(
+fn disabled_provider_panel_state(
     preferences: &UserPreferences,
-    refreshed_at: &str,
-) -> CodexPanelState {
-    build_claude_code_panel_state_with_kind(
-        preferences,
-        refreshed_at,
-        ClaudeCodeRefreshKind::Automatic,
-    )
-}
-
-fn claude_code_disabled_panel_state(
-    preferences: &UserPreferences,
+    _provider_id: &str,
     refreshed_at: &str,
 ) -> CodexPanelState {
     CodexPanelState {
@@ -397,22 +268,35 @@ fn claude_code_disabled_panel_state(
     }
 }
 
-fn build_claude_code_panel_state_with_kind(
+fn build_provider_panel_state(
+    provider_id: &str,
     preferences: &UserPreferences,
+    refresh_kind: pipeline::RefreshKind,
     refreshed_at: &str,
-    refresh_kind: ClaudeCodeRefreshKind,
 ) -> CodexPanelState {
-    let snapshot = load_claude_code_snapshot(preferences, refresh_kind);
+    let descriptor = crate::registry::get_provider(provider_id);
+    let display_name = descriptor.map(|d| d.display_name).unwrap_or(provider_id);
+    let fetcher = pipeline::get_fetcher(provider_id);
+    let snapshot = match fetcher {
+        Some(f) => f.fetch(preferences, refresh_kind),
+        None => crate::snapshot::ServiceSnapshot {
+            status: SnapshotStatus::TemporarilyUnavailable {
+                detail: format!("No fetcher for provider: {}", provider_id),
+            },
+            dimensions: Vec::new(),
+            source: provider_id.into(),
+        },
+    };
     let effective_refreshed_at =
-        effective_refresh_timestamp("claude-code", &snapshot.status, refreshed_at);
+        effective_refresh_timestamp(provider_id, &snapshot.status, refreshed_at);
     let items = if snapshot.dimensions.is_empty() {
         Vec::new()
     } else {
         vec![PanelPlaceholderItem {
-            service_id: "claude-code".into(),
-            service_name: "Claude Code".into(),
+            service_id: provider_id.into(),
+            service_name: display_name.into(),
             account_label: None,
-            icon_key: "claude-code".into(),
+            icon_key: provider_id.into(),
             quota_dimensions: normalize_dimensions(&snapshot.dimensions),
             status_label: "refreshing".into(),
             badge_label: Some(if snapshot.status.is_fresh() {
@@ -423,7 +307,6 @@ fn build_claude_code_panel_state_with_kind(
             last_successful_refresh_at: effective_refreshed_at.clone(),
         }]
     };
-
     CodexPanelState {
         desktop_surface: DesktopSurfaceState {
             platform: if cfg!(target_os = "macos") {
@@ -445,6 +328,43 @@ fn build_claude_code_panel_state_with_kind(
         last_successful_refresh_at: effective_refreshed_at,
     }
 }
+
+pub fn build_tray_items(
+    preferences: &UserPreferences,
+    _accounts: &[CodexAccount],
+    refreshed_at: &str,
+) -> Vec<PanelPlaceholderItem> {
+    let mut items = Vec::new();
+    for pid in crate::registry::provider_ids() {
+        if !is_provider_enabled(preferences, pid) {
+            continue;
+        }
+        if let Some(cached) =
+            load_from_snapshot_cache(pid, preferences.refresh_interval_minutes)
+        {
+            if let Some(fetcher) = pipeline::get_fetcher(pid) {
+                let dims: Vec<_> = cached
+                    .items
+                    .iter()
+                    .flat_map(|item| item.quota_dimensions.clone())
+                    .collect();
+                fetcher.seed_stale_cache(dims);
+            }
+            items.extend(cached.items);
+        } else {
+            let result = build_provider_panel_state(
+                pid,
+                preferences,
+                pipeline::RefreshKind::Automatic,
+                refreshed_at,
+            );
+            save_to_snapshot_cache(pid, &result);
+            items.extend(result.items);
+        }
+    }
+    items
+}
+
 
 fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> UserPreferences {
     if let Some(language) = patch.language {
@@ -576,27 +496,122 @@ fn build_account(draft: CodexAccountDraft) -> CodexAccount {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Generic IPC commands — dispatch through pipeline by provider_id
+// ---------------------------------------------------------------------------
+
 #[tauri::command]
-pub fn get_codex_panel_state(state: State<'_, AppState>) -> CodexPanelState {
+pub fn get_provider_state(state: State<'_, AppState>, provider_id: String) -> CodexPanelState {
     let preferences = state.preferences.lock().unwrap().clone();
-    if let Some(cached) = load_from_snapshot_cache("codex", preferences.refresh_interval_minutes) {
+    if !is_provider_enabled(&preferences, &provider_id) {
+        return disabled_provider_panel_state(&preferences, &provider_id, &now_iso());
+    }
+    if let Some(cached) =
+        load_from_snapshot_cache(&provider_id, preferences.refresh_interval_minutes)
+    {
+        if let Some(fetcher) = pipeline::get_fetcher(&provider_id) {
+            let dims: Vec<_> = cached
+                .items
+                .iter()
+                .flat_map(|item| item.quota_dimensions.clone())
+                .collect();
+            fetcher.seed_stale_cache(dims);
+        }
         return cached;
     }
+    let result = build_provider_panel_state(
+        &provider_id,
+        &preferences,
+        pipeline::RefreshKind::Automatic,
+        &now_iso(),
+    );
+    save_to_snapshot_cache(&provider_id, &result);
+    result
+}
+
+#[tauri::command]
+pub fn refresh_provider_state(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    provider_id: String,
+) -> CodexPanelState {
+    let preferences = state.preferences.lock().unwrap().clone();
+    if !is_provider_enabled(&preferences, &provider_id) {
+        let result = disabled_provider_panel_state(&preferences, &provider_id, &now_iso());
+        let accounts = state.codex_accounts.lock().unwrap().clone();
+        let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
+        refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
+        apply_display_mode(&app, &preferences, &items);
+        return result;
+    }
+    if provider_refresh_cooldown_hit(&provider_id) {
+        if let Some(cached) =
+            load_from_snapshot_cache(&provider_id, preferences.refresh_interval_minutes)
+        {
+            let accounts = state.codex_accounts.lock().unwrap().clone();
+            let items =
+                build_tray_items(&preferences, &accounts, &cached.last_successful_refresh_at);
+            refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
+            apply_display_mode(&app, &preferences, &items);
+            return cached;
+        }
+    }
+    let result = build_provider_panel_state(
+        &provider_id,
+        &preferences,
+        pipeline::RefreshKind::Manual,
+        &now_iso(),
+    );
+    save_to_snapshot_cache(&provider_id, &result);
     let accounts = state.codex_accounts.lock().unwrap().clone();
-    let result = build_panel_state(&preferences, &accounts, &now_iso());
-    save_to_snapshot_cache("codex", &result);
+    let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
+    refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
+    apply_display_mode(&app, &preferences, &items);
+    result
+}
+
+// ---------------------------------------------------------------------------
+// Legacy per-service commands — thin wrappers around generic commands
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn get_codex_panel_state(state: State<'_, AppState>) -> CodexPanelState {
+    let mut result = get_provider_state(state.clone(), "codex".into());
+    // Overlay Codex-specific account fields
+    let accounts = state.codex_accounts.lock().unwrap().clone();
+    let enabled_count = accounts.iter().filter(|a| a.enabled).count();
+    result.configured_account_count = accounts.len();
+    result.enabled_account_count = enabled_count;
+    if result.status.is_fresh() {
+        result.active_session = Some(ActiveCodexSession {
+            session_id: "local-codex-session".into(),
+            account_id: None,
+            session_label: "Local Codex CLI".into(),
+            connection_state: "connected".into(),
+            last_checked_at: result.last_successful_refresh_at.clone(),
+            source: "codex app-server".into(),
+        });
+    }
     result
 }
 
 #[tauri::command]
 pub fn refresh_codex_panel_state(app: AppHandle, state: State<'_, AppState>) -> CodexPanelState {
-    let preferences = state.preferences.lock().unwrap().clone();
+    let mut result = refresh_provider_state(app, state.clone(), "codex".into());
     let accounts = state.codex_accounts.lock().unwrap().clone();
-    let result = build_panel_state(&preferences, &accounts, &now_iso());
-    save_to_snapshot_cache("codex", &result);
-    let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
-    refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
-    apply_display_mode(&app, &preferences, &items);
+    let enabled_count = accounts.iter().filter(|a| a.enabled).count();
+    result.configured_account_count = accounts.len();
+    result.enabled_account_count = enabled_count;
+    if result.status.is_fresh() {
+        result.active_session = Some(ActiveCodexSession {
+            session_id: "local-codex-session".into(),
+            account_id: None,
+            session_label: "Local Codex CLI".into(),
+            connection_state: "connected".into(),
+            last_checked_at: result.last_successful_refresh_at.clone(),
+            source: "codex app-server".into(),
+        });
+    }
     result
 }
 
@@ -707,26 +722,7 @@ pub fn set_autostart(app: AppHandle, state: State<'_, AppState>, enabled: bool) 
 
 #[tauri::command]
 pub fn get_claude_code_panel_state(state: State<'_, AppState>) -> CodexPanelState {
-    let preferences = state.preferences.lock().unwrap().clone();
-    if !is_claude_code_usage_enabled(&preferences) {
-        return claude_code_disabled_panel_state(&preferences, &now_iso());
-    }
-    if let Some(cached) =
-        load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
-    {
-        // Seed in-memory stale cache so session-recovery (401) handler has
-        // data to display if the token expires before the next live fetch.
-        let dims: Vec<_> = cached
-            .items
-            .iter()
-            .flat_map(|item| item.quota_dimensions.clone())
-            .collect();
-        seed_claude_code_stale_cache(dims);
-        return cached;
-    }
-    let result = build_claude_code_panel_state(&preferences, &now_iso());
-    save_to_snapshot_cache("claude-code", &result);
-    result
+    get_provider_state(state, "claude-code".into())
 }
 
 #[tauri::command]
@@ -734,37 +730,7 @@ pub fn refresh_claude_code_panel_state(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> CodexPanelState {
-    let preferences = state.preferences.lock().unwrap().clone();
-    if !is_claude_code_usage_enabled(&preferences) {
-        let result = claude_code_disabled_panel_state(&preferences, &now_iso());
-        let accounts = state.codex_accounts.lock().unwrap().clone();
-        let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
-        refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
-        apply_display_mode(&app, &preferences, &items);
-        return result;
-    }
-    if claude_refresh_cooldown_hit() {
-        if let Some(cached) =
-            load_from_snapshot_cache("claude-code", preferences.refresh_interval_minutes)
-        {
-            let accounts = state.codex_accounts.lock().unwrap().clone();
-            let items = build_tray_items(&preferences, &accounts, &cached.last_successful_refresh_at);
-            refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
-            apply_display_mode(&app, &preferences, &items);
-            return cached;
-        }
-    }
-    let result = build_claude_code_panel_state_with_kind(
-        &preferences,
-        &now_iso(),
-        ClaudeCodeRefreshKind::Manual,
-    );
-    save_to_snapshot_cache("claude-code", &result);
-    let accounts = state.codex_accounts.lock().unwrap().clone();
-    let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
-    refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
-    apply_display_mode(&app, &preferences, &items);
-    result
+    refresh_provider_state(app, state, "claude-code".into())
 }
 
 #[tauri::command]
