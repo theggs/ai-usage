@@ -172,6 +172,7 @@ describe("SettingsView", () => {
       preferences: {
         ...defaultPreferences,
         claudeCodeUsageEnabled: false,
+        providerEnabled: { codex: true, "claude-code": false },
         serviceOrder: ["codex"]
       }
     });
@@ -188,7 +189,8 @@ describe("SettingsView", () => {
     renderSettings({
       preferences: {
         ...defaultPreferences,
-        claudeCodeUsageEnabled: false
+        claudeCodeUsageEnabled: false,
+        providerEnabled: { codex: true, "claude-code": false }
       }
     });
 
@@ -201,7 +203,8 @@ describe("SettingsView", () => {
     renderSettings({
       preferences: {
         ...defaultPreferences,
-        claudeCodeUsageEnabled: true
+        claudeCodeUsageEnabled: true,
+        providerEnabled: { codex: true, "claude-code": true }
       }
     });
 
@@ -239,7 +242,8 @@ describe("SettingsView", () => {
       savePreferences,
       preferences: {
         ...defaultPreferences,
-        claudeCodeUsageEnabled: false
+        claudeCodeUsageEnabled: false,
+        providerEnabled: { codex: true, "claude-code": false }
       }
     });
 
@@ -247,7 +251,7 @@ describe("SettingsView", () => {
 
     await waitFor(() =>
       expect(savePreferences).toHaveBeenCalledWith(
-        expect.objectContaining({ claudeCodeUsageEnabled: true })
+        expect.objectContaining({ providerEnabled: expect.objectContaining({ "claude-code": true }) })
       )
     );
   });
@@ -257,7 +261,8 @@ describe("SettingsView", () => {
       preferences: {
         ...defaultPreferences,
         language: "en-US",
-        claudeCodeUsageEnabled: false
+        claudeCodeUsageEnabled: false,
+        providerEnabled: { codex: true, "claude-code": false }
       }
     });
 
@@ -269,6 +274,7 @@ describe("SettingsView", () => {
     const savePreferences = vi.fn().mockResolvedValue({
       ...defaultPreferences,
       claudeCodeUsageEnabled: true,
+      providerEnabled: { codex: true, "claude-code": true },
       serviceOrder: ["claude-code", "codex"],
       lastSavedAt: new Date().toISOString()
     });
@@ -278,6 +284,7 @@ describe("SettingsView", () => {
       preferences: {
         ...defaultPreferences,
         claudeCodeUsageEnabled: true,
+        providerEnabled: { codex: true, "claude-code": true },
         serviceOrder: ["codex", "claude-code"]
       }
     });
@@ -300,6 +307,7 @@ describe("SettingsView", () => {
       preferences: {
         ...defaultPreferences,
         claudeCodeUsageEnabled: true,
+        providerEnabled: { codex: true, "claude-code": true },
         serviceOrder: ["codex", "claude-code"]
       }
     });
@@ -320,6 +328,7 @@ describe("SettingsView", () => {
       preferences: {
         ...defaultPreferences,
         claudeCodeUsageEnabled: true,
+        providerEnabled: { codex: true, "claude-code": true },
         serviceOrder: ["codex", "claude-code"]
       }
     });
@@ -337,6 +346,7 @@ describe("SettingsView", () => {
       preferences: {
         ...defaultPreferences,
         claudeCodeUsageEnabled: true,
+        providerEnabled: { codex: true, "claude-code": true },
         serviceOrder: ["codex", "claude-code"]
       }
     });
@@ -358,6 +368,7 @@ describe("SettingsView", () => {
       preferences: {
         ...defaultPreferences,
         claudeCodeUsageEnabled: true,
+        providerEnabled: { codex: true, "claude-code": true },
         serviceOrder: ["codex", "claude-code"]
       }
     });

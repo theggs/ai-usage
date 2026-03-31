@@ -98,12 +98,25 @@ describe("formatTraySummary", () => {
     expect(
       getVisibleServiceScope({
         serviceOrder: ["codex", "claude-code"],
-        claudeCodeUsageEnabled: false
+        providerEnabled: { codex: true, "claude-code": false }
       })
     ).toMatchObject({
       visiblePanelServiceOrder: ["codex"],
       visibleMenubarServices: ["codex", "auto"],
       hasVisibleClaudeCode: false
+    });
+  });
+
+  it("makes claude-code visible when providerEnabled has it enabled", () => {
+    expect(
+      getVisibleServiceScope({
+        serviceOrder: ["codex", "claude-code"],
+        providerEnabled: { codex: true, "claude-code": true }
+      })
+    ).toMatchObject({
+      visiblePanelServiceOrder: ["codex", "claude-code"],
+      visibleMenubarServices: ["codex", "claude-code", "auto"],
+      hasVisibleClaudeCode: true
     });
   });
 

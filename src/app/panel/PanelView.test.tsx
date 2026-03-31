@@ -116,6 +116,7 @@ describe("PanelView", () => {
     state.preferences = {
       ...defaultPreferences,
       claudeCodeUsageEnabled: true,
+      providerEnabled: { codex: true, "claude-code": true },
       serviceOrder: ["codex", "claude-code"]
     };
 
@@ -237,7 +238,8 @@ describe("PanelView", () => {
     state.preferences = {
       ...defaultPreferences,
       onboardingDismissedAt: new Date().toISOString(),
-      claudeCodeUsageEnabled: true
+      claudeCodeUsageEnabled: true,
+      providerEnabled: { codex: true, "claude-code": true }
     };
     state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
@@ -313,6 +315,7 @@ describe("PanelView", () => {
       ...defaultPreferences,
       menubarService: "auto",
       claudeCodeUsageEnabled: true,
+      providerEnabled: { codex: true, "claude-code": true },
       serviceOrder: ["claude-code", "codex"],
       onboardingDismissedAt: new Date().toISOString()
     };
@@ -402,6 +405,7 @@ describe("PanelView", () => {
     state.preferences = {
       ...defaultPreferences,
       claudeCodeUsageEnabled: true,
+      providerEnabled: { codex: true, "claude-code": true },
       onboardingDismissedAt: new Date().toISOString()
     };
     state.providerStates["claude-code"] = {

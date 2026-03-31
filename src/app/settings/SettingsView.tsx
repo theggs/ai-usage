@@ -673,14 +673,14 @@ export const SettingsView = () => {
 
               <div className="flex justify-end">
                 <button
-                  aria-checked={draft.claudeCodeUsageEnabled}
+                  aria-checked={draft.providerEnabled?.["claude-code"] ?? false}
                   aria-label={copy.claudeCodeUsageEnabledAriaLabel}
                   className={`inline-flex w-14 items-center rounded-full p-1 shadow-sm transition-colors ${
-                    draft.claudeCodeUsageEnabled ? "bg-emerald-500" : "bg-slate-300"
+                    draft.providerEnabled?.["claude-code"] ? "bg-emerald-500" : "bg-slate-300"
                   }`}
                   onClick={() =>
                     void applyImmediatePatch(
-                      { claudeCodeUsageEnabled: !draft.claudeCodeUsageEnabled },
+                      { providerEnabled: { ...draft.providerEnabled, "claude-code": !(draft.providerEnabled?.["claude-code"] ?? false) } },
                       draft
                     )
                   }
@@ -691,7 +691,7 @@ export const SettingsView = () => {
                   <span className="sr-only">{copy.claudeCodeUsageEnabledAriaLabel}</span>
                   <span
                     className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                      draft.claudeCodeUsageEnabled ? "translate-x-7" : "translate-x-0"
+                      draft.providerEnabled?.["claude-code"] ? "translate-x-7" : "translate-x-0"
                     }`}
                   />
                 </button>

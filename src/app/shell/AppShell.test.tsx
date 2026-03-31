@@ -52,11 +52,15 @@ vi.mock("../../lib/tauri/windowShell", () => ({
   hideMainWindow
 }));
 
-const makePreferences = (overrides: Partial<UserPreferences> = {}): UserPreferences => ({
-  ...defaultPreferences,
-  claudeCodeUsageEnabled: false,
-  ...overrides
-});
+const makePreferences = (overrides: Partial<UserPreferences> = {}): UserPreferences => {
+  const claudeEnabled = overrides.claudeCodeUsageEnabled ?? false;
+  return {
+    ...defaultPreferences,
+    claudeCodeUsageEnabled: claudeEnabled,
+    providerEnabled: { codex: true, "claude-code": claudeEnabled, ...overrides.providerEnabled },
+    ...overrides
+  };
+};
 
 const makeClaudePanelState = (overrides: Partial<CodexPanelState> = {}): CodexPanelState => {
   const base = createDemoPanelState();
@@ -197,7 +201,7 @@ describe("AppShell", () => {
 
     await waitFor(() =>
       expect(persistPreferences).toHaveBeenCalledWith(
-        expect.objectContaining({ claudeCodeUsageEnabled: true })
+        expect.objectContaining({ providerEnabled: expect.objectContaining({ "claude-code": true }) })
       )
     );
     // After enabling, the provider should be loaded and refreshed
