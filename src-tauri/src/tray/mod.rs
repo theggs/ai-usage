@@ -958,7 +958,6 @@ pub fn toggle_main_window_with_event(
             let _ = window.hide();
             write_e2e_window_placement(None, false);
         } else {
-            #[cfg(target_os = "macos")]
             apply_popover_placement(app, &window, tray_rect, event_position);
             let _ = window.show();
             let _ = window.set_focus();
