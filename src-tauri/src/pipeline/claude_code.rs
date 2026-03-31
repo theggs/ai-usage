@@ -13,6 +13,10 @@ impl ProviderFetcher for ClaudeCodeFetcher {
         "claude-code"
     }
 
+    fn strategy_name(&self) -> &str {
+        "oauth-api"
+    }
+
     fn fetch(&self, preferences: &UserPreferences, refresh_kind: RefreshKind) -> ServiceSnapshot {
         let mapped_kind = match refresh_kind {
             RefreshKind::Automatic => crate::claude_code::RefreshKind::Automatic,

@@ -286,17 +286,14 @@ fn build_provider_panel_state(
 ) -> CodexPanelState {
     let descriptor = crate::registry::get_provider(provider_id);
     let display_name = descriptor.map(|d| d.display_name).unwrap_or(provider_id);
-    let fetcher = pipeline::get_fetcher(provider_id);
-    let snapshot = match fetcher {
-        Some(f) => f.fetch(preferences, refresh_kind),
-        None => crate::snapshot::ServiceSnapshot {
+    let snapshot = pipeline::fetch_provider(provider_id, preferences, refresh_kind)
+        .unwrap_or_else(|| crate::snapshot::ServiceSnapshot {
             status: SnapshotStatus::TemporarilyUnavailable {
                 detail: format!("No fetcher for provider: {}", provider_id),
             },
             dimensions: Vec::new(),
             source: provider_id.into(),
-        },
-    };
+        });
     let effective_refreshed_at =
         effective_refresh_timestamp(provider_id, &snapshot.status, refreshed_at);
     let items = if snapshot.dimensions.is_empty() {

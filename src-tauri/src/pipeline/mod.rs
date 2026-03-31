@@ -16,11 +16,20 @@ pub enum RefreshKind {
 
 /// Unified fetch interface for all provider integrations.
 ///
+/// Each implementation represents one **strategy** for fetching quota data
+/// from a provider. A provider may have multiple strategies registered
+/// (e.g., OAuth API, web scraping, local probe); the pipeline tries them
+/// in registration order until one returns `Fresh`.
+///
 /// Implementations are thin delegation wrappers that call the existing
 /// provider-specific modules (e.g. `codex::load_snapshot()`).
 pub trait ProviderFetcher: Send + Sync {
     /// Stable provider identifier (matches registry key, e.g. "codex").
     fn provider_id(&self) -> &str;
+
+    /// Human-readable strategy name (e.g. "oauth-api", "web-scrape", "cli").
+    /// Used for logging and future UI display of active fetch strategy.
+    fn strategy_name(&self) -> &str;
 
     /// Fetch the current quota snapshot for this provider.
     fn fetch(&self, preferences: &UserPreferences, refresh_kind: RefreshKind) -> ServiceSnapshot;
@@ -45,12 +54,45 @@ fn fetchers() -> &'static Vec<Box<dyn ProviderFetcher>> {
     })
 }
 
-/// Look up a fetcher by provider ID.
+/// Look up the primary (first registered) fetcher by provider ID.
+/// Used for provider-level operations like `seed_stale_cache` and `clear_access_pause`.
 pub fn get_fetcher(provider_id: &str) -> Option<&'static dyn ProviderFetcher> {
     fetchers()
         .iter()
         .find(|f| f.provider_id() == provider_id)
         .map(|f| f.as_ref())
+}
+
+/// Returns all registered strategies for a provider, in priority order.
+pub fn get_strategies(provider_id: &str) -> Vec<&'static dyn ProviderFetcher> {
+    fetchers()
+        .iter()
+        .filter(|f| f.provider_id() == provider_id)
+        .map(|f| f.as_ref())
+        .collect()
+}
+
+/// Try each registered strategy for a provider until one returns `Fresh`.
+/// Falls back to the last non-fresh result if all strategies fail.
+/// Returns `None` only if no strategies are registered for the provider.
+pub fn fetch_provider(
+    provider_id: &str,
+    preferences: &UserPreferences,
+    refresh_kind: RefreshKind,
+) -> Option<ServiceSnapshot> {
+    let strategies = get_strategies(provider_id);
+    if strategies.is_empty() {
+        return None;
+    }
+    let mut last_result = None;
+    for strategy in &strategies {
+        let result = strategy.fetch(preferences, refresh_kind);
+        if result.status.is_fresh() {
+            return Some(result);
+        }
+        last_result = Some(result);
+    }
+    last_result
 }
 
 #[cfg(test)]
@@ -87,11 +129,26 @@ mod tests {
     fn codex_fetcher_provider_id() {
         let fetcher = codex::CodexFetcher;
         assert_eq!(fetcher.provider_id(), "codex");
+        assert_eq!(fetcher.strategy_name(), "cli");
     }
 
     #[test]
     fn claude_code_fetcher_provider_id() {
         let fetcher = claude_code::ClaudeCodeFetcher;
         assert_eq!(fetcher.provider_id(), "claude-code");
+        assert_eq!(fetcher.strategy_name(), "oauth-api");
+    }
+
+    #[test]
+    fn get_strategies_returns_all_for_provider() {
+        let strategies = get_strategies("codex");
+        assert_eq!(strategies.len(), 1);
+        assert_eq!(strategies[0].strategy_name(), "cli");
+    }
+
+    #[test]
+    fn get_strategies_unknown_returns_empty() {
+        let strategies = get_strategies("unknown");
+        assert!(strategies.is_empty());
     }
 }

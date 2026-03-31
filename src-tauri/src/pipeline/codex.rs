@@ -13,6 +13,10 @@ impl ProviderFetcher for CodexFetcher {
         "codex"
     }
 
+    fn strategy_name(&self) -> &str {
+        "cli"
+    }
+
     fn fetch(&self, _preferences: &UserPreferences, _refresh_kind: RefreshKind) -> ServiceSnapshot {
         crate::codex::load_snapshot()
     }
