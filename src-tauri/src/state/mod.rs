@@ -209,6 +209,7 @@ pub struct PreferencePatch {
     pub onboarding_dismissed_at: Option<String>,
     pub claude_code_usage_enabled: Option<bool>,
     pub claude_code_disclosure_dismissed_at: Option<String>,
+    pub provider_enabled: Option<HashMap<String, bool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -481,6 +481,11 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
             Some(onboarding_dismissed_at)
         };
     }
+    if let Some(provider_enabled) = patch.provider_enabled {
+        for (key, value) in provider_enabled {
+            current.provider_enabled.insert(key, value);
+        }
+    }
     if let Some(claude_code_usage_enabled) = patch.claude_code_usage_enabled {
         current.claude_code_usage_enabled = claude_code_usage_enabled;
         current.provider_enabled.insert("claude-code".into(), claude_code_usage_enabled);
