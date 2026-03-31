@@ -112,6 +112,28 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
       mockClaudeLastSuccessAt = Date.now();
       return mockClaudePanelState as T;
     }
+    case "get_provider_state":
+    case "refresh_provider_state": {
+      const pid = args?.providerId as string;
+      const preferences = loadPreferences();
+      if (pid === "claude-code") {
+        if (!preferences.providerEnabled?.["claude-code"] && !preferences.claudeCodeUsageEnabled) {
+          return createDisabledClaudePanelState(preferences) as T;
+        }
+        if (
+          command === "refresh_provider_state" &&
+          mockClaudePanelState &&
+          Date.now() - mockClaudeLastSuccessAt < MOCK_CLAUDE_REFRESH_COOLDOWN_MS
+        ) {
+          return mockClaudePanelState as T;
+        }
+        mockClaudePanelState = createMockClaudePanelState(preferences);
+        mockClaudeLastSuccessAt = Date.now();
+        return mockClaudePanelState as T;
+      }
+      // Default: Codex or any other provider — use demo data
+      return createDemoPanelState(preferences.traySummaryMode) as T;
+    }
     case "get_codex_accounts":
       return loadCodexAccounts() as T;
     case "save_codex_account":
@@ -144,25 +166,15 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
 
 export const tauriClient = {
   getProviderPanelState: async (providerId: string) => {
-    const commandMap: Record<string, string> = {
-      codex: "get_codex_panel_state",
-      "claude-code": "get_claude_code_panel_state",
-    };
-    const command = commandMap[providerId] ?? `get_${providerId.replace(/-/g, "_")}_panel_state`;
     const [panelState, preferences] = await Promise.all([
-      invoke<CodexPanelState>(command),
+      invoke<CodexPanelState>("get_provider_state", { providerId }),
       tauriClient.getPreferences()
     ]);
     return withSummary(panelState, preferences);
   },
   refreshProviderPanelState: async (providerId: string) => {
-    const commandMap: Record<string, string> = {
-      codex: "refresh_codex_panel_state",
-      "claude-code": "refresh_claude_code_panel_state",
-    };
-    const command = commandMap[providerId] ?? `refresh_${providerId.replace(/-/g, "_")}_panel_state`;
     const [panelState, preferences] = await Promise.all([
-      invoke<CodexPanelState>(command),
+      invoke<CodexPanelState>("refresh_provider_state", { providerId }),
       tauriClient.getPreferences()
     ]);
     return withSummary(panelState, preferences);
