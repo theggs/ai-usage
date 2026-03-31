@@ -4,6 +4,7 @@ pub mod claude_code;
 pub mod codex;
 pub mod commands;
 pub mod notifications;
+pub mod pipeline;
 pub mod registry;
 pub mod snapshot;
 pub mod state;

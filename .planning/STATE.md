@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-31T04:39:25.329Z"
+status: executing
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-31T05:01:28.420Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 1
   percent: 17
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Phase 02 — fetch-pipeline-&-migration
+**Current focus:** Phase 02 — fetch-pipeline-migration
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Ready to plan
+Phase: 02 (fetch-pipeline-migration) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-31
 
 Progress: [█░░░░░░░░░] 17%
@@ -54,6 +54,7 @@ Progress: [█░░░░░░░░░] 17%
 *Updated after each plan completion*
 | Phase 01 P01 | 9min | 2 tasks | 12 files |
 | Phase 01-provider-registry P02 | 12min | 2 tasks | 12 files |
+| Phase 02 P01 | 4min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Used static struct array for ProviderDescriptor registry (not trait); MenubarService changed from union to string for dynamic providers
 - [Phase 01-provider-registry]: getVisibleServiceScope is single source of truth for enabled providers across all AppShell flows
 - [Phase 01-provider-registry]: Legacy claudeCodeUsageEnabled priority removed; providerEnabled is now the sole source of truth for all providers (gap closure 01-03)
+- [Phase 02]: Pipeline fetchers are thin delegation wrappers; no code moved from existing provider modules
+- [Phase 02]: OnceLock-based static registry for fetchers; pipeline::RefreshKind maps to provider-specific enums at call boundary
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T04:39:25.325Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-fetch-pipeline-migration/02-CONTEXT.md
+Last session: 2026-03-31T05:01:28.418Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None

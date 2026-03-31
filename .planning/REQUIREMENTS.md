@@ -11,9 +11,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **PROV-01**: All provider metadata (id, display name, fetch strategies, dashboard URL) is defined in a single ProviderDescriptor registry — no hardcoded service ID lists elsewhere
 - [x] **PROV-02**: Adding a new provider requires only a new ProviderDescriptor entry and a fetch implementation — no changes to UI framework, preferences normalization, or snapshot cache logic
-- [ ] **PROV-03**: Existing Codex provider is migrated to the ProviderDescriptor registry with identical behavior
-- [ ] **PROV-04**: Existing Claude Code provider is migrated to the ProviderDescriptor registry with identical behavior
-- [ ] **PROV-05**: Provider fetch uses an ordered strategy chain (e.g., env → keychain → file → CLI → API); first success stops the chain
+- [x] **PROV-03**: Existing Codex provider is migrated to the ProviderDescriptor registry with identical behavior
+- [x] **PROV-04**: Existing Claude Code provider is migrated to the ProviderDescriptor registry with identical behavior
+- [x] **PROV-05**: Provider fetch uses an ordered strategy chain (e.g., env → keychain → file → CLI → API); first success stops the chain
 - [x] **PROV-06**: Frontend state manages providers via a dynamic map (not per-service variables), supporting N providers without code changes
 - [x] **PROV-07**: Snapshot cache includes a schema version field; incompatible cache is discarded gracefully on upgrade
 - [x] **PROV-08**: Preferences normalization handles dynamic provider enable/disable flags from the registry — both Rust and TypeScript normalizers stay in sync
@@ -90,9 +90,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROV-06 | Phase 1 | Complete |
 | PROV-07 | Phase 1 | Complete |
 | PROV-08 | Phase 1 | Complete |
-| PROV-03 | Phase 2 | Pending |
-| PROV-04 | Phase 2 | Pending |
-| PROV-05 | Phase 2 | Pending |
+| PROV-03 | Phase 2 | Complete |
+| PROV-04 | Phase 2 | Complete |
+| PROV-05 | Phase 2 | Complete |
 | NPROV-01 | Phase 3 | Pending |
 | NPROV-02 | Phase 3 | Pending |
 | NPROV-03 | Phase 3 | Pending |

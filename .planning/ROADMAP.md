@@ -48,7 +48,7 @@ Plans:
   4. When the first fetch strategy fails, the pipeline automatically tries the next strategy without user intervention
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — ProviderFetcher trait + Codex and Claude Code implementations
+- [x] 02-01-PLAN.md — ProviderFetcher trait + Codex and Claude Code implementations
 - [ ] 02-02-PLAN.md — Generic IPC commands + frontend migration + tray generalization
 
 ### Phase 3: New Providers
