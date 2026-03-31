@@ -60,8 +60,10 @@ Plans:
   2. GLM Coding Plan quota or usage data is displayed in the panel (or a clear "not available" state if API is unconfirmed) — never a blank panel
   3. Both new providers appear in the service order settings and can be dragged to any position
   4. New providers use the same SnapshotStatus visual treatment (colors, progress bars, error states) as Codex and Claude Code
-**Plans**: TBD
-**UI hint**: yes
+**Plans:** 2 plans
+Plans:
+- [ ] 03-01-PLAN.md — Infrastructure, contracts, and UI (registry, shared proxy, preferences, pipeline stubs, i18n, Settings)
+- [ ] 03-02-PLAN.md — Kimi Code and GLM Coding Plan provider HTTP fetch implementations
 
 ### Phase 4: Burn Rate Engine
 **Goal**: The app calculates and displays how fast each provider's quota is being consumed relative to the reset window, including a human-readable depletion ETA
@@ -111,7 +113,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 |-------|----------------|--------|-----------|
 | 1. Provider Registry | 2/3 | Gap closure planned | - |
 | 2. Fetch Pipeline & Migration | 0/2 | Planned | - |
-| 3. New Providers | 0/? | Not started | - |
+| 3. New Providers | 0/2 | Planned | - |
 | 4. Burn Rate Engine | 0/? | Not started | - |
 | 5. Time-Aware Alert Thresholds | 0/? | Not started | - |
 | 6. About Page | 0/? | Not started | - |
