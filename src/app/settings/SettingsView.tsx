@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 
 import { createPortal } from "react-dom";
 import { PreferenceField } from "../../components/settings/PreferenceField";
 import type { UserPreferences } from "../../lib/tauri/contracts";
+import { getProvider } from "../../lib/tauri/registry";
 import { getVisibleServiceScope } from "../../lib/tauri/summary";
 import { useAppState } from "../shared/appState";
 import { getCopy } from "../shared/i18n";
@@ -52,7 +53,8 @@ type DragOverlayState = {
 const rowClassName = "px-5 py-3.5";
 
 export const SettingsView = () => {
-  const { preferences, savePreferences, setAutostart, isRefreshing, isE2EMode, error } = useAppState();
+  const { preferences, savePreferences, setAutostart, refreshingProviders, isE2EMode, error } = useAppState();
+  const isRefreshing = refreshingProviders.size > 0;
   const base = preferences!;
   const [draft, setDraft] = useState<UserPreferences>(() => clonePreferences(base));
   const [proxyDraft, setProxyDraft] = useState<ProxyDraftState>(() => ({
@@ -138,19 +140,17 @@ export const SettingsView = () => {
     });
   };
 
-  const serviceOptions = visibleServiceScope.visiblePanelServiceOrder.map((serviceId) => ({
-    id: serviceId,
-    label: serviceId === "claude-code" ? copy.claudeCodeLabel : copy.codexLabel,
-    shortLabel: serviceId === "claude-code" ? "Claude" : copy.codexLabel
-  }));
+  const serviceOptions = visibleServiceScope.visiblePanelServiceOrder.map((serviceId) => {
+    const provider = getProvider(serviceId);
+    return {
+      id: serviceId,
+      label: provider?.displayName ?? serviceId,
+      shortLabel: provider?.displayName?.split(" ")[0] ?? serviceId
+    };
+  });
   const menubarOptions = visibleServiceScope.visibleMenubarServices.map((serviceId) => ({
     id: serviceId,
-    label:
-      serviceId === "claude-code"
-        ? copy.claudeCodeLabel
-        : serviceId === "auto"
-          ? copy.menubarServiceAuto
-          : copy.codexLabel
+    label: serviceId === "auto" ? copy.menubarServiceAuto : (getProvider(serviceId)?.displayName ?? serviceId)
   }));
   const serviceOrderDisabled = serviceOptions.length < 2;
 
@@ -167,7 +167,7 @@ export const SettingsView = () => {
       if (event.key === "F9" || event.key.toLowerCase() === "u") {
         event.preventDefault();
         void applyImmediatePatch(
-          { claudeCodeUsageEnabled: !draftRef.current.claudeCodeUsageEnabled },
+          { providerEnabled: { ...draftRef.current.providerEnabled, "claude-code": !draftRef.current.providerEnabled?.["claude-code"] } },
           draftRef.current
         );
         return;
@@ -554,7 +554,7 @@ export const SettingsView = () => {
                   className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-[11px] text-slate-500"
                   onClick={() =>
                     void applyImmediatePatch(
-                      { claudeCodeUsageEnabled: !draft.claudeCodeUsageEnabled },
+                      { providerEnabled: { ...draft.providerEnabled, "claude-code": !draft.providerEnabled?.["claude-code"] } },
                       draft
                     )
                   }

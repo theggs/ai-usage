@@ -6,19 +6,18 @@ import { createDemoPanelState } from "../../features/demo-services/demoData";
 import { defaultPreferences } from "../../features/preferences/defaultPreferences";
 import type { CodexPanelState } from "../../lib/tauri/contracts";
 
-const createState = (panelState: CodexPanelState = createDemoPanelState()): AppStateValue => ({
-  panelState,
-  claudeCodePanelState: null,
+const createState = (panelState: CodexPanelState = createDemoPanelState()): AppStateValue & { claudeCodePanelState?: CodexPanelState | null } => ({
+  providerStates: { codex: panelState },
+  refreshingProviders: new Set(),
   preferences: {
     ...defaultPreferences,
     claudeCodeUsageEnabled: true,
+    providerEnabled: { codex: true, "claude-code": true },
     onboardingDismissedAt: new Date().toISOString()
   },
   notificationResult: null,
   currentView: "panel",
   isLoading: false,
-  isRefreshing: false,
-  isClaudeCodeRefreshing: false,
   isE2EMode: false,
   error: null,
   refreshPanel: vi.fn(async () => {}),
@@ -64,7 +63,7 @@ describe("PanelView", () => {
 
   it("shows a distinct paused message for claude code access denial", () => {
     const state = createState();
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       status: { kind: "AccessDenied" },
       items: []
@@ -81,7 +80,7 @@ describe("PanelView", () => {
 
   it("shows a distinct rate limited message for claude code", () => {
     const state = createState();
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       status: { kind: "RateLimited", retry_after_minutes: 30 },
       items: []
@@ -103,7 +102,7 @@ describe("PanelView", () => {
       ...createDemoPanelState(),
       items: createDemoPanelState().items.map((item) => ({ ...item, lastSuccessfulRefreshAt: now }))
     });
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       items: [
         {
@@ -145,7 +144,7 @@ describe("PanelView", () => {
       claudeCodeUsageEnabled: false,
       onboardingDismissedAt: undefined
     };
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       items: [],
       status: { kind: "NoCredentials" }
@@ -179,7 +178,7 @@ describe("PanelView", () => {
       onboardingDismissedAt: undefined,
       claudeCodeDisclosureDismissedAt: undefined
     };
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       items: [],
       status: { kind: "NoCredentials" }
@@ -213,7 +212,7 @@ describe("PanelView", () => {
       onboardingDismissedAt: undefined,
       claudeCodeDisclosureDismissedAt: undefined
     };
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       items: [],
       status: { kind: "NoCredentials" }
@@ -240,12 +239,12 @@ describe("PanelView", () => {
       onboardingDismissedAt: new Date().toISOString(),
       claudeCodeUsageEnabled: true
     };
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       items: [],
       status: { kind: "NoCredentials" }
     };
-    state.isClaudeCodeRefreshing = true;
+    state.refreshingProviders = new Set(["claude-code"]);
 
     render(
       <AppStateContext.Provider value={state}>
@@ -274,7 +273,7 @@ describe("PanelView", () => {
       claudeCodeUsageEnabled: false,
       onboardingDismissedAt: new Date().toISOString()
     };
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       status: { kind: "SessionRecovery" },
       items: [
@@ -317,7 +316,7 @@ describe("PanelView", () => {
       serviceOrder: ["claude-code", "codex"],
       onboardingDismissedAt: new Date().toISOString()
     };
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       items: [
         {
@@ -405,7 +404,7 @@ describe("PanelView", () => {
       claudeCodeUsageEnabled: true,
       onboardingDismissedAt: new Date().toISOString()
     };
-    state.claudeCodePanelState = {
+    state.providerStates["claude-code"] = {
       ...createDemoPanelState(),
       items: [],
       status: { kind: "ProxyInvalid" }
@@ -503,10 +502,8 @@ describe("PanelView", () => {
     };
 
     vi.doMock("../../features/demo-services/panelController", () => ({
-      loadPanelState: vi.fn(async () => lowQuotaState),
-      refreshPanelState: vi.fn(async () => lowQuotaState),
-      loadClaudeCodePanelState: vi.fn(async () => null),
-      refreshClaudeCodePanelState: vi.fn(async () => null)
+      loadProviderState: vi.fn(async () => lowQuotaState),
+      refreshProviderState: vi.fn(async () => lowQuotaState)
     }));
     vi.doMock("../../features/preferences/preferencesController", () => ({
       getPreferences: vi.fn(async () => ({

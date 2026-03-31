@@ -1,4 +1,5 @@
 import type { CodexPanelState } from "../../lib/tauri/contracts";
+import { getProvider } from "../../lib/tauri/registry";
 import type { VisibleServiceScope } from "../../lib/tauri/summary";
 import { promotionCatalog } from "./catalog";
 import type {
@@ -12,10 +13,6 @@ import type {
   PromotionWindow
 } from "./types";
 
-const DEFAULT_SERVICE_NAMES: Record<string, string> = {
-  codex: "Codex",
-  "claude-code": "Claude Code"
-};
 const LOCAL_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 const ZONED_PARTS_FORMATTERS = new Map<string, Intl.DateTimeFormat>();
@@ -231,7 +228,7 @@ const resolveTimeWindowStatus = (window: PromotionWindow, now: Date): PromotionS
 const getServiceName = (
   serviceId: string,
   panelState?: CodexPanelState | null
-) => panelState?.items[0]?.serviceName ?? DEFAULT_SERVICE_NAMES[serviceId] ?? serviceId;
+) => panelState?.items[0]?.serviceName ?? getProvider(serviceId)?.displayName ?? serviceId;
 
 const getMessageKey = (status: PromotionServiceStatus) => {
   switch (status) {

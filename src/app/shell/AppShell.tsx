@@ -4,7 +4,7 @@ import { SettingsView } from "../settings/SettingsView";
 import { AppStateContext } from "../shared/appState";
 import { getCopy, localizeDimensionLabel } from "../shared/i18n";
 import { PromotionStatusLine } from "../../components/panel/PromotionStatusLine";
-import { loadPanelState, refreshPanelState, loadClaudeCodePanelState, refreshClaudeCodePanelState } from "../../features/demo-services/panelController";
+import { loadProviderState, refreshProviderState } from "../../features/demo-services/panelController";
 import { sendDemoNotification } from "../../features/notifications/notificationController";
 import {
   applyAutostart,
@@ -72,21 +72,19 @@ const BackIcon = () => (
 );
 
 export const AppShell = () => {
-  const [panelState, setPanelState] = useState<CodexPanelState | null>(null);
-  const [claudeCodePanelState, setClaudeCodePanelState] = useState<CodexPanelState | null>(null);
+  const [providerStates, setProviderStates] = useState<Record<string, CodexPanelState | null>>({});
+  const [refreshingProviders, setRefreshingProviders] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [notificationResult, setNotificationResult] = useState<NotificationCheckResult | null>(null);
   const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
   const [promotionOverlayState, setPromotionOverlayState] = useState<PromotionOverlayState>("closed");
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isClaudeCodeRefreshing, setIsClaudeCodeRefreshing] = useState(false);
   const [isE2EMode, setIsE2EMode] = useState(false);
   const [refreshFeedback, setRefreshFeedback] = useState<"idle" | "error">("idle");
   const [settingsHeaderStatus, setSettingsHeaderStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
-  const lastStablePanelState = useRef<CodexPanelState | null>(null);
+  const lastStableProviderStates = useRef<Record<string, CodexPanelState | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const settingsScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const settingsHeaderTimerRef = useRef<number | null>(null);
@@ -95,15 +93,20 @@ export const AppShell = () => {
   useEffect(() => {
     void (async () => {
       try {
-        const [panel, prefs, runtimeFlags] = await Promise.all([
-          loadPanelState(),
+        const [prefs, runtimeFlags] = await Promise.all([
           getPreferences(),
           tauriClient.getRuntimeFlags()
         ]);
-        const claudeCodePanel = prefs.claudeCodeUsageEnabled ? await loadClaudeCodePanelState() : null;
-        setPanelState(panel);
-        lastStablePanelState.current = panel;
-        setClaudeCodePanelState(claudeCodePanel);
+        const enabledIds = getVisibleServiceScope(prefs).visiblePanelServiceOrder;
+        const results = await Promise.all(
+          enabledIds.map(async (id) => [id, await loadProviderState(id)] as const)
+        );
+        const states: Record<string, CodexPanelState | null> = {};
+        for (const [id, state] of results) {
+          states[id] = state;
+        }
+        setProviderStates(states);
+        lastStableProviderStates.current = states;
         setPreferences(prefs);
         setIsE2EMode(runtimeFlags.isE2E);
       } catch (loadError) {
@@ -232,38 +235,40 @@ export const AppShell = () => {
   }, [preferences?.refreshIntervalMinutes]);
 
   const refreshPanel = async (manual = true) => {
-    if (isRefreshing) {
+    if (refreshingProviders.size > 0) {
       return;
     }
-    setIsRefreshing(true);
+    const enabledIds = getVisibleServiceScope(preferences).visiblePanelServiceOrder;
+    setRefreshingProviders(new Set(enabledIds));
     setError(null);
     try {
-      const shouldRefreshClaudeCode = preferences?.claudeCodeUsageEnabled ?? false;
-      if (shouldRefreshClaudeCode) {
-        setIsClaudeCodeRefreshing(true);
-        setClaudeCodePanelState((current) => markPanelStateRefreshing(current));
+      // Mark refreshing providers in UI
+      for (const id of enabledIds) {
+        setProviderStates((prev) => ({
+          ...prev,
+          [id]: markPanelStateRefreshing(prev[id] ?? null)
+        }));
       }
 
-      const [nextPanel, nextClaudeCodePanel] = await Promise.all([
-        refreshPanelState(),
-        shouldRefreshClaudeCode
-          ? manual
-            ? refreshClaudeCodePanelState()
-            : loadClaudeCodePanelState()
-          : Promise.resolve(claudeCodePanelState)
-      ]);
-      setPanelState(nextPanel);
-      lastStablePanelState.current = nextPanel;
-      if (shouldRefreshClaudeCode) {
-        setClaudeCodePanelState(nextClaudeCodePanel);
+      const results = await Promise.all(
+        enabledIds.map(async (id) => {
+          // For non-manual refresh of claude-code, use load (preserving cooldown behavior)
+          const fetcher = (!manual && id === "claude-code") ? loadProviderState : refreshProviderState;
+          return [id, await fetcher(id)] as const;
+        })
+      );
+      const nextStates: Record<string, CodexPanelState | null> = {};
+      for (const [id, state] of results) {
+        nextStates[id] = state;
       }
+      setProviderStates((prev) => ({ ...prev, ...nextStates }));
+      lastStableProviderStates.current = { ...lastStableProviderStates.current, ...nextStates };
     } catch (refreshError) {
       setRefreshFeedback("error");
       window.setTimeout(() => setRefreshFeedback("idle"), 1000);
       setError(refreshError instanceof Error ? refreshError.message : "Refresh failed");
     } finally {
-      setIsClaudeCodeRefreshing(false);
-      setIsRefreshing(false);
+      setRefreshingProviders(new Set());
     }
   };
 
@@ -272,51 +277,60 @@ export const AppShell = () => {
     return runSettingsMutation(
       async () => {
         const nextPreferences = await persistPreferences(patch);
-        let nextClaudeCodePanel: CodexPanelState | null | undefined;
-        const enablingClaudeCode =
-          !!nextPreferences.claudeCodeUsageEnabled && !previousPreferences?.claudeCodeUsageEnabled;
-        const refreshingClaudeCode =
-          nextPreferences.claudeCodeUsageEnabled &&
-          (enablingClaudeCode || "networkProxyMode" in patch || "networkProxyUrl" in patch);
+        const refreshIds: string[] = [];
+        // Check which providers need refresh after preference change
+        const previousEnabled = new Set(getVisibleServiceScope(previousPreferences).visiblePanelServiceOrder);
+        const nextEnabled = getVisibleServiceScope(nextPreferences).visiblePanelServiceOrder;
+        const proxyChanged = "networkProxyMode" in patch || "networkProxyUrl" in patch;
+        for (const id of nextEnabled) {
+          const enablingProvider = !previousEnabled.has(id);
+          if (enablingProvider || proxyChanged) {
+            refreshIds.push(id);
+          }
+        }
 
-        if (refreshingClaudeCode) {
-          setIsRefreshing(true);
-          setIsClaudeCodeRefreshing(true);
-          const seedState =
-            claudeCodePanelState ??
-            (await loadClaudeCodePanelState());
-          setClaudeCodePanelState(markPanelStateRefreshing(seedState));
-          nextClaudeCodePanel = await refreshClaudeCodePanelState();
+        let refreshedStates: Record<string, CodexPanelState | null> = {};
+        if (refreshIds.length > 0) {
+          setRefreshingProviders(new Set(refreshIds));
+          for (const id of refreshIds) {
+            const seedState = providerStates[id] ?? (await loadProviderState(id));
+            setProviderStates((prev) => ({ ...prev, [id]: markPanelStateRefreshing(seedState) }));
+          }
+          const results = await Promise.all(
+            refreshIds.map(async (id) => [id, await refreshProviderState(id)] as const)
+          );
+          refreshedStates = Object.fromEntries(results);
         }
-        if (!nextPreferences.claudeCodeUsageEnabled) {
-          setIsClaudeCodeRefreshing(false);
-        }
-        return { nextPreferences, nextClaudeCodePanel };
+        return { nextPreferences, refreshedStates };
       },
-      ({ nextPreferences, nextClaudeCodePanel }) => {
+      ({ nextPreferences, refreshedStates }) => {
         setPreferences(nextPreferences);
-        if (nextClaudeCodePanel !== undefined) {
-          setClaudeCodePanelState(nextClaudeCodePanel);
+        if (Object.keys(refreshedStates).length > 0) {
+          setProviderStates((prev) => ({ ...prev, ...refreshedStates }));
         }
-        setPanelState((current) =>
-          current
-            ? {
-                ...current,
-                desktopSurface: {
-                  ...current.desktopSurface,
-                  summaryMode: nextPreferences.traySummaryMode,
-                  summaryText: formatTraySummary(nextPreferences.traySummaryMode, current.items)
+        // Update summary text for all providers
+        setProviderStates((prev) => {
+          const updated: Record<string, CodexPanelState | null> = {};
+          for (const [id, state] of Object.entries(prev)) {
+            updated[id] = state
+              ? {
+                  ...state,
+                  desktopSurface: {
+                    ...state.desktopSurface,
+                    summaryMode: nextPreferences.traySummaryMode,
+                    summaryText: formatTraySummary(nextPreferences.traySummaryMode, state.items)
+                  }
                 }
-              }
-            : current
-        );
+              : state;
+          }
+          return updated;
+        });
       },
       "Save failed"
     )
       .then((result) => result?.nextPreferences ?? null)
       .finally(() => {
-        setIsRefreshing(false);
-        setIsClaudeCodeRefreshing(false);
+        setRefreshingProviders(new Set());
       });
   };
 
@@ -381,29 +395,29 @@ export const AppShell = () => {
   }, []);
 
   const copy = getCopy(preferences?.language ?? "zh-CN");
-  const visiblePanelState = panelState ?? lastStablePanelState.current;
   const visibleServiceScope = getVisibleServiceScope(preferences);
   const serviceOrder = visibleServiceScope.visiblePanelServiceOrder;
-  const stateByServiceId: Record<string, CodexPanelState | null> = {
-    codex: visiblePanelState,
-    "claude-code": claudeCodePanelState
-  };
+  // Merge last-stable with current for display continuity
+  const mergedProviderStates = useMemo(
+    () => ({ ...lastStableProviderStates.current, ...providerStates }),
+    [providerStates]
+  );
   const visibleItems = useMemo(
     () =>
       serviceOrder.flatMap((serviceId) => {
-        const state = stateByServiceId[serviceId];
+        const state = mergedProviderStates[serviceId];
         return state?.items ?? [];
       }),
-    [claudeCodePanelState, serviceOrder, visiblePanelState]
+    [mergedProviderStates, serviceOrder]
   );
   const panelSummary = getPanelHealthSummary(visibleItems);
   const promotionDecision = useMemo(
     () =>
       resolvePromotionDisplayDecision({
         visibleServiceScope,
-        panelStates: stateByServiceId
+        panelStates: mergedProviderStates
       }),
-    [claudeCodePanelState, stateByServiceId, visiblePanelState, visibleServiceScope]
+    [mergedProviderStates, visibleServiceScope]
   );
   const summaryToneClass =
     panelSummary.tone === "danger"
@@ -441,14 +455,12 @@ export const AppShell = () => {
   return (
     <AppStateContext.Provider
       value={{
-        panelState: visiblePanelState,
-        claudeCodePanelState,
+        providerStates: mergedProviderStates,
+        refreshingProviders,
         preferences,
         notificationResult,
         currentView,
         isLoading,
-        isRefreshing,
-        isClaudeCodeRefreshing,
         isE2EMode,
         error,
         refreshPanel,
@@ -497,18 +509,18 @@ export const AppShell = () => {
                     </button>
                   ) : null}
                   <button
-                    aria-label={isRefreshing ? copy.refreshing : copy.refresh}
+                    aria-label={refreshingProviders.size > 0 ? copy.refreshing : copy.refresh}
                     className={`flex h-9 w-9 items-center justify-center rounded-full border bg-white transition-colors hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60 ${
                       refreshFeedback === "error"
                         ? "border-rose-200 text-rose-600"
                         : "border-slate-200 text-slate-700 hover:border-slate-300"
                     }`}
-                    disabled={isRefreshing}
+                    disabled={refreshingProviders.size > 0}
                     onClick={() => void refreshPanel()}
-                    title={isRefreshing ? copy.refreshing : copy.refresh}
+                    title={refreshingProviders.size > 0 ? copy.refreshing : copy.refresh}
                     type="button"
                   >
-                    <span className={isRefreshing ? "animate-spin" : ""}>
+                    <span className={refreshingProviders.size > 0 ? "animate-spin" : ""}>
                       <RefreshIcon />
                     </span>
                   </button>
@@ -542,7 +554,7 @@ export const AppShell = () => {
           <div
             className="relative flex-1 overflow-hidden"
           >
-            {isLoading && !panelState && !preferences ? (
+            {isLoading && Object.keys(providerStates).length === 0 && !preferences ? (
               <div className="rounded-2xl bg-slate-50 p-8 text-center text-sm text-slate-500">{copy.loading}</div>
             ) : (
               <div

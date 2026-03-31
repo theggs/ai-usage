@@ -6,23 +6,23 @@ import { createDemoPanelState } from "../../features/demo-services/demoData";
 import { defaultPreferences } from "../../features/preferences/defaultPreferences";
 
 const createState = (overrides: Partial<AppStateValue> = {}): AppStateValue => ({
-  panelState: createDemoPanelState(),
-  claudeCodePanelState: null,
+  providerStates: { codex: createDemoPanelState() },
+  refreshingProviders: new Set(),
   preferences: {
     ...defaultPreferences,
-    claudeCodeUsageEnabled: true
+    claudeCodeUsageEnabled: true,
+    providerEnabled: { codex: true, "claude-code": true }
   },
   notificationResult: null,
   currentView: "settings",
   isLoading: false,
-  isRefreshing: false,
-  isClaudeCodeRefreshing: false,
   isE2EMode: false,
   error: null,
   refreshPanel: vi.fn(async () => {}),
   savePreferences: vi.fn(async (patch) => ({
     ...defaultPreferences,
     claudeCodeUsageEnabled: true,
+    providerEnabled: { codex: true, "claude-code": true },
     ...patch,
     lastSavedAt: new Date().toISOString()
   })),
@@ -35,6 +35,7 @@ const createState = (overrides: Partial<AppStateValue> = {}): AppStateValue => (
   setAutostart: vi.fn(async (enabled) => ({
     ...defaultPreferences,
     claudeCodeUsageEnabled: true,
+    providerEnabled: { codex: true, "claude-code": true },
     autostartEnabled: enabled,
     lastSavedAt: new Date().toISOString()
   })),
@@ -446,10 +447,13 @@ describe("SettingsView", () => {
 
   it("removes the status section and debug information from the formal settings surface", () => {
     renderSettings({
-      claudeCodePanelState: {
-        ...createDemoPanelState(),
-        status: { kind: "SessionRecovery" },
-        items: []
+      providerStates: {
+        codex: createDemoPanelState(),
+        "claude-code": {
+          ...createDemoPanelState(),
+          status: { kind: "SessionRecovery" },
+          items: []
+        }
       }
     });
 
@@ -468,10 +472,8 @@ describe("SettingsView", () => {
     const persistPreferences = vi.fn(() => savePromise);
 
     vi.doMock("../../features/demo-services/panelController", () => ({
-      loadPanelState: vi.fn(async () => createDemoPanelState()),
-      refreshPanelState: vi.fn(async () => createDemoPanelState()),
-      loadClaudeCodePanelState: vi.fn(async () => null),
-      refreshClaudeCodePanelState: vi.fn(async () => null)
+      loadProviderState: vi.fn(async () => createDemoPanelState()),
+      refreshProviderState: vi.fn(async () => createDemoPanelState())
     }));
     vi.doMock("../../features/preferences/preferencesController", () => ({
       getPreferences: vi.fn(async () => defaultPreferences),

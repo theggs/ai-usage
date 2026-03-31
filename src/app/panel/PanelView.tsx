@@ -2,13 +2,9 @@ import { useEffect } from "react";
 import { ServiceCard } from "../../components/panel/ServiceCard";
 import { useAppState } from "../shared/appState";
 import type { SnapshotStatus } from "../../lib/tauri/contracts";
+import { getProvider } from "../../lib/tauri/registry";
 import { getCopy, getPlaceholderCopy, getSnapshotMessage } from "../shared/i18n";
 import { getVisibleServiceScope } from "../../lib/tauri/summary";
-
-const SERVICE_DISPLAY_NAMES: Record<string, string> = {
-  codex: "Codex",
-  "claude-code": "Claude Code"
-};
 
 const shouldShowSettingsLink = (status: SnapshotStatus) => {
   switch (status.kind) {
@@ -22,26 +18,21 @@ const shouldShowSettingsLink = (status: SnapshotStatus) => {
 
 export const PanelView = () => {
   const {
-    panelState,
-    claudeCodePanelState,
+    providerStates,
+    refreshingProviders,
     preferences,
     error,
     openSettings,
-    savePreferences,
-    isClaudeCodeRefreshing
+    savePreferences
   } = useAppState();
   const copy = getCopy(preferences?.language ?? "zh-CN");
   const visibleServiceScope = getVisibleServiceScope(preferences);
   const serviceOrder = visibleServiceScope.visiblePanelServiceOrder;
-  const statusMessage = getSnapshotMessage(copy, panelState?.status?.kind === "Fresh" ? "fresh" : "empty", true);
-
-  const stateByServiceId: Record<string, typeof panelState> = {
-    codex: panelState,
-    "claude-code": claudeCodePanelState
-  };
+  const firstState = providerStates[serviceOrder[0] ?? "codex"];
+  const statusMessage = getSnapshotMessage(copy, firstState?.status?.kind === "Fresh" ? "fresh" : "empty", true);
 
   const allItems = serviceOrder.flatMap((serviceId) => {
-    const state = stateByServiceId[serviceId];
+    const state = providerStates[serviceId];
     if (!state) return [];
     return state.items;
   });
@@ -127,7 +118,7 @@ export const PanelView = () => {
 
       <div className="grid gap-3">
         {serviceOrder.map((serviceId) => {
-          const state = stateByServiceId[serviceId];
+          const state = providerStates[serviceId];
           if (!state) return null;
           if (state.items.length > 0) {
             return state.items.map((service) => (
@@ -141,7 +132,7 @@ export const PanelView = () => {
           if (showOnboarding) {
             return null;
           }
-          if (serviceId === "claude-code" && isClaudeCodeRefreshing) {
+          if (refreshingProviders.has(serviceId)) {
             return (
               <div
                 key={`${serviceId}-refreshing`}
@@ -153,7 +144,7 @@ export const PanelView = () => {
             );
           }
           const placeholder = getPlaceholderCopy(copy, state.status);
-          const serviceName = SERVICE_DISPLAY_NAMES[serviceId] ?? serviceId;
+          const serviceName = getProvider(serviceId)?.displayName ?? serviceId;
           return (
             <div
               key={`${serviceId}-not-connected`}

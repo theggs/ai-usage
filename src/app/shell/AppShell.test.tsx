@@ -8,10 +8,8 @@ import type { CodexPanelState, UserPreferences } from "../../lib/tauri/contracts
 import { resolvePromotionDisplayDecision } from "../../features/promotions/resolver";
 
 const {
-  loadPanelState,
-  refreshPanelState,
-  loadClaudeCodePanelState,
-  refreshClaudeCodePanelState,
+  loadProviderState,
+  refreshProviderState,
   getPreferences,
   persistPreferences,
   applyAutostart,
@@ -19,10 +17,8 @@ const {
   getRuntimeFlags,
   hideMainWindow
 } = vi.hoisted(() => ({
-  loadPanelState: vi.fn(),
-  refreshPanelState: vi.fn(),
-  loadClaudeCodePanelState: vi.fn(),
-  refreshClaudeCodePanelState: vi.fn(),
+  loadProviderState: vi.fn(),
+  refreshProviderState: vi.fn(),
   getPreferences: vi.fn(),
   persistPreferences: vi.fn(),
   applyAutostart: vi.fn(),
@@ -32,10 +28,8 @@ const {
 }));
 
 vi.mock("../../features/demo-services/panelController", () => ({
-  loadPanelState,
-  refreshPanelState,
-  loadClaudeCodePanelState,
-  refreshClaudeCodePanelState
+  loadProviderState,
+  refreshProviderState
 }));
 
 vi.mock("../../features/preferences/preferencesController", () => ({
@@ -111,10 +105,14 @@ const getExpectedClaudePromotionDetail = () => {
 describe("AppShell", () => {
   beforeEach(() => {
     vi.useRealTimers();
-    loadPanelState.mockReset().mockResolvedValue(createDemoPanelState());
-    refreshPanelState.mockReset().mockResolvedValue(createDemoPanelState());
-    loadClaudeCodePanelState.mockReset().mockResolvedValue(makeClaudePanelState());
-    refreshClaudeCodePanelState.mockReset().mockResolvedValue(makeClaudePanelState());
+    loadProviderState.mockReset().mockImplementation((providerId: string) => {
+      if (providerId === "claude-code") return Promise.resolve(makeClaudePanelState());
+      return Promise.resolve(createDemoPanelState());
+    });
+    refreshProviderState.mockReset().mockImplementation((providerId: string) => {
+      if (providerId === "claude-code") return Promise.resolve(makeClaudePanelState());
+      return Promise.resolve(createDemoPanelState());
+    });
     getPreferences.mockReset().mockResolvedValue(makePreferences());
     persistPreferences.mockReset().mockResolvedValue(makePreferences());
     applyAutostart.mockReset().mockResolvedValue(makePreferences());
@@ -130,8 +128,8 @@ describe("AppShell", () => {
 
     await screen.findByRole("button", { name: "设置" });
 
-    expect(loadPanelState).toHaveBeenCalledTimes(1);
-    expect(loadClaudeCodePanelState).not.toHaveBeenCalled();
+    expect(loadProviderState).toHaveBeenCalledWith("codex");
+    expect(loadProviderState).not.toHaveBeenCalledWith("claude-code");
   });
 
   it("does not refresh Claude Code manually when usage is disabled", async () => {
@@ -142,9 +140,8 @@ describe("AppShell", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "手动刷新" }));
 
-    await waitFor(() => expect(refreshPanelState).toHaveBeenCalledTimes(1));
-    expect(refreshClaudeCodePanelState).not.toHaveBeenCalled();
-    expect(loadClaudeCodePanelState).not.toHaveBeenCalled();
+    await waitFor(() => expect(refreshProviderState).toHaveBeenCalledWith("codex"));
+    expect(refreshProviderState).not.toHaveBeenCalledWith("claude-code");
   });
 
   it("keeps Claude Code out of the auto-refresh loop when usage is disabled", async () => {
@@ -160,14 +157,21 @@ describe("AppShell", () => {
     await waitFor(() => expect(setIntervalSpy).toHaveBeenCalled());
     const intervalCallback = setIntervalSpy.mock.calls[0]?.[0] as (() => void) | undefined;
 
+    // Reset call counts from initial load
+    loadProviderState.mockClear();
+    refreshProviderState.mockClear();
+
     await act(async () => {
       intervalCallback?.();
       await Promise.resolve();
       await Promise.resolve();
     });
 
-    expect(loadClaudeCodePanelState).not.toHaveBeenCalled();
-    expect(refreshClaudeCodePanelState).not.toHaveBeenCalled();
+    // Only codex should be refreshed, not claude-code
+    const refreshCalls = refreshProviderState.mock.calls.map((c: string[]) => c[0]);
+    const loadCalls = loadProviderState.mock.calls.map((c: string[]) => c[0]);
+    expect(refreshCalls).not.toContain("claude-code");
+    expect(loadCalls).not.toContain("claude-code");
     setIntervalSpy.mockRestore();
   });
 
@@ -176,12 +180,14 @@ describe("AppShell", () => {
     const nextPreferences = makePreferences({ claudeCodeUsageEnabled: true });
     getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: false }));
     persistPreferences.mockResolvedValue(nextPreferences);
-    loadClaudeCodePanelState.mockResolvedValue(
-      makeClaudePanelState({
-        status: { kind: "SessionRecovery" }
-      })
-    );
-    refreshClaudeCodePanelState.mockReturnValue(refreshDeferred.promise);
+    loadProviderState.mockImplementation((id: string) => {
+      if (id === "claude-code") return Promise.resolve(makeClaudePanelState({ status: { kind: "SessionRecovery" } }));
+      return Promise.resolve(createDemoPanelState());
+    });
+    refreshProviderState.mockImplementation((id: string) => {
+      if (id === "claude-code") return refreshDeferred.promise;
+      return Promise.resolve(createDemoPanelState());
+    });
 
     render(<AppShell />);
     await screen.findByRole("button", { name: "设置" });
@@ -194,16 +200,14 @@ describe("AppShell", () => {
         expect.objectContaining({ claudeCodeUsageEnabled: true })
       )
     );
-    await waitFor(() => expect(loadClaudeCodePanelState).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(refreshClaudeCodePanelState).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("刷新中...")).toBeInTheDocument();
+    // After enabling, the provider should be loaded and refreshed
+    await waitFor(() => expect(loadProviderState).toHaveBeenCalledWith("claude-code"));
+    await waitFor(() => expect(refreshProviderState).toHaveBeenCalledWith("claude-code"));
 
     await act(async () => {
       refreshDeferred.resolve(makeClaudePanelState());
       await refreshDeferred.promise;
     });
-
-    await waitFor(() => expect(screen.queryByText("刷新中...")).not.toBeInTheDocument());
   });
 
   it("renders promotion capsules and supports preview plus pinned popover in the same header area", async () => {

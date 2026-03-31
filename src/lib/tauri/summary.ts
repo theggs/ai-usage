@@ -9,6 +9,7 @@ import type {
   SummaryMode,
   UserPreferences
 } from "./contracts";
+import { getProvider, providerIds } from "./registry";
 
 export type ServiceAlertLevel = "normal" | "warning" | "danger";
 
@@ -34,16 +35,22 @@ export interface VisibleServiceScope {
   hasVisibleClaudeCode: boolean;
 }
 
-const SERVICE_IDS = ["codex", "claude-code"] as const;
 const MENUBAR_AUTO_SERVICE = "auto";
 
 export const getVisibleServiceScope = (
-  preferences?: Pick<UserPreferences, "serviceOrder" | "claudeCodeUsageEnabled"> | null
+  preferences?: Pick<UserPreferences, "serviceOrder" | "claudeCodeUsageEnabled" | "providerEnabled"> | null
 ): VisibleServiceScope => {
-  const serviceOrder = preferences?.serviceOrder?.length ? preferences.serviceOrder : [...SERVICE_IDS];
-  const visiblePanelServiceOrder = preferences?.claudeCodeUsageEnabled
-    ? serviceOrder
-    : serviceOrder.filter((serviceId) => serviceId !== "claude-code");
+  const allIds = providerIds();
+  const serviceOrder = preferences?.serviceOrder?.length ? preferences.serviceOrder : allIds;
+  const visiblePanelServiceOrder = serviceOrder.filter((serviceId) => {
+    // Legacy: claudeCodeUsageEnabled takes priority for claude-code during transition
+    if (serviceId === "claude-code" && preferences?.claudeCodeUsageEnabled !== undefined) {
+      return preferences.claudeCodeUsageEnabled;
+    }
+    const explicitEnabled = preferences?.providerEnabled?.[serviceId];
+    if (explicitEnabled !== undefined) return explicitEnabled;
+    return getProvider(serviceId)?.defaultEnabled ?? false;
+  });
 
   return {
     visiblePanelServiceOrder,
@@ -268,7 +275,7 @@ export const getTrayVisualState = (
   items: PanelPlaceholderItem[]
 ): TrayVisualState => {
   const selectedItems = items.filter((item) => item.serviceId === menubarService);
-  const serviceName = selectedItems[0]?.serviceName ?? (menubarService === "claude-code" ? "Claude Code" : "Codex");
+  const serviceName = selectedItems[0]?.serviceName ?? (getProvider(menubarService)?.displayName ?? menubarService);
   const summaryText = formatTraySummary(summaryMode, selectedItems);
   const severity =
     selectedItems.length === 0
