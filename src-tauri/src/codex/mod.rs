@@ -562,6 +562,13 @@ pub fn storage_path() -> PathBuf {
                 .join("ai-usage")
                 .join("codex-accounts.json");
         }
+        if let Ok(userprofile) = env::var("USERPROFILE") {
+            return PathBuf::from(userprofile)
+                .join("AppData")
+                .join("Roaming")
+                .join("ai-usage")
+                .join("codex-accounts.json");
+        }
     }
 
     #[cfg(target_os = "macos")]
