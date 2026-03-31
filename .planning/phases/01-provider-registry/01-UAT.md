@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 01-provider-registry
 source: [01-01-SUMMARY.md, 01-02-SUMMARY.md]
 started: 2026-03-31T04:00:00Z
-updated: 2026-03-31T04:25:00Z
+updated: 2026-03-31T12:00:00Z
 ---
 
 ## Current Test
@@ -62,7 +62,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Toggle Claude Code usage on/off in Settings. The panel immediately reflects the change."
-  status: failed
+  status: resolved
   reason: "User reported: the claude code on/off button is clicked, but still shown as off. but claude code usage is always shown on the panel."
   severity: major
   test: 3
