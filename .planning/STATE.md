@@ -78,6 +78,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260331-eaf | fix promotion capsule layout mismatch between claude code and codex | 2026-03-31 | 5a6e32c | [260331-eaf-fix-promotion-capsule-layout-mismatch-be](./quick/260331-eaf-fix-promotion-capsule-layout-mismatch-be/) |
+| 260331-nar | fix Windows issues: popover placement and storage path fallback | 2026-03-31 | a6c3907 | [260331-nar-fix-windows-issues-settings-not-taking-e](./quick/260331-nar-fix-windows-issues-settings-not-taking-e/) |
 
 ### Blockers/Concerns
 
@@ -86,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T04:39:25.325Z
-Stopped at: Phase 2 context gathered
+Last session: 2026-03-31T08:53:15Z
+Stopped at: Completed quick/260331-nar
 Resume file: .planning/phases/02-fetch-pipeline-migration/02-CONTEXT.md

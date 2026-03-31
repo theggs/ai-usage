@@ -395,15 +395,22 @@ pub fn resolve_auto_menubar_selection(
     let eligible = eligible_recent_services(snapshots, now_secs);
 
     if eligible.is_empty() {
+        // Only retain previous service if it's still eligible (enabled + has displayable items).
+        // A disabled service must not be retained — its icon and summary would be stale.
         if let Some(current_service_id) = previous.current_service_id.clone() {
-            return AutoMenubarSelectionState {
-                mode: AutoMenubarMode::Single,
-                current_service_id: Some(current_service_id),
-                rotation_service_ids: Vec::new(),
-                last_resolved_at: now_secs,
-                last_rotated_at: previous.last_rotated_at,
-                retained_from_previous: true,
-            };
+            let still_eligible = snapshots
+                .iter()
+                .any(|s| s.service_id == current_service_id && s.is_eligible_for_auto);
+            if still_eligible {
+                return AutoMenubarSelectionState {
+                    mode: AutoMenubarMode::Single,
+                    current_service_id: Some(current_service_id),
+                    rotation_service_ids: Vec::new(),
+                    last_resolved_at: now_secs,
+                    last_rotated_at: previous.last_rotated_at,
+                    retained_from_previous: true,
+                };
+            }
         }
 
         return AutoMenubarSelectionState {

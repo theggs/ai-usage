@@ -113,7 +113,17 @@ pub fn build_cached_tray_items(preferences: &UserPreferences) -> Vec<PanelPlaceh
 
 fn save_to_snapshot_cache(service_id: &str, state: &CodexPanelState) {
     let mut cache = read_snapshot_cache();
-    cache.services.insert(service_id.into(), state.clone());
+    let mut to_save = state.clone();
+    // When the fetch returned a non-fresh status with empty items (e.g. rate-limited),
+    // preserve the previously cached items so quota data survives across restarts.
+    if to_save.items.is_empty() && !to_save.status.is_fresh() {
+        if let Some(existing) = cache.services.get(service_id) {
+            if !existing.items.is_empty() {
+                to_save.items = existing.items.clone();
+            }
+        }
+    }
+    cache.services.insert(service_id.into(), to_save);
     write_snapshot_cache(&cache);
 }
 
@@ -519,12 +529,20 @@ pub fn get_provider_state(state: State<'_, AppState>, provider_id: String) -> Co
         }
         return cached;
     }
-    let result = build_provider_panel_state(
+    let mut result = build_provider_panel_state(
         &provider_id,
         &preferences,
         pipeline::RefreshKind::Automatic,
         &now_iso(),
     );
+    // When rate-limited (empty items, non-fresh), restore cached items for display
+    if result.items.is_empty() && !result.status.is_fresh() {
+        if let Some(existing) = read_snapshot_cache().services.get(&provider_id) {
+            if !existing.items.is_empty() {
+                result.items = existing.items.clone();
+            }
+        }
+    }
     save_to_snapshot_cache(&provider_id, &result);
     result
 }
@@ -556,12 +574,20 @@ pub fn refresh_provider_state(
             return cached;
         }
     }
-    let result = build_provider_panel_state(
+    let mut result = build_provider_panel_state(
         &provider_id,
         &preferences,
         pipeline::RefreshKind::Manual,
         &now_iso(),
     );
+    // When rate-limited (empty items, non-fresh), restore cached items for display
+    if result.items.is_empty() && !result.status.is_fresh() {
+        if let Some(existing) = read_snapshot_cache().services.get(&provider_id) {
+            if !existing.items.is_empty() {
+                result.items = existing.items.clone();
+            }
+        }
+    }
     save_to_snapshot_cache(&provider_id, &result);
     let accounts = state.codex_accounts.lock().unwrap().clone();
     let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
