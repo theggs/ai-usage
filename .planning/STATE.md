@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-03-31T03:13:38.774Z"
+status: verifying
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-03-31T03:28:09.306Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 01 (provider-registry) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0%
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 9min | 2 tasks | 12 files |
+| Phase 01-provider-registry P02 | 12min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Recent decisions affecting current work:
 - Roadmap: Phase 3 (New Providers) is research-gated — Kimi Code and GLM Coding Plan quota APIs are undocumented; must confirm via network inspection before implementing
 - Roadmap: Phase 6 (About Page) depends only on Phase 1; can be executed after Phase 2 completes, independent of Phases 3-5
 - [Phase 01]: Used static struct array for ProviderDescriptor registry (not trait); MenubarService changed from union to string for dynamic providers
+- [Phase 01-provider-registry]: Legacy claudeCodeUsageEnabled takes priority over providerEnabled for claude-code in getVisibleServiceScope during transition
+- [Phase 01-provider-registry]: getVisibleServiceScope is single source of truth for enabled providers across all AppShell flows
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T03:13:38.771Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-03-31T03:28:09.303Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
