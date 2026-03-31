@@ -96,7 +96,7 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
     case "get_claude_code_panel_state":
     case "refresh_claude_code_panel_state": {
       const preferences = loadPreferences();
-      if (!preferences.claudeCodeUsageEnabled) {
+      if (!preferences.providerEnabled?.["claude-code"] && !preferences.claudeCodeUsageEnabled) {
         return createDisabledClaudePanelState(preferences) as T;
       }
 
@@ -143,34 +143,34 @@ const invoke = async <T>(command: string, args?: Record<string, unknown>): Promi
 };
 
 export const tauriClient = {
-  getCodexPanelState: async () => {
+  getProviderPanelState: async (providerId: string) => {
+    const commandMap: Record<string, string> = {
+      codex: "get_codex_panel_state",
+      "claude-code": "get_claude_code_panel_state",
+    };
+    const command = commandMap[providerId] ?? `get_${providerId.replace(/-/g, "_")}_panel_state`;
     const [panelState, preferences] = await Promise.all([
-      invoke<CodexPanelState>("get_codex_panel_state"),
+      invoke<CodexPanelState>(command),
       tauriClient.getPreferences()
     ]);
     return withSummary(panelState, preferences);
   },
-  refreshCodexPanelState: async () => {
+  refreshProviderPanelState: async (providerId: string) => {
+    const commandMap: Record<string, string> = {
+      codex: "refresh_codex_panel_state",
+      "claude-code": "refresh_claude_code_panel_state",
+    };
+    const command = commandMap[providerId] ?? `refresh_${providerId.replace(/-/g, "_")}_panel_state`;
     const [panelState, preferences] = await Promise.all([
-      invoke<CodexPanelState>("refresh_codex_panel_state"),
+      invoke<CodexPanelState>(command),
       tauriClient.getPreferences()
     ]);
     return withSummary(panelState, preferences);
   },
-  getClaudeCodePanelState: async () => {
-    const [panelState, preferences] = await Promise.all([
-      invoke<CodexPanelState>("get_claude_code_panel_state"),
-      tauriClient.getPreferences()
-    ]);
-    return withSummary(panelState, preferences);
-  },
-  refreshClaudeCodePanelState: async () => {
-    const [panelState, preferences] = await Promise.all([
-      invoke<CodexPanelState>("refresh_claude_code_panel_state"),
-      tauriClient.getPreferences()
-    ]);
-    return withSummary(panelState, preferences);
-  },
+  getCodexPanelState: async () => tauriClient.getProviderPanelState("codex"),
+  refreshCodexPanelState: async () => tauriClient.refreshProviderPanelState("codex"),
+  getClaudeCodePanelState: async () => tauriClient.getProviderPanelState("claude-code"),
+  refreshClaudeCodePanelState: async () => tauriClient.refreshProviderPanelState("claude-code"),
   getCodexAccounts: () =>
     invoke<CodexAccount[]>("get_codex_accounts"),
   saveCodexAccount: (draft: CodexAccountDraft) =>

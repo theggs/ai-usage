@@ -1,29 +1,18 @@
 import { tauriClient } from "../../lib/tauri/client";
+import type { CodexPanelState } from "../../lib/tauri/contracts";
 
-export const loadPanelState = () => tauriClient.getCodexPanelState();
+const pendingRefreshes = new Map<string, Promise<CodexPanelState>>();
 
-let pendingRefresh: Promise<Awaited<ReturnType<typeof tauriClient.refreshCodexPanelState>>> | null = null;
+export const loadProviderState = (providerId: string): Promise<CodexPanelState> =>
+  tauriClient.getProviderPanelState(providerId);
 
-export const refreshPanelState = () => {
-  if (!pendingRefresh) {
-    pendingRefresh = tauriClient.refreshCodexPanelState().finally(() => {
-      pendingRefresh = null;
-    });
-  }
+export const refreshProviderState = (providerId: string): Promise<CodexPanelState> => {
+  const existing = pendingRefreshes.get(providerId);
+  if (existing) return existing;
 
-  return pendingRefresh;
-};
-
-export const loadClaudeCodePanelState = () => tauriClient.getClaudeCodePanelState();
-
-let pendingClaudeCodeRefresh: Promise<Awaited<ReturnType<typeof tauriClient.refreshClaudeCodePanelState>>> | null = null;
-
-export const refreshClaudeCodePanelState = () => {
-  if (!pendingClaudeCodeRefresh) {
-    pendingClaudeCodeRefresh = tauriClient.refreshClaudeCodePanelState().finally(() => {
-      pendingClaudeCodeRefresh = null;
-    });
-  }
-
-  return pendingClaudeCodeRefresh;
+  const promise = tauriClient.refreshProviderPanelState(providerId).finally(() => {
+    pendingRefreshes.delete(providerId);
+  });
+  pendingRefreshes.set(providerId, promise);
+  return promise;
 };

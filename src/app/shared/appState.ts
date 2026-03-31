@@ -7,14 +7,12 @@ import type {
 } from "../../lib/tauri/contracts";
 
 export interface AppStateValue {
-  panelState: CodexPanelState | null;
-  claudeCodePanelState: CodexPanelState | null;
+  providerStates: Record<string, CodexPanelState | null>;
+  refreshingProviders: Set<string>;
   preferences: UserPreferences | null;
   notificationResult: NotificationCheckResult | null;
   currentView: "panel" | "settings";
   isLoading: boolean;
-  isRefreshing: boolean;
-  isClaudeCodeRefreshing: boolean;
   isE2EMode: boolean;
   error: string | null;
   refreshPanel: (manual?: boolean) => Promise<void>;
