@@ -31,10 +31,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Preferences enable/disable flags use a generic `providerEnabled: Record<string, boolean>` map; both Rust and TypeScript normalizers handle it consistently
   4. Snapshot cache includes a `schema_version` field; loading an incompatible cache discards it gracefully without crashing
   5. Existing Codex and Claude Code quota display is unchanged for current users after the registry refactor ships
-**Plans:** 2 plans
+**Plans:** 3 plans
 Plans:
 - [x] 01-01-PLAN.md — Registry definitions + snapshot cache versioning + preferences migration
 - [x] 01-02-PLAN.md — Frontend big-bang state migration to dynamic provider map
+- [ ] 01-03-PLAN.md — Fix Claude Code toggle to use providerEnabled (gap closure)
 
 ### Phase 2: Fetch Pipeline & Migration
 **Goal**: A shared FetchPipeline executes an ordered strategy chain per provider; existing Codex and Claude Code integrations are migrated into it with verified behavioral parity
@@ -100,12 +101,12 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 and 6 can begin as soon as Phase 2 is complete — they do not depend on Phase 3.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Provider Registry | 0/2 | Planning complete | - |
+| 1. Provider Registry | 2/3 | Gap closure planned | - |
 | 2. Fetch Pipeline & Migration | 0/? | Not started | - |
 | 3. New Providers | 0/? | Not started | - |
 | 4. Burn Rate Engine | 0/? | Not started | - |
