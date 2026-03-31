@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md — Registry definitions + snapshot cache versioning + preferences migration
 - [x] 01-02-PLAN.md — Frontend big-bang state migration to dynamic provider map
-- [ ] 01-03-PLAN.md — Fix Claude Code toggle to use providerEnabled (gap closure)
+- [x] 01-03-PLAN.md — Fix Claude Code toggle to use providerEnabled (gap closure)
 
 ### Phase 2: Fetch Pipeline & Migration
 **Goal**: A shared FetchPipeline executes an ordered strategy chain per provider; existing Codex and Claude Code integrations are migrated into it with verified behavioral parity
