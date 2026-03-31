@@ -1,4 +1,5 @@
 import type { UserPreferences } from "../../lib/tauri/contracts";
+import { PROVIDERS } from "../../lib/tauri/registry";
 
 export const defaultPreferences: UserPreferences = {
   language: "zh-CN",
@@ -13,5 +14,6 @@ export const defaultPreferences: UserPreferences = {
   networkProxyUrl: "",
   onboardingDismissedAt: undefined,
   claudeCodeUsageEnabled: false,
-  claudeCodeDisclosureDismissedAt: undefined
+  claudeCodeDisclosureDismissedAt: undefined,
+  providerEnabled: Object.fromEntries(PROVIDERS.map((p) => [p.id, p.defaultEnabled])),
 };

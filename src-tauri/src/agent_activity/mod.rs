@@ -356,7 +356,7 @@ pub fn collect_service_activity_snapshots(
             last_activity_at: claude.last_activity_at,
             signal_source: claude.signal_source,
             confidence: claude.confidence,
-            is_eligible_for_auto: preferences.claude_code_usage_enabled
+            is_eligible_for_auto: *preferences.provider_enabled.get("claude-code").unwrap_or(&preferences.claude_code_usage_enabled)
                 && has_displayable_items(items, "claude-code"),
             last_error: claude.last_error,
         },

@@ -1,5 +1,7 @@
+use crate::registry::PROVIDERS;
 use crate::snapshot::SnapshotStatus;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 fn default_tray_summary_mode() -> String {
@@ -34,8 +36,6 @@ fn default_claude_code_disclosure_dismissed_at() -> Option<String> {
     None
 }
 
-const KNOWN_SERVICE_IDS: [&str; 2] = ["codex", "claude-code"];
-const KNOWN_MENUBAR_SERVICES: [&str; 3] = ["codex", "claude-code", "auto"];
 pub const AUTO_ACTIVITY_WINDOW_SECS: u64 = 5 * 60;
 pub const AUTO_ROTATION_INTERVAL_SECS: u64 = 15;
 pub const AUTO_SCAN_INTERVAL_SECS: u64 = 15;
@@ -185,10 +185,12 @@ pub struct UserPreferences {
     pub network_proxy_url: String,
     #[serde(default = "default_onboarding_dismissed_at")]
     pub onboarding_dismissed_at: Option<String>,
-    #[serde(default = "default_claude_code_usage_enabled")]
+    #[serde(default = "default_claude_code_usage_enabled", skip_serializing)]
     pub claude_code_usage_enabled: bool,
     #[serde(default = "default_claude_code_disclosure_dismissed_at")]
     pub claude_code_disclosure_dismissed_at: Option<String>,
+    #[serde(default)]
+    pub provider_enabled: HashMap<String, bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -264,13 +266,15 @@ pub fn default_preferences() -> UserPreferences {
         onboarding_dismissed_at: default_onboarding_dismissed_at(),
         claude_code_usage_enabled: default_claude_code_usage_enabled(),
         claude_code_disclosure_dismissed_at: default_claude_code_disclosure_dismissed_at(),
+        provider_enabled: HashMap::new(),
     })
 }
 
 fn normalize_service_order(service_order: Vec<String>) -> Vec<String> {
+    let known = crate::registry::provider_ids();
     let mut normalized = service_order
         .into_iter()
-        .filter(|service_id| KNOWN_SERVICE_IDS.contains(&service_id.as_str()))
+        .filter(|service_id| known.contains(&service_id.as_str()))
         .fold(Vec::new(), |mut acc, service_id| {
             if !acc.contains(&service_id) {
                 acc.push(service_id);
@@ -278,9 +282,9 @@ fn normalize_service_order(service_order: Vec<String>) -> Vec<String> {
             acc
         });
 
-    for service_id in KNOWN_SERVICE_IDS {
+    for service_id in &known {
         if !normalized.iter().any(|existing| existing == service_id) {
-            normalized.push(service_id.into());
+            normalized.push((*service_id).into());
         }
     }
 
@@ -291,17 +295,44 @@ pub fn normalize_preferences(mut preferences: UserPreferences) -> UserPreference
     preferences.refresh_interval_minutes = preferences.refresh_interval_minutes.max(5);
     preferences.service_order = normalize_service_order(preferences.service_order);
 
+    // Seed provider_enabled from registry defaults / legacy field
+    if preferences.provider_enabled.is_empty() {
+        for provider in PROVIDERS {
+            if provider.id == "claude-code" {
+                // Migrate legacy claude_code_usage_enabled
+                preferences
+                    .provider_enabled
+                    .insert(provider.id.into(), preferences.claude_code_usage_enabled);
+            } else {
+                preferences
+                    .provider_enabled
+                    .insert(provider.id.into(), provider.default_enabled);
+            }
+        }
+    } else {
+        // Ensure all registry providers have an entry
+        for provider in PROVIDERS {
+            preferences
+                .provider_enabled
+                .entry(provider.id.into())
+                .or_insert(provider.default_enabled);
+        }
+    }
+
     if preferences.menubar_service == "auto" {
         return preferences;
     }
 
-    if !preferences.claude_code_usage_enabled
-        && preferences.menubar_service == "claude-code"
-    {
+    let claude_enabled = *preferences
+        .provider_enabled
+        .get("claude-code")
+        .unwrap_or(&false);
+    if !claude_enabled && preferences.menubar_service == "claude-code" {
         preferences.menubar_service = "codex".into();
     }
 
-    if !KNOWN_MENUBAR_SERVICES.contains(&preferences.menubar_service.as_str()) {
+    let known_menubar = crate::registry::menubar_service_ids();
+    if !known_menubar.contains(&preferences.menubar_service.as_str()) {
         preferences.menubar_service = "codex".into();
     }
 
@@ -329,6 +360,7 @@ impl Default for AppState {
 #[cfg(test)]
 mod tests {
     use super::{normalize_preferences, UserPreferences};
+    use std::collections::HashMap;
 
     // T022: Backward-compatibility gate — existing preference files without
     // the new fields must deserialize cleanly and pick up defaults.
@@ -357,6 +389,13 @@ mod tests {
         assert_eq!(prefs.claude_code_disclosure_dismissed_at, None);
         assert_eq!(prefs.refresh_interval_minutes, 20);
         assert_eq!(prefs.tray_summary_mode, "window-5h");
+        // provider_enabled should default to empty HashMap from serde
+        assert!(prefs.provider_enabled.is_empty());
+
+        // After normalization, provider_enabled should be seeded
+        let normalized = normalize_preferences(prefs);
+        assert_eq!(normalized.provider_enabled.get("codex"), Some(&true));
+        assert_eq!(normalized.provider_enabled.get("claude-code"), Some(&false));
     }
 
     #[test]
@@ -375,11 +414,14 @@ mod tests {
             onboarding_dismissed_at: None,
             claude_code_usage_enabled: false,
             claude_code_disclosure_dismissed_at: None,
+            provider_enabled: HashMap::new(),
         });
 
         assert_eq!(prefs.menubar_service, "codex");
         assert_eq!(prefs.service_order, vec!["claude-code", "codex"]);
         assert_eq!(prefs.refresh_interval_minutes, 5);
+        // provider_enabled should reflect claude-code disabled (from legacy field)
+        assert_eq!(prefs.provider_enabled.get("claude-code"), Some(&false));
     }
 
     #[test]
@@ -398,8 +440,60 @@ mod tests {
             onboarding_dismissed_at: None,
             claude_code_usage_enabled: false,
             claude_code_disclosure_dismissed_at: None,
+            provider_enabled: HashMap::new(),
         });
 
         assert_eq!(prefs.menubar_service, "auto");
+    }
+
+    #[test]
+    fn legacy_claude_code_usage_enabled_migrates_to_provider_enabled() {
+        let prefs = normalize_preferences(UserPreferences {
+            language: "zh-CN".into(),
+            refresh_interval_minutes: 15,
+            tray_summary_mode: "lowest-remaining".into(),
+            autostart_enabled: true,
+            notification_test_enabled: true,
+            last_saved_at: "2025-01-01T00:00:00.000Z".into(),
+            menubar_service: "codex".into(),
+            service_order: vec!["codex".into(), "claude-code".into()],
+            network_proxy_mode: "system".into(),
+            network_proxy_url: String::new(),
+            onboarding_dismissed_at: None,
+            claude_code_usage_enabled: true,
+            claude_code_disclosure_dismissed_at: None,
+            provider_enabled: HashMap::new(),
+        });
+
+        assert_eq!(prefs.provider_enabled.get("codex"), Some(&true));
+        assert_eq!(prefs.provider_enabled.get("claude-code"), Some(&true));
+    }
+
+    #[test]
+    fn existing_provider_enabled_map_is_preserved() {
+        let mut provider_enabled = HashMap::new();
+        provider_enabled.insert("codex".into(), true);
+        provider_enabled.insert("claude-code".into(), true);
+
+        let prefs = normalize_preferences(UserPreferences {
+            language: "zh-CN".into(),
+            refresh_interval_minutes: 15,
+            tray_summary_mode: "lowest-remaining".into(),
+            autostart_enabled: true,
+            notification_test_enabled: true,
+            last_saved_at: "2025-01-01T00:00:00.000Z".into(),
+            menubar_service: "codex".into(),
+            service_order: vec!["codex".into(), "claude-code".into()],
+            network_proxy_mode: "system".into(),
+            network_proxy_url: String::new(),
+            onboarding_dismissed_at: None,
+            claude_code_usage_enabled: false,
+            claude_code_disclosure_dismissed_at: None,
+            provider_enabled,
+        });
+
+        // Existing map should be preserved, not overridden by legacy field
+        assert_eq!(prefs.provider_enabled.get("codex"), Some(&true));
+        assert_eq!(prefs.provider_enabled.get("claude-code"), Some(&true));
     }
 }

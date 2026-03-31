@@ -426,7 +426,7 @@ fn resolve_display_service_id(
 ) -> Option<String> {
     if preferences.menubar_service == "auto" {
         selection.and_then(|current| current.current_service_id.clone())
-    } else if !preferences.claude_code_usage_enabled
+    } else if !*preferences.provider_enabled.get("claude-code").unwrap_or(&preferences.claude_code_usage_enabled)
         && preferences.menubar_service == "claude-code"
     {
         Some("codex".into())
@@ -1096,6 +1096,7 @@ mod tests {
         // When menubar_service is "claude-code", summary reflects Claude Code only.
         let mut prefs = crate::state::default_preferences();
         prefs.claude_code_usage_enabled = true;
+        prefs.provider_enabled.insert("claude-code".into(), true);
         prefs.menubar_service = "claude-code".into();
         let filtered = items_for_menubar_service(&prefs, None, &items);
         assert_eq!(
@@ -1120,6 +1121,7 @@ mod tests {
         // menubar_service doesn't match any item → empty filtered list → None summary.
         let mut prefs = crate::state::default_preferences();
         prefs.claude_code_usage_enabled = true;
+        prefs.provider_enabled.insert("claude-code".into(), true);
         prefs.menubar_service = "claude-code".into();
         let filtered = items_for_menubar_service(&prefs, None, &items);
         assert_eq!(format_summary("lowest-remaining", &filtered), None);
@@ -1133,6 +1135,7 @@ mod tests {
         ];
         let mut prefs = crate::state::default_preferences();
         prefs.claude_code_usage_enabled = true;
+        prefs.provider_enabled.insert("claude-code".into(), true);
         prefs.menubar_service = "claude-code".into();
 
         let filtered = items_for_menubar_service(&prefs, None, &items);
@@ -1151,6 +1154,7 @@ mod tests {
         ];
         let mut prefs = crate::state::default_preferences();
         prefs.claude_code_usage_enabled = false;
+        prefs.provider_enabled.insert("claude-code".into(), false);
         prefs.menubar_service = "claude-code".into();
 
         let filtered = items_for_menubar_service(&prefs, None, &items);

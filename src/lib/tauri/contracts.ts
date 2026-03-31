@@ -1,5 +1,5 @@
 export type PlatformTarget = "macos" | "windows";
-export type MenubarService = "codex" | "claude-code" | "auto";
+export type MenubarService = string;
 export type SummaryMode =
   | "icon-only"
   | "lowest-remaining"
@@ -84,6 +84,7 @@ export interface UserPreferences {
   onboardingDismissedAt?: string;
   claudeCodeUsageEnabled: boolean;
   claudeCodeDisclosureDismissedAt?: string;
+  providerEnabled: Record<string, boolean>;
 }
 
 export interface PreferencePatch {
@@ -99,6 +100,7 @@ export interface PreferencePatch {
   onboardingDismissedAt?: string;
   claudeCodeUsageEnabled?: boolean;
   claudeCodeDisclosureDismissedAt?: string;
+  providerEnabled?: Record<string, boolean>;
 }
 
 export interface ServiceStatusCard {

@@ -22,6 +22,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager, State};
 
 const MIN_CLAUDE_REFRESH_COOLDOWN_SECS: u64 = 60;
+const SNAPSHOT_CACHE_VERSION: u32 = 1;
 
 fn now_iso() -> String {
     let now = SystemTime::now()
@@ -45,6 +46,8 @@ fn now_unix_secs() -> u64 {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct SnapshotCache {
+    #[serde(default)]
+    schema_version: u32,
     services: HashMap<String, CodexPanelState>,
 }
 
@@ -65,10 +68,19 @@ fn snapshot_cache_path() -> std::path::PathBuf {
 
 fn read_snapshot_cache() -> SnapshotCache {
     let path = snapshot_cache_path();
-    std::fs::read_to_string(path)
+    let cache = std::fs::read_to_string(path)
         .ok()
         .and_then(|contents| serde_json::from_str::<SnapshotCache>(&contents).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+
+    if cache.schema_version != SNAPSHOT_CACHE_VERSION {
+        return SnapshotCache {
+            schema_version: SNAPSHOT_CACHE_VERSION,
+            services: HashMap::new(),
+        };
+    }
+
+    cache
 }
 
 fn write_snapshot_cache(cache: &SnapshotCache) {
@@ -76,7 +88,9 @@ fn write_snapshot_cache(cache: &SnapshotCache) {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    if let Ok(payload) = serde_json::to_string(cache) {
+    let mut cache = cache.clone();
+    cache.schema_version = SNAPSHOT_CACHE_VERSION;
+    if let Ok(payload) = serde_json::to_string(&cache) {
         let _ = std::fs::write(path, payload);
     }
 }
@@ -145,7 +159,10 @@ fn load_from_snapshot_cache(
 }
 
 fn is_claude_code_usage_enabled(preferences: &UserPreferences) -> bool {
-    preferences.claude_code_usage_enabled
+    *preferences
+        .provider_enabled
+        .get("claude-code")
+        .unwrap_or(&preferences.claude_code_usage_enabled)
 }
 
 fn parse_refresh_timestamp(value: &str) -> Option<u64> {
@@ -466,6 +483,7 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
     }
     if let Some(claude_code_usage_enabled) = patch.claude_code_usage_enabled {
         current.claude_code_usage_enabled = claude_code_usage_enabled;
+        current.provider_enabled.insert("claude-code".into(), claude_code_usage_enabled);
     }
     if let Some(claude_code_disclosure_dismissed_at) =
         patch.claude_code_disclosure_dismissed_at
@@ -897,6 +915,7 @@ mod tests {
 
         let mut preferences = crate::state::default_preferences();
         preferences.claude_code_usage_enabled = true;
+        preferences.provider_enabled.insert("claude-code".into(), true);
         let items = build_tray_items(&preferences, &[], &refreshed_at);
 
         assert_eq!(items.len(), 2);
@@ -923,6 +942,7 @@ mod tests {
 
         let mut preferences = crate::state::default_preferences();
         preferences.claude_code_usage_enabled = false;
+        preferences.provider_enabled.insert("claude-code".into(), false);
         let items = build_tray_items(&preferences, &[], &refreshed_at);
 
         assert_eq!(items.len(), 1);
@@ -949,6 +969,7 @@ mod tests {
         let mut preferences = crate::state::default_preferences();
         preferences.menubar_service = "auto".into();
         preferences.claude_code_usage_enabled = true;
+        preferences.provider_enabled.insert("claude-code".into(), true);
 
         let items = build_cached_tray_items(&preferences);
 
@@ -973,6 +994,50 @@ mod tests {
         save_to_snapshot_cache("claude-code", &make_panel_state("claude-code", &now_iso()));
 
         assert!(claude_refresh_cooldown_hit());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_version_mismatch_returns_empty() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-ver-mismatch-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let cache_path = tmp.join("snapshot-cache.json");
+        env::set_var("AI_USAGE_SNAPSHOT_CACHE_FILE", &cache_path);
+
+        // Write a cache with a future schema version
+        let mut cache = SnapshotCache::default();
+        cache.schema_version = 99;
+        cache
+            .services
+            .insert("codex".into(), make_panel_state("codex", &now_iso()));
+        std::fs::write(&cache_path, serde_json::to_string(&cache).unwrap()).unwrap();
+
+        let loaded = read_snapshot_cache();
+        assert_eq!(loaded.schema_version, SNAPSHOT_CACHE_VERSION);
+        assert!(loaded.services.is_empty());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_missing_version_returns_empty() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-ver-missing-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let cache_path = tmp.join("snapshot-cache.json");
+        env::set_var("AI_USAGE_SNAPSHOT_CACHE_FILE", &cache_path);
+
+        // Write JSON without schema_version field
+        std::fs::write(&cache_path, r#"{"services":{}}"#).unwrap();
+
+        // schema_version defaults to 0 via #[serde(default)], which triggers mismatch
+        let loaded = read_snapshot_cache();
+        assert_eq!(loaded.schema_version, SNAPSHOT_CACHE_VERSION);
+        assert!(loaded.services.is_empty());
 
         let _ = std::fs::remove_dir_all(&tmp);
         env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");

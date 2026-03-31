@@ -1,5 +1,6 @@
 import { defaultPreferences } from "../../features/preferences/defaultPreferences";
-import type { MenubarService, PreferencePatch, UserPreferences } from "../tauri/contracts";
+import type { PreferencePatch, UserPreferences } from "../tauri/contracts";
+import { providerIds, menubarServiceIds, PROVIDERS } from "../tauri/registry";
 
 const STORAGE_KEY = "ai-usage.preferences";
 const MIN_REFRESH_INTERVAL = 5;
@@ -34,14 +35,13 @@ const normalizeNetworkProxyMode = (
   }
 };
 
-const KNOWN_SERVICE_IDS = ["codex", "claude-code"] as const;
-const KNOWN_MENUBAR_SERVICES = ["codex", "claude-code", "auto"] as const;
 const DEFAULT_MENUBAR_SERVICE: UserPreferences["menubarService"] = "codex";
 
 const normalizeServiceOrder = (value: string[] | undefined, current: UserPreferences["serviceOrder"]) => {
-  const next = (value ?? current).filter((serviceId): serviceId is string => KNOWN_SERVICE_IDS.includes(serviceId as typeof KNOWN_SERVICE_IDS[number]));
+  const known = providerIds();
+  const next = (value ?? current).filter((serviceId): serviceId is string => known.includes(serviceId));
   const deduped = Array.from(new Set(next));
-  for (const serviceId of KNOWN_SERVICE_IDS) {
+  for (const serviceId of known) {
     if (!deduped.includes(serviceId)) {
       deduped.push(serviceId);
     }
@@ -52,26 +52,29 @@ const normalizeServiceOrder = (value: string[] | undefined, current: UserPrefere
 const normalizeMenubarService = (
   value: string | undefined,
   serviceOrder: UserPreferences["serviceOrder"],
-  claudeCodeUsageEnabled: boolean
+  providerEnabledMap: Record<string, boolean>
 ) : UserPreferences["menubarService"] => {
-  const candidate: MenubarService =
-    value && KNOWN_MENUBAR_SERVICES.includes(value as typeof KNOWN_MENUBAR_SERVICES[number])
-      ? (value as MenubarService)
+  const knownMenubar = menubarServiceIds();
+  const candidate: string =
+    value && knownMenubar.includes(value)
+      ? value
       : DEFAULT_MENUBAR_SERVICE;
 
   if (candidate === "auto") {
     return "auto";
   }
 
-  if (!claudeCodeUsageEnabled && candidate === "claude-code") {
-    return DEFAULT_MENUBAR_SERVICE;
+  if (candidate !== "auto" && providerEnabledMap[candidate] === false) {
+    // Fall back to the first enabled provider or default
+    const firstEnabled = serviceOrder.find((id) => providerEnabledMap[id] !== false);
+    return firstEnabled ?? DEFAULT_MENUBAR_SERVICE;
   }
 
   if (serviceOrder.includes(candidate)) {
     return candidate;
   }
 
-  return (serviceOrder[0] as MenubarService | undefined) ?? DEFAULT_MENUBAR_SERVICE;
+  return serviceOrder[0] ?? DEFAULT_MENUBAR_SERVICE;
 };
 
 export const normalizePreferences = (
@@ -85,6 +88,32 @@ export const normalizePreferences = (
     patch.networkProxyMode ?? current.networkProxyMode
   );
 
+  // Seed providerEnabled from registry defaults / legacy migration
+  const rawProviderEnabled = patch.providerEnabled ?? current.providerEnabled ?? {};
+  const providerEnabledMap: Record<string, boolean> = { ...rawProviderEnabled };
+  if (Object.keys(providerEnabledMap).length === 0) {
+    // Seed from registry defaults, migrating legacy claudeCodeUsageEnabled
+    for (const provider of PROVIDERS) {
+      if (provider.id === "claude-code") {
+        providerEnabledMap[provider.id] =
+          patch.claudeCodeUsageEnabled ?? current.claudeCodeUsageEnabled ?? provider.defaultEnabled;
+      } else {
+        providerEnabledMap[provider.id] = provider.defaultEnabled;
+      }
+    }
+  } else {
+    // Ensure all registry providers have an entry
+    for (const provider of PROVIDERS) {
+      if (!(provider.id in providerEnabledMap)) {
+        providerEnabledMap[provider.id] = provider.defaultEnabled;
+      }
+    }
+    // Migrate legacy claudeCodeUsageEnabled into providerEnabled when explicitly patched
+    if (patch.claudeCodeUsageEnabled !== undefined && !patch.providerEnabled) {
+      providerEnabledMap["claude-code"] = patch.claudeCodeUsageEnabled;
+    }
+  }
+
   const next: UserPreferences = {
     ...current,
     ...patch,
@@ -96,6 +125,7 @@ export const normalizePreferences = (
     claudeCodeUsageEnabled: patch.claudeCodeUsageEnabled ?? current.claudeCodeUsageEnabled,
     claudeCodeDisclosureDismissedAt:
       patch.claudeCodeDisclosureDismissedAt ?? current.claudeCodeDisclosureDismissedAt,
+    providerEnabled: providerEnabledMap,
     refreshIntervalMinutes: Math.max(
       MIN_REFRESH_INTERVAL,
       patch.refreshIntervalMinutes ?? current.refreshIntervalMinutes
@@ -106,7 +136,7 @@ export const normalizePreferences = (
   next.menubarService = normalizeMenubarService(
     patch.menubarService ?? current.menubarService,
     next.serviceOrder,
-    next.claudeCodeUsageEnabled
+    next.providerEnabled
   );
 
   if (!["zh-CN", "en-US"].includes(next.language)) {
