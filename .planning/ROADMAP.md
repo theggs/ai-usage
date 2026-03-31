@@ -46,7 +46,10 @@ Plans:
   2. Claude Code quota data fetches successfully via the new pipeline, including all three credential sources (env var, keychain, file) in priority order
   3. Proxy auto-detection works on both macOS and Windows for all outbound API calls through the pipeline
   4. When the first fetch strategy fails, the pipeline automatically tries the next strategy without user intervention
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — ProviderFetcher trait + Codex and Claude Code implementations
+- [ ] 02-02-PLAN.md — Generic IPC commands + frontend migration + tray generalization
 
 ### Phase 3: New Providers
 **Goal**: Kimi Code and GLM Coding Plan appear in the panel and can be reordered alongside existing providers; providers with unconfirmed APIs show a clear "not available" state rather than a blank panel
@@ -107,7 +110,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Provider Registry | 2/3 | Gap closure planned | - |
-| 2. Fetch Pipeline & Migration | 0/? | Not started | - |
+| 2. Fetch Pipeline & Migration | 0/2 | Planned | - |
 | 3. New Providers | 0/? | Not started | - |
 | 4. Burn Rate Engine | 0/? | Not started | - |
 | 5. Time-Aware Alert Thresholds | 0/? | Not started | - |
