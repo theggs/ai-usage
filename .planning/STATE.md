@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-02-PLAN.md
+status: ready-to-plan
+stopped_at: Phase 01 complete, ready to plan Phase 02
 last_updated: "2026-03-31T04:34:35.754Z"
 last_activity: 2026-03-31
 progress:
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Phase 01 — provider-registry
+**Current focus:** Phase 02 — fetch-pipeline-&-migration
 
 ## Current Position
 
 Phase: 2
 Plan: Not started
-Status: Executing Phase 01
+Status: Ready to plan
 Last activity: 2026-03-31
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 17%
 
 ## Performance Metrics
 
@@ -66,8 +66,8 @@ Recent decisions affecting current work:
 - Roadmap: Phase 3 (New Providers) is research-gated — Kimi Code and GLM Coding Plan quota APIs are undocumented; must confirm via network inspection before implementing
 - Roadmap: Phase 6 (About Page) depends only on Phase 1; can be executed after Phase 2 completes, independent of Phases 3-5
 - [Phase 01]: Used static struct array for ProviderDescriptor registry (not trait); MenubarService changed from union to string for dynamic providers
-- [Phase 01-provider-registry]: Legacy claudeCodeUsageEnabled takes priority over providerEnabled for claude-code in getVisibleServiceScope during transition
 - [Phase 01-provider-registry]: getVisibleServiceScope is single source of truth for enabled providers across all AppShell flows
+- [Phase 01-provider-registry]: Legacy claudeCodeUsageEnabled priority removed; providerEnabled is now the sole source of truth for all providers (gap closure 01-03)
 
 ### Pending Todos
 
@@ -86,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T03:28:09.303Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-03-31
+Stopped at: Phase 01 complete, ready to plan Phase 02
 Resume file: None
