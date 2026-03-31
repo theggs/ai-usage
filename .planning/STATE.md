@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-03-31T02:36:10.502Z"
-last_activity: "2026-03-31 - Completed quick task 260331-eaf: fix promotion capsule layout mismatch"
+status: executing
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-03-31T03:13:38.774Z"
+last_activity: 2026-03-31
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Phase 1 — Provider Registry
+**Current focus:** Phase 01 — provider-registry
 
 ## Current Position
 
-Phase: 1 of 6 (Provider Registry)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-03-31 - Completed quick task 260331-eaf: fix promotion capsule layout mismatch
+Phase: 01 (provider-registry) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01 P01 | 9min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,7 @@ Recent decisions affecting current work:
 - Roadmap: Provider Registry (Phase 1) is the critical path — all other phases depend on eliminating the five hardcoded service-ID lists before any new provider is added
 - Roadmap: Phase 3 (New Providers) is research-gated — Kimi Code and GLM Coding Plan quota APIs are undocumented; must confirm via network inspection before implementing
 - Roadmap: Phase 6 (About Page) depends only on Phase 1; can be executed after Phase 2 completes, independent of Phases 3-5
+- [Phase 01]: Used static struct array for ProviderDescriptor registry (not trait); MenubarService changed from union to string for dynamic providers
 
 ### Pending Todos
 
@@ -81,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T02:36:10.499Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-provider-registry/01-CONTEXT.md
+Last session: 2026-03-31T03:13:38.771Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

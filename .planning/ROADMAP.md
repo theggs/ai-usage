@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Existing Codex and Claude Code quota display is unchanged for current users after the registry refactor ships
 **Plans:** 2 plans
 Plans:
-- [ ] 01-01-PLAN.md — Registry definitions + snapshot cache versioning + preferences migration
+- [x] 01-01-PLAN.md — Registry definitions + snapshot cache versioning + preferences migration
 - [ ] 01-02-PLAN.md — Frontend big-bang state migration to dynamic provider map
 
 ### Phase 2: Fetch Pipeline & Migration
