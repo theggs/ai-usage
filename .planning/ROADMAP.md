@@ -49,7 +49,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 02-01-PLAN.md — ProviderFetcher trait + Codex and Claude Code implementations
-- [ ] 02-02-PLAN.md — Generic IPC commands + frontend migration + tray generalization
+- [x] 02-02-PLAN.md — Generic IPC commands + frontend migration + tray generalization
 
 ### Phase 3: New Providers
 **Goal**: Kimi Code and GLM Coding Plan appear in the panel and can be reordered alongside existing providers; providers with unconfirmed APIs show a clear "not available" state rather than a blank panel
