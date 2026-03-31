@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 Phase: 1 of 6 (Provider Registry)
 Plan: 0 of ? in current phase
 Status: Ready to plan
-Last activity: 2026-03-31 — Roadmap created; ready to begin Phase 1 planning
+Last activity: 2026-03-31 - Completed quick task 260331-eaf: fix promotion capsule layout mismatch
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -49,6 +49,12 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260331-eaf | fix promotion capsule layout mismatch between claude code and codex | 2026-03-31 | 5a6e32c | [260331-eaf-fix-promotion-capsule-layout-mismatch-be](./quick/260331-eaf-fix-promotion-capsule-layout-mismatch-be/) |
 
 ### Blockers/Concerns
 
