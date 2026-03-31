@@ -48,8 +48,8 @@ CodexBar 用 `ProviderDescriptor` 统一描述每个 Provider：
 
 每个 Provider 定义有序策略链（OAuth → Web/Cookie → CLI/PTY → API Token → Local Probe），首个成功即停止，失败自动回退。`ProviderFetchPipeline` 记录所有尝试结果。
 
-**本项目差距**: Claude Code 已有 env → keychain → file 三级回退，但非通用化。
-**实现建议**: 抽象为通用 `FetchPipeline`，新增 Provider 时只需配置策略顺序。
+**本项目差距**: Claude Code 已有 env → keychain → file 三级凭据回退，但这是单一获取途径内部的子步骤，非独立策略链。
+**实现建议**: Phase 2 已建立 ProviderFetcher trait 作为扩展点。多策略管线（多种独立获取余量途径的降级链）已记入 v2 backlog（PIPE-01/02/03），待有明确第二获取途径时实施。
 
 #### 4. 服务状态监控 (Provider Incident Monitoring)
 

@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 Phase: 3
 Plan: Not started
 Status: Executing Phase 02
-Last activity: 2026-03-31 - Completed quick task 260331-nar: Fix Windows issues (GitHub #3)
+Last activity: 2026-03-31 - Completed quick task 260331-pjz: Clarify PROV-05 + multi-pipeline backlog
 
 Progress: [█░░░░░░░░░] 17%
 
@@ -79,6 +79,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260331-eaf | fix promotion capsule layout mismatch between claude code and codex | 2026-03-31 | 5a6e32c | [260331-eaf-fix-promotion-capsule-layout-mismatch-be](./quick/260331-eaf-fix-promotion-capsule-layout-mismatch-be/) |
 | 260331-nar | fix Windows issues: popover placement and storage path fallback | 2026-03-31 | a6c3907 | [260331-nar-fix-windows-issues-settings-not-taking-e](./quick/260331-nar-fix-windows-issues-settings-not-taking-e/) |
+| 260331-pjz | clarify PROV-05 multi-strategy definition; add PIPE-01/02/03 to v2 backlog | 2026-03-31 | pending | [260331-pjz-clarify-prov-05-multi-strategy-definitio](./quick/260331-pjz-clarify-prov-05-multi-strategy-definitio/) |
 
 ### Blockers/Concerns
 

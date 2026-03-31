@@ -13,7 +13,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **PROV-02**: Adding a new provider requires only a new ProviderDescriptor entry and a fetch implementation — no changes to UI framework, preferences normalization, or snapshot cache logic
 - [x] **PROV-03**: Existing Codex provider is migrated to the ProviderDescriptor registry with identical behavior
 - [x] **PROV-04**: Existing Claude Code provider is migrated to the ProviderDescriptor registry with identical behavior
-- [x] **PROV-05**: Provider fetch uses an ordered strategy chain (e.g., env → keychain → file → CLI → API); first success stops the chain
+- [x] **PROV-05**: Each provider's credential resolution uses an ordered fallback chain within a single fetch method (e.g., Claude Code: env var → keychain → credentials file). The ProviderFetcher trait is designed as an extension point for future multi-pipeline support (multiple independent quota-fetching strategies per provider), but current implementations use a single pipeline each
 - [x] **PROV-06**: Frontend state manages providers via a dynamic map (not per-service variables), supporting N providers without code changes
 - [x] **PROV-07**: Snapshot cache includes a schema version field; incompatible cache is discarded gracefully on upgrade
 - [x] **PROV-08**: Preferences normalization handles dynamic provider enable/disable flags from the registry — both Rust and TypeScript normalizers stay in sync
@@ -58,6 +58,12 @@ Deferred to future milestones. Tracked but not in current roadmap.
 - **PLAT-01**: Bundled CLI tool for querying quota from terminal/scripts
 - **PLAT-02**: macOS WidgetKit desktop widget support
 - **PLAT-03**: Custom icon rendering per provider with animation
+
+### Multi-Strategy Fetch Pipeline
+
+- **PIPE-01**: Each provider supports multiple independent quota-fetching strategies (e.g., OAuth API → web scraping → local probe), ordered by reliability; first success stops the chain, failure auto-falls to next strategy (ref: codexbar ProviderFetchPlan pattern)
+- **PIPE-02**: UI displays which fetch strategy is currently active for each provider (e.g., "via API" / "via page scrape")
+- **PIPE-03**: Settings page allows enabling/disabling individual fetch strategies per provider, and configuring strategy-specific parameters
 
 ### UX Polish
 

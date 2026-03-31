@@ -38,14 +38,14 @@ Plans:
 - [x] 01-03-PLAN.md — Fix Claude Code toggle to use providerEnabled (gap closure)
 
 ### Phase 2: Fetch Pipeline & Migration
-**Goal**: A shared FetchPipeline executes an ordered strategy chain per provider; existing Codex and Claude Code integrations are migrated into it with verified behavioral parity
+**Goal**: A unified ProviderFetcher trait dispatches per-provider fetch logic; existing Codex and Claude Code integrations are migrated into it with verified behavioral parity; the trait is designed as an extension point for future multi-pipeline strategies
 **Depends on**: Phase 1
 **Requirements**: PROV-03, PROV-04, PROV-05
 **Success Criteria** (what must be TRUE):
-  1. Codex quota data fetches successfully via the new pipeline using the same strategy chain as before (no regression for existing users)
-  2. Claude Code quota data fetches successfully via the new pipeline, including all three credential sources (env var, keychain, file) in priority order
+  1. Codex quota data fetches successfully via the new pipeline using the same credential and CLI strategy as before (no regression for existing users)
+  2. Claude Code quota data fetches successfully via the new pipeline, including all three credential sources (env var, keychain, file) in priority order within its single fetch method
   3. Proxy auto-detection works on both macOS and Windows for all outbound API calls through the pipeline
-  4. When the first fetch strategy fails, the pipeline automatically tries the next strategy without user intervention
+  4. The ProviderFetcher trait is structured so adding a second independent fetch strategy (e.g., web scraping) for any provider requires only a new trait impl and pipeline config — no changes to IPC, snapshot cache, or frontend
 **Plans:** 2 plans
 Plans:
 - [x] 02-01-PLAN.md — ProviderFetcher trait + Codex and Claude Code implementations
