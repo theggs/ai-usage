@@ -25,7 +25,7 @@ Users always know whether their AI coding quota will last until reset — across
 
 ### Active
 
-- [ ] Provider Descriptor Registry — unified abstraction for all providers
+- [x] Provider Descriptor Registry — unified abstraction for all providers (Validated in Phase 1: Provider Registry)
 - [ ] Multi-Strategy Fetch Pipeline — ordered fallback chain per provider
 - [ ] Refactor Codex + Claude Code into the new Provider abstraction
 - [ ] Kimi Code provider integration
@@ -66,7 +66,7 @@ Users always know whether their AI coding quota will last until reset — across
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Provider Registry as Rust trait + TypeScript interface | Unified abstraction enables new providers without new modules | — Pending |
+| Provider Registry as static struct array (Rust) + frozen array (TypeScript) | Compile-time fixed entries, no trait objects, matches codebase idioms | Phase 1 ✓ |
 | Time-aware thresholds replace absolute thresholds | "80% remaining with 4h left" is fine; "10% remaining with 4h left" is not | — Pending |
 | Separate About page (not Settings tab) | Keeps Settings focused on configuration; About is reference info | — Pending |
 | Kimi Code + GLM Coding Plan as first new providers | Chinese AI coding market is underserved by existing tools | — Pending |
@@ -89,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after initialization*
+*Last updated: 2026-03-31 after Phase 1 completion*
