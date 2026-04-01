@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 03-new-providers
 source: [03-04-SUMMARY.md]
 started: 2026-04-01T09:14:06Z
-updated: 2026-04-01T12:04:12Z
+updated: 2026-04-01T12:05:14Z
 ---
 
 ## Current Test
@@ -45,5 +45,14 @@ blocked: 0
   reason: "User reported: passed. But it looks ugly. It need a redesign."
   severity: cosmetic
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: "The service-order control still uses the compact two-column settings-row layout, so the draggable pills are squeezed into the narrow value column of a menubar-sized surface. `flex-wrap` prevents overlap, but with a fixed 112px label column and right-aligned wrapped pills, four providers collapse into a tall, uneven chip stack that feels visually broken rather than intentionally sortable."
+  artifacts:
+    - path: "src/app/settings/SettingsView.tsx"
+      issue: "Service order uses wrapped right-aligned pills inside the standard row grid, which is too cramped for four draggable providers."
+    - path: "src/components/settings/PreferenceField.tsx"
+      issue: "The field pattern favors compact label/control rows; service ordering needs a multiline, full-width interaction model instead of a compressed inline control."
+  missing:
+    - "Promote service order to a multiline settings block so the sortable UI gets full row width."
+    - "Replace the wrapped pill cluster with a clearer reorder presentation that reads as an intentional list on the narrow settings surface."
+    - "Add UI tests that verify the service-order control uses the redesigned multiline layout rather than the wrapped chip row."
+  debug_session: ".planning/debug/service-order-redesign.md"
