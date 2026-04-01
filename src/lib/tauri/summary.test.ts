@@ -325,12 +325,12 @@ describe("time-aware quota health", () => {
     quotaDimensions
   });
 
-  it("maps an imminent 5h window to pace danger when burn rate is far behind", () => {
+  it("maps a far-behind 5h window to pace danger", () => {
     expect(
       getQuotaHealthSignal(
         createDimension({
-          remainingPercent: 80,
-          resetsAt: "2026-04-02T12:05:00Z"
+          remainingPercent: 50,
+          resetsAt: "2026-04-02T16:00:00Z"
         }),
         nowMs
       )
