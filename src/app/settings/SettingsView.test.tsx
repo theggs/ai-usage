@@ -182,7 +182,7 @@ describe("SettingsView", () => {
     expect(codexPill.className).toContain("cursor-default");
 
     const wrapContainer = codexPill.parentElement?.parentElement;
-    expect(wrapContainer?.className).toContain("flex-nowrap");
+    expect(wrapContainer?.className).toContain("flex-wrap");
   });
 
   it("hides Claude Code from menubar and panel order settings when usage is disabled", () => {

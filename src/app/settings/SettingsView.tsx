@@ -493,7 +493,7 @@ export const SettingsView = () => {
               layoutClassName="grid-cols-[112px_minmax(0,1fr)] items-center gap-x-2"
               controlClassName="w-full max-w-none"
             >
-              <div className="flex flex-nowrap justify-end gap-1.5">
+              <div className="flex flex-wrap justify-end gap-1.5">
                 {serviceOptions.map((service) => (
                   <div key={service.id}>{renderServicePill(service)}</div>
                 ))}
