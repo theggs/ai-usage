@@ -133,3 +133,12 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 
 Plans:
 - [ ] TBD (promote with $gsd-review-backlog when ready)
+
+### Phase 999.2: automatic quota notifications (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with $gsd-review-backlog when ready)
