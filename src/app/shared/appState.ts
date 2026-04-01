@@ -11,7 +11,7 @@ export interface AppStateValue {
   refreshingProviders: Set<string>;
   preferences: UserPreferences | null;
   notificationResult: NotificationCheckResult | null;
-  currentView: "panel" | "settings";
+  currentView: "panel" | "settings" | "about";
   displayNowMs: number;
   isLoading: boolean;
   isE2EMode: boolean;
@@ -22,6 +22,7 @@ export interface AppStateValue {
   setAutostart: (enabled: boolean) => Promise<UserPreferences | null>;
   openSettings: () => void;
   closeSettings: () => void;
+  openAbout: () => void;
 }
 
 export const AppStateContext = createContext<AppStateValue | null>(null);
