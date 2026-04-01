@@ -2,7 +2,7 @@ import type { PanelPlaceholderItem } from "../../lib/tauri/contracts";
 import { QuotaSummary } from "./QuotaSummary";
 import type { CopyTree } from "../../app/shared/i18n";
 import { formatAbsoluteTime, formatRelativeTime, localizeBadgeLabel, localizeStatusLabel } from "../../app/shared/i18n";
-import { getServiceAlertLevel, getSeverityLabelKey } from "../../lib/tauri/summary";
+import { getServiceAlertLevel, getSeverityLabelKey, sortQuotaDimensionsForDisplay } from "../../lib/tauri/summary";
 
 export const ServiceCard = ({
   service,
@@ -32,6 +32,7 @@ export const ServiceCard = ({
         ? "bg-amber-400"
         : "bg-transparent";
   const severityLabel = localizeStatusLabel(copy, getSeverityLabelKey(service));
+  const sortedDimensions = sortQuotaDimensionsForDisplay(service.quotaDimensions);
 
   return (
     <article className={`relative overflow-hidden rounded-2xl border p-4 shadow-sm ${cardClass}`}>
@@ -59,7 +60,7 @@ export const ServiceCard = ({
         ) : null}
       </div>
       <div className={`mt-3 grid gap-2 ${alertLevel !== "normal" ? "pl-2" : ""}`}>
-        {service.quotaDimensions.map((dimension) => (
+        {sortedDimensions.map((dimension) => (
           <QuotaSummary key={dimension.label} dimension={dimension} copy={copy} nowMs={nowMs} />
         ))}
       </div>

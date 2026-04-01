@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ServiceCard } from "./ServiceCard";
 import { getCopy } from "../../app/shared/i18n";
@@ -295,5 +295,46 @@ describe("ServiceCard", () => {
 
     expect(screen.getAllByText("剩余 10%")).toHaveLength(1);
     expect(screen.getAllByText("紧张").length).toBeGreaterThan(0);
+  });
+
+  it("orders shorter quota windows before weekly windows even if backend data is reversed", () => {
+    render(
+      <ServiceCard
+        copy={getCopy("en-US")}
+        service={{
+          serviceId: "kimi-code",
+          serviceName: "Kimi Code",
+          iconKey: "kimi-code",
+          statusLabel: "demo",
+          badgeLabel: "Live",
+          lastSuccessfulRefreshAt: "1742321579",
+          quotaDimensions: [
+            {
+              label: "Kimi Code / week",
+              remainingPercent: 100,
+              remainingAbsolute: "100% remaining",
+              resetHint: "Resets in 3d",
+              status: "healthy",
+              progressTone: "success"
+            },
+            {
+              label: "Kimi Code / 5h",
+              remainingPercent: 100,
+              remainingAbsolute: "100% remaining",
+              resetHint: "Resets in 4h",
+              status: "healthy",
+              progressTone: "success"
+            }
+          ]
+        }}
+      />
+    );
+
+    const card = screen.getByRole("heading", { name: "Kimi Code" }).closest("article");
+    expect(card).not.toBeNull();
+    expect(within(card as HTMLElement).getAllByText(/limits$/).map((element) => element.textContent)).toEqual([
+      "5h limits",
+      "Weekly limits"
+    ]);
   });
 });

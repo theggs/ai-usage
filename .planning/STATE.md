@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: complete
-stopped_at: Quick task 260401-tw5 complete; paused pending next instruction
-last_updated: "2026-04-01T13:51:00Z"
-last_activity: 2026-04-01 -- Quick task 260401-tw5 completed
+stopped_at: Quick task 260401-uo3 complete; paused pending next instruction
+last_updated: "2026-04-01T14:07:25Z"
+last_activity: 2026-04-01 -- Quick task 260401-uo3 completed
 progress:
   total_phases: 6
   completed_phases: 3
@@ -90,6 +90,7 @@ None yet.
 | 260331-pjz | clarify PROV-05 multi-strategy definition; add PIPE-01/02/03 to v2 backlog | 2026-03-31 | 0344b81 | [260331-pjz-clarify-prov-05-multi-strategy-definitio](./quick/260331-pjz-clarify-prov-05-multi-strategy-definitio/) |
 | 260331-ppm | implement multi-strategy extension point in ProviderFetcher pipeline | 2026-03-31 | pending | [260331-pjz-clarify-prov-05-multi-strategy-definitio](./quick/260331-pjz-clarify-prov-05-multi-strategy-definitio/) |
 | 260401-tw5 | expire the Claude March 2026 promotion and add Claude peak-hours restriction support | 2026-04-01 | ca6a52f | [260401-tw5-expire-the-claude-march-2026-promotion-a](./quick/260401-tw5-expire-the-claude-march-2026-promotion-a/) |
+| 260401-uo3 | normalize Kimi/GLM quota item order so 5h appears before weekly | 2026-04-01 | pending | [260401-uo3-normalize-kimi-glm-quota-item-order-so-5](./quick/260401-uo3-normalize-kimi-glm-quota-item-order-so-5/) |
 
 ### Blockers/Concerns
 

@@ -136,10 +136,23 @@ const inferWindowMinutes = (label: string) => {
   if (minuteMatch) return Number(minuteMatch[1]);
   return Number.MAX_SAFE_INTEGER;
 };
-const sortByWindowDuration = (dimensions: QuotaDimension[]) =>
+export const sortQuotaDimensionsForDisplay = (dimensions: QuotaDimension[]) =>
   dimensions
-    .filter((dimension) => dimension.remainingPercent !== undefined)
-    .sort((left, right) => inferWindowMinutes(left.label) - inferWindowMinutes(right.label));
+    .map((dimension, index) => ({
+      dimension,
+      index
+    }))
+    .sort((left, right) => {
+      const durationDifference = inferWindowMinutes(left.dimension.label) - inferWindowMinutes(right.dimension.label);
+      if (durationDifference !== 0) {
+        return durationDifference;
+      }
+      return left.index - right.index;
+    })
+    .map(({ dimension }) => dimension);
+
+const sortByWindowDuration = (dimensions: QuotaDimension[]) =>
+  sortQuotaDimensionsForDisplay(dimensions).filter((dimension) => dimension.remainingPercent !== undefined);
 
 const pickDimension = (summaryMode: SummaryMode, items: PanelPlaceholderItem[]) => {
   const dimensions = allDimensions(items);
