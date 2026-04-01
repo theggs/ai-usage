@@ -91,12 +91,13 @@ Plans:
   2. A provider at 20% remaining with 6 hours until reset shows a healthy or moderate state when burn rate supports it
   3. When `resetsAt` is unavailable, the app falls back to the existing static percentage thresholds (>50% green, 20-50% amber, <20% red) with no visible error
   4. All SnapshotStatus switch statements are exhaustive — no unhandled variant causes a silent no-op or UI blank
-**Plans**: 3 plans
+**Plans**: 4 plans
 **UI hint**: yes
 Plans:
 - [x] 05-01-PLAN.md — Shared quota-health classifier and deterministic aggregate selection
 - [x] 05-02-PLAN.md — Panel, card, and summary UI migration to pace-aware labels
 - [x] 05-03-PLAN.md — Tray alignment and SnapshotStatus exhaustiveness audit
+- [ ] 05-04-PLAN.md — Reconcile Phase 05 requirement bookkeeping with the approved risk-only UI
 
 ### Phase 6: About Page
 **Goal**: The app has a standalone About page showing version, GitHub link, app license, and a dependency license audit summary generated at build time
@@ -109,8 +110,13 @@ Plans:
   4. The app's open-source license text (or SPDX identifier) is displayed
   5. A dependency license summary is displayed, with any copyleft/viral licenses explicitly flagged; the list is generated at build time (not hard-coded)
   6. The About page layout uses a key-value list pattern that accommodates new fields (website, author email) without structural changes
-**Plans**: TBD
+**Plans:** 4 plans
 **UI hint**: yes
+Plans:
+- [ ] 06-01-PLAN.md — Infrastructure: Extend view system from 2 views to 3 views (panel/settings/about)
+- [ ] 06-02-PLAN.md — Build-time License Audit: Create audit script for Rust/npm dependencies with copyleft detection
+- [ ] 06-03-PLAN.md — AboutView Component: Create About page UI with hero, key-value list, version, GitHub link
+- [ ] 06-04-PLAN.md — Settings Footer: Add "About AIUsage >" footer link in SettingsView
 
 ## Progress
 
