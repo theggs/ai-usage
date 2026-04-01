@@ -483,6 +483,26 @@ describe("PanelView", () => {
     expect(within(dangerCard!).getAllByText("紧张").length).toBeGreaterThan(0);
   });
 
+  it("renders both burn-rate outcomes in one card without losing the last refreshed line", () => {
+    const state = createState(createDemoPanelState());
+    state.preferences = {
+      ...state.preferences,
+      language: "en-US"
+    };
+
+    render(
+      <AppStateContext.Provider value={state}>
+        <PanelView />
+      </AppStateContext.Provider>
+    );
+
+    const codexCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    expect(codexCard).not.toBeNull();
+    expect(within(codexCard!).getByText("Will last until reset")).toBeInTheDocument();
+    expect(within(codexCard!).getByText(/Runs out in ~/)).toBeInTheDocument();
+    expect(within(codexCard!).getByText(/Last refreshed:/)).toBeInTheDocument();
+  });
+
   it("renders the english health summary without truncating the service-focused message", async () => {
     vi.resetModules();
     const lowQuotaState = {

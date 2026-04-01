@@ -1,6 +1,14 @@
 import type { QuotaDimension } from "../../lib/tauri/contracts";
 import type { CopyTree } from "../../app/shared/i18n";
-import { localizeDimensionLabel, localizeRemaining, localizeResetHint, localizeStatusLabel } from "../../app/shared/i18n";
+import {
+  localizeBurnRatePace,
+  localizeBurnRateSecondaryLine,
+  localizeDimensionLabel,
+  localizeRemaining,
+  localizeResetHint,
+  localizeStatusLabel
+} from "../../app/shared/i18n";
+import { getQuotaBurnRateDisplay } from "../../lib/tauri/summary";
 
 const toneClasses: Record<QuotaDimension["progressTone"], string> = {
   success: "bg-emerald-500",
@@ -28,6 +36,7 @@ export const QuotaSummary = ({
   const localizedRemaining = localizeRemaining(copy, remainingPercent, remainingAbsolute);
   const localizedResetHint = localizeResetHint(copy, resetsAt ?? resetHint, nowMs);
   const displayLabel = localizeDimensionLabel(copy, label);
+  const burnRate = getQuotaBurnRateDisplay(dimension, nowMs);
   const severityLabel =
     dimension.status === "exhausted"
       ? localizeStatusLabel(copy, "danger")
@@ -55,6 +64,16 @@ export const QuotaSummary = ({
           style={{ width: remainingPercent !== undefined ? `${remainingPercent}%` : "100%" }}
         />
       </div>
+      {burnRate ? (
+        <div className="grid gap-0.5">
+          <span className="text-xs font-semibold text-slate-700">
+            {localizeBurnRatePace(copy, burnRate.pace)}
+          </span>
+          <span className="text-xs text-slate-500">
+            {localizeBurnRateSecondaryLine(copy, burnRate)}
+          </span>
+        </div>
+      ) : null}
       {localizedResetHint ? <span className="text-right text-xs text-slate-500">{localizedResetHint}</span> : null}
     </div>
   );

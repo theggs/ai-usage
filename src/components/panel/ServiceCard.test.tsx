@@ -337,4 +337,76 @@ describe("ServiceCard", () => {
       "Weekly limits"
     ]);
   });
+
+  it("renders burn-rate copy only for dimensions with valid history and keeps reset hints below it", () => {
+    const nowMs = Date.parse("2026-04-02T12:00:00Z");
+
+    render(
+      <ServiceCard
+        copy={getCopy("en-US")}
+        nowMs={nowMs}
+        service={{
+          serviceId: "codex",
+          serviceName: "Codex",
+          iconKey: "codex",
+          statusLabel: "refreshing",
+          badgeLabel: "Live",
+          lastSuccessfulRefreshAt: "1742321579",
+          quotaDimensions: [
+            {
+              label: "codex / 5h",
+              remainingPercent: 60,
+              remainingAbsolute: "60% remaining",
+              resetsAt: "2026-04-02T16:00:00Z",
+              burnRateHistory: [
+                { capturedAt: "2026-04-02T10:00:00Z", remainingPercent: 80 },
+                { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 60 }
+              ],
+              status: "warning",
+              progressTone: "warning"
+            },
+            {
+              label: "codex / week",
+              remainingPercent: 90,
+              remainingAbsolute: "90% remaining",
+              resetsAt: "2026-04-06T12:00:00Z",
+              status: "healthy",
+              progressTone: "success"
+            },
+            {
+              label: "codex / day",
+              remainingPercent: 50,
+              remainingAbsolute: "50% remaining",
+              resetsAt: "invalid",
+              burnRateHistory: [
+                { capturedAt: "2026-04-02T10:00:00Z", remainingPercent: 70 },
+                { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 50 }
+              ],
+              status: "warning",
+              progressTone: "warning"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.getByText("Behind")).toBeInTheDocument();
+    expect(screen.getByText("Runs out in ~3h 00m")).toBeInTheDocument();
+
+    const visibleBurnRateBlock = screen.getByTestId("progress-track-codex / 5h").parentElement;
+    expect(visibleBurnRateBlock?.textContent).toContain("Behind");
+    expect(visibleBurnRateBlock?.textContent).toContain("Runs out in ~3h 00m");
+    expect(visibleBurnRateBlock?.textContent).toContain("Resets in 4h 00m");
+    expect(visibleBurnRateBlock?.textContent?.indexOf("Runs out in ~3h 00m")).toBeLessThan(
+      visibleBurnRateBlock?.textContent?.indexOf("Resets in 4h 00m") ?? 0
+    );
+
+    const missingHistoryBlock = screen.getByTestId("progress-track-codex / week").parentElement;
+    expect(missingHistoryBlock?.textContent).not.toContain("Will last until reset");
+    expect(missingHistoryBlock?.textContent).not.toContain("Runs out in ~");
+
+    const invalidResetBlock = screen.getByTestId("progress-track-codex / day").parentElement;
+    expect(invalidResetBlock?.textContent).not.toContain("Behind");
+    expect(invalidResetBlock?.textContent).not.toContain("Runs out in ~");
+  });
 });
