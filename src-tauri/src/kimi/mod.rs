@@ -119,6 +119,7 @@ fn map_kimi_response(resp: &KimiUsageResponse) -> Vec<QuotaDimension> {
             remaining_absolute: format_absolute(remaining, limit),
             resets_at: usage.reset_time.clone(),
             reset_hint: None,
+            burn_rate_history: Vec::new(),
             status: "normal".into(),
             progress_tone: tone,
         });
@@ -142,6 +143,7 @@ fn map_kimi_response(resp: &KimiUsageResponse) -> Vec<QuotaDimension> {
                     remaining_absolute: format_absolute(remaining, limit),
                     resets_at: detail.reset_time.clone(),
                     reset_hint: None,
+                    burn_rate_history: Vec::new(),
                     status: "normal".into(),
                     progress_tone: tone,
                 });

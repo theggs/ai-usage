@@ -31,12 +31,18 @@ export type CodexLimitStatus = "healthy" | "warning" | "exhausted" | "unknown";
 export type QuotaProgressTone = "success" | "warning" | "danger" | "muted";
 export type ServiceConnectionState = "connected" | "disconnected" | "empty" | "failed" | "stale";
 
+export interface BurnRateSample {
+  capturedAt: string;
+  remainingPercent: number;
+}
+
 export interface QuotaDimension {
   label: string;
   remainingPercent?: number;
   remainingAbsolute: string;
   resetsAt?: string;
   resetHint?: string;
+  burnRateHistory?: BurnRateSample[];
   status: CodexLimitStatus;
   progressTone: QuotaProgressTone;
 }

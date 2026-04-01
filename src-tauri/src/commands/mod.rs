@@ -8,9 +8,9 @@ use crate::notifications::send_demo_notification;
 use crate::pipeline;
 use crate::snapshot::SnapshotStatus;
 use crate::state::{
-    ActiveCodexSession, AppState, AutoMenubarSelectionState, CodexAccount, CodexAccountDraft,
-    CodexPanelState, DesktopSurfaceState, NotificationCheckResult, PanelPlaceholderItem,
-    PreferencePatch, UserPreferences,
+    ActiveCodexSession, AppState, AutoMenubarSelectionState, BurnRateSample, CodexAccount,
+    CodexAccountDraft, CodexPanelState, DesktopSurfaceState, NotificationCheckResult,
+    PanelPlaceholderItem, PreferencePatch, UserPreferences,
 };
 use crate::tray::apply_display_mode;
 use serde::{Deserialize, Serialize};
@@ -46,6 +46,8 @@ struct SnapshotCache {
     #[serde(default)]
     schema_version: u32,
     services: HashMap<String, CodexPanelState>,
+    #[serde(default)]
+    burn_rate_history: HashMap<String, Vec<BurnRateSample>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -74,6 +76,7 @@ fn read_snapshot_cache() -> SnapshotCache {
         return SnapshotCache {
             schema_version: SNAPSHOT_CACHE_VERSION,
             services: HashMap::new(),
+            burn_rate_history: HashMap::new(),
         };
     }
 
@@ -89,6 +92,58 @@ fn write_snapshot_cache(cache: &SnapshotCache) {
     cache.schema_version = SNAPSHOT_CACHE_VERSION;
     if let Ok(payload) = serde_json::to_string(&cache) {
         let _ = std::fs::write(path, payload);
+    }
+}
+
+fn burn_rate_history_key(service_id: &str, label: &str) -> String {
+    // D-02: isolate history by provider + raw quota label
+    format!("{service_id}::{label}")
+}
+
+fn prune_burn_rate_samples(samples: &mut Vec<BurnRateSample>) {
+    if samples.len() > 3 {
+        let keep_from = samples.len() - 3;
+        samples.drain(..keep_from);
+    }
+}
+
+fn attach_burn_rate_history(
+    service_id: &str,
+    state: &mut CodexPanelState,
+    history: &HashMap<String, Vec<BurnRateSample>>,
+) {
+    for item in &mut state.items {
+        for dimension in &mut item.quota_dimensions {
+            let key = burn_rate_history_key(service_id, &dimension.label);
+            dimension.burn_rate_history = history.get(&key).cloned().unwrap_or_default();
+        }
+    }
+}
+
+fn record_successful_burn_rate_history(
+    service_id: &str,
+    state: &CodexPanelState,
+    cache: &mut SnapshotCache,
+) {
+    if !state.status.is_fresh() {
+        return;
+    }
+
+    for item in &state.items {
+        for dimension in &item.quota_dimensions {
+            let Some(remaining_percent) = dimension.remaining_percent else {
+                continue;
+            };
+
+            let key = burn_rate_history_key(service_id, &dimension.label);
+            let samples = cache.burn_rate_history.entry(key).or_default();
+            // D-03: visible minute ticks and failed refreshes must not create synthetic burn-rate samples
+            samples.push(BurnRateSample {
+                captured_at: state.last_successful_refresh_at.clone(),
+                remaining_percent,
+            });
+            prune_burn_rate_samples(samples);
+        }
     }
 }
 
@@ -123,6 +178,8 @@ fn save_to_snapshot_cache(service_id: &str, state: &CodexPanelState) {
             }
         }
     }
+    record_successful_burn_rate_history(service_id, &to_save, &mut cache);
+    attach_burn_rate_history(service_id, &mut to_save, &cache.burn_rate_history);
     cache.services.insert(service_id.into(), to_save);
     write_snapshot_cache(&cache);
 }
@@ -162,7 +219,9 @@ fn load_from_snapshot_cache(
     let interval_secs = u64::from(refresh_interval_minutes) * 60;
 
     if age_secs < interval_secs {
-        Some(entry.clone())
+        let mut cached = entry.clone();
+        attach_burn_rate_history(service_id, &mut cached, &cache.burn_rate_history);
+        Some(cached)
     } else {
         None
     }
@@ -806,6 +865,25 @@ mod tests {
         }
     }
 
+    fn make_dimension(label: &str, remaining_percent: Option<u8>) -> crate::state::QuotaDimension {
+        crate::state::QuotaDimension {
+            label: label.into(),
+            remaining_percent,
+            remaining_absolute: remaining_percent
+                .map(|value| format!("{value}% remaining"))
+                .unwrap_or_else(|| "Unknown".into()),
+            resets_at: Some("2100-01-01T00:00:00Z".into()),
+            reset_hint: Some("Resets later".into()),
+            burn_rate_history: Vec::new(),
+            status: quota_status(remaining_percent),
+            progress_tone: quota_progress_tone(remaining_percent),
+        }
+    }
+
+    fn recent_timestamp(seconds_ago: u64) -> String {
+        now_unix_secs().saturating_sub(seconds_ago).to_string()
+    }
+
     #[test]
     fn snapshot_cache_round_trip() {
         let _guard = env_lock().lock().unwrap();
@@ -1038,6 +1116,188 @@ mod tests {
         let loaded = read_snapshot_cache();
         assert_eq!(loaded.schema_version, SNAPSHOT_CACHE_VERSION);
         assert!(loaded.services.is_empty());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_records_burn_rate_history_for_fresh_saves() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-burn-rate-fresh-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        let captured_at = recent_timestamp(60);
+        let mut state = make_panel_state("codex", &captured_at);
+        state.items[0].quota_dimensions = vec![
+            make_dimension("codex / 5h", Some(80)),
+            make_dimension("codex / week", Some(60)),
+        ];
+
+        save_to_snapshot_cache("codex", &state);
+
+        let loaded = load_from_snapshot_cache("codex", 15).unwrap();
+        let dimensions = &loaded.items[0].quota_dimensions;
+        assert_eq!(dimensions[0].burn_rate_history.len(), 1);
+        assert_eq!(dimensions[0].burn_rate_history[0].captured_at, captured_at);
+        assert_eq!(dimensions[0].burn_rate_history[0].remaining_percent, 80);
+        assert_eq!(dimensions[1].burn_rate_history.len(), 1);
+        assert_eq!(dimensions[1].burn_rate_history[0].remaining_percent, 60);
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_appends_burn_rate_history_for_second_fresh_save() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-burn-rate-append-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        let first_at = recent_timestamp(120);
+        let second_at = recent_timestamp(60);
+        let mut first = make_panel_state("codex", &first_at);
+        first.items[0].quota_dimensions = vec![make_dimension("codex / 5h", Some(80))];
+        save_to_snapshot_cache("codex", &first);
+
+        let mut second = make_panel_state("codex", &second_at);
+        second.items[0].quota_dimensions = vec![make_dimension("codex / 5h", Some(70))];
+        save_to_snapshot_cache("codex", &second);
+
+        let loaded = load_from_snapshot_cache("codex", 15).unwrap();
+        let history = &loaded.items[0].quota_dimensions[0].burn_rate_history;
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0].captured_at, first_at);
+        assert_eq!(history[1].captured_at, second_at);
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_does_not_append_history_for_non_fresh_saves() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-burn-rate-stale-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        let captured_at = recent_timestamp(60);
+        let mut fresh = make_panel_state("codex", &captured_at);
+        fresh.items[0].quota_dimensions = vec![make_dimension("codex / 5h", Some(80))];
+        save_to_snapshot_cache("codex", &fresh);
+
+        let mut stale = make_panel_state("codex", &captured_at);
+        stale.status = SnapshotStatus::TemporarilyUnavailable {
+            detail: "offline".into(),
+        };
+        stale.items = vec![PanelPlaceholderItem {
+            service_id: "codex".into(),
+            service_name: "Test".into(),
+            account_label: None,
+            icon_key: "codex".into(),
+            quota_dimensions: vec![make_dimension("codex / 5h", Some(75))],
+            status_label: "refreshing".into(),
+            badge_label: Some("stale".into()),
+            last_successful_refresh_at: captured_at.clone(),
+        }];
+        save_to_snapshot_cache("codex", &stale);
+
+        let loaded = load_from_snapshot_cache("codex", 15).unwrap();
+        let history = &loaded.items[0].quota_dimensions[0].burn_rate_history;
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].captured_at, captured_at);
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_uses_distinct_history_keys_per_dimension_label() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-burn-rate-keys-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let cache_path = tmp.join("snapshot-cache.json");
+        env::set_var("AI_USAGE_SNAPSHOT_CACHE_FILE", &cache_path);
+
+        let mut state = make_panel_state("codex", &recent_timestamp(60));
+        state.items[0].quota_dimensions = vec![
+            make_dimension("codex / 5h", Some(80)),
+            make_dimension("codex / week", Some(60)),
+        ];
+        save_to_snapshot_cache("codex", &state);
+
+        let cache = read_snapshot_cache();
+        assert!(cache
+            .burn_rate_history
+            .contains_key(&burn_rate_history_key("codex", "codex / 5h")));
+        assert!(cache
+            .burn_rate_history
+            .contains_key(&burn_rate_history_key("codex", "codex / week")));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_without_burn_rate_history_loads_with_empty_histories() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-burn-rate-compat-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let cache_path = tmp.join("snapshot-cache.json");
+        env::set_var("AI_USAGE_SNAPSHOT_CACHE_FILE", &cache_path);
+
+        let last_successful_refresh_at = recent_timestamp(60);
+        std::fs::write(
+            &cache_path,
+            format!(
+                r#"{{
+              "schema_version":1,
+              "services":{{
+                "codex":{{
+                  "desktopSurface":{{
+                    "platform":"macos",
+                    "iconState":"idle",
+                    "summaryMode":"lowest-remaining",
+                    "panelVisible":false
+                  }},
+                  "items":[{{
+                    "serviceId":"codex",
+                    "serviceName":"Codex",
+                    "iconKey":"codex",
+                    "quotaDimensions":[{{
+                      "label":"codex / 5h",
+                      "remainingPercent":75,
+                      "remainingAbsolute":"75% remaining",
+                      "status":"healthy",
+                      "progressTone":"success"
+                    }}],
+                    "statusLabel":"refreshing",
+                    "lastSuccessfulRefreshAt":"{last_successful_refresh_at}"
+                  }}],
+                  "configuredAccountCount":0,
+                  "enabledAccountCount":0,
+                  "status":{{"kind":"Fresh"}},
+                  "lastSuccessfulRefreshAt":"{last_successful_refresh_at}"
+                }}
+              }}
+            }}"#
+            ),
+        )
+        .unwrap();
+
+        let loaded = load_from_snapshot_cache("codex", 15).unwrap();
+        assert_eq!(loaded.items[0].quota_dimensions[0].burn_rate_history.len(), 0);
 
         let _ = std::fs::remove_dir_all(&tmp);
         env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");

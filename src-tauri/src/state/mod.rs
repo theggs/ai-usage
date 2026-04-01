@@ -111,6 +111,13 @@ impl Default for AutoMenubarSelectionState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BurnRateSample {
+    pub captured_at: String,
+    pub remaining_percent: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct QuotaDimension {
     pub label: String,
     pub remaining_percent: Option<u8>,
@@ -119,6 +126,8 @@ pub struct QuotaDimension {
     pub resets_at: Option<String>,
     #[serde(default)]
     pub reset_hint: Option<String>,
+    #[serde(default)]
+    pub burn_rate_history: Vec<BurnRateSample>,
     pub status: String,
     pub progress_tone: String,
 }
