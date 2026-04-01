@@ -111,7 +111,7 @@ describe("i18n fallback", () => {
         hiddenServiceCount: 1,
         fallbackState: null
       })
-    ).toBe("Codex promotion active 2x · Claude Code peak-hours restriction active");
+    ).toBe("Codex promotion active 2x · Claude Code lower quota during peak hours");
   });
 
   it("returns localized labels for the promotion trigger and popover", () => {
@@ -135,11 +135,11 @@ describe("i18n fallback", () => {
     expect(
       formatPromotionDetailTiming(getCopy("en-US"), {
         mode: "local-active-window",
-        dateRangeLabel: "2026.04.01",
+        dateRangeLabel: "",
         localWindowRangeLabel: "20:00-02:00",
         localTimeZoneLabel: "UTC+08:00"
       })
-    ).toBe("2026.04.01 · weekdays 20:00-02:00 (UTC+08:00)");
+    ).toBe("weekdays 20:00-02:00 (UTC+08:00)");
 
     expect(
       formatPromotionDetailTiming(getCopy("en-US"), {

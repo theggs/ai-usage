@@ -335,13 +335,13 @@ const baseCopy: CopyTree = {
   promotionNoneKnown: "No promotion right now",
   promotionCompactStatusActiveWindow: "promo active",
   promotionCompactStatusActiveGeneral: "promo active",
-  promotionCompactStatusRestrictedWindow: "peak",
+  promotionCompactStatusRestrictedWindow: "lower quota",
   promotionCompactStatusInactiveWindow: "off",
   promotionCompactStatusEligibilityUnknown: "pending",
   promotionCompactStatusNone: "none",
   promotionStatusActiveWindow: "promotion active",
   promotionStatusActiveGeneral: "promotion active",
-  promotionStatusRestrictedWindow: "peak-hours restriction active",
+  promotionStatusRestrictedWindow: "lower quota during peak hours",
   promotionStatusInactiveWindow: "outside promotion window",
   promotionStatusEligibilityUnknown: "promotion eligibility pending",
   promotionStatusNone: "no promotion",
@@ -517,13 +517,13 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     promotionNoneKnown: "当前无优惠活动",
     promotionCompactStatusActiveWindow: "优惠中",
     promotionCompactStatusActiveGeneral: "优惠中",
-    promotionCompactStatusRestrictedWindow: "高峰",
+    promotionCompactStatusRestrictedWindow: "更少额度",
     promotionCompactStatusInactiveWindow: "未命中",
     promotionCompactStatusEligibilityUnknown: "待确认",
     promotionCompactStatusNone: "无优惠",
     promotionStatusActiveWindow: "正在优惠时段",
     promotionStatusActiveGeneral: "正在优惠时段",
-    promotionStatusRestrictedWindow: "高峰时段受限",
+    promotionStatusRestrictedWindow: "高峰时段更少额度",
     promotionStatusInactiveWindow: "不在优惠时段",
     promotionStatusEligibilityUnknown: "优惠资格待确认",
     promotionStatusNone: "无优惠活动",
@@ -831,15 +831,17 @@ export const formatPromotionDetailTiming = (
   }
 
   if (detailTiming.mode === "local-window") {
-    return `${detailTiming.dateRangeLabel} · ${copy.promotionDetailLocalWindowTemplate
+    const detailLine = copy.promotionDetailLocalWindowTemplate
       .replace("{range}", detailTiming.localWindowRangeLabel)
-      .replace("{timeZone}", detailTiming.localTimeZoneLabel)}`.replace(/\s+/g, " ").trim();
+      .replace("{timeZone}", detailTiming.localTimeZoneLabel);
+    return [detailTiming.dateRangeLabel, detailLine].filter(Boolean).join(" · ").replace(/\s+/g, " ").trim();
   }
 
   if (detailTiming.mode === "local-active-window") {
-    return `${detailTiming.dateRangeLabel} · ${copy.promotionDetailLocalActiveWindowTemplate
+    const detailLine = copy.promotionDetailLocalActiveWindowTemplate
       .replace("{range}", detailTiming.localWindowRangeLabel)
-      .replace("{timeZone}", detailTiming.localTimeZoneLabel)}`.replace(/\s+/g, " ").trim();
+      .replace("{timeZone}", detailTiming.localTimeZoneLabel);
+    return [detailTiming.dateRangeLabel, detailLine].filter(Boolean).join(" · ").replace(/\s+/g, " ").trim();
   }
 
   return "";

@@ -36,7 +36,7 @@ describe("promotions resolver", () => {
     expect(decision.allServices[0]?.matchedCampaignId).toBe("claude-peak-hours-restriction");
     expect(decision.allServices[0]?.detailTiming).toMatchObject({
       mode: "local-active-window",
-      dateRangeLabel: "2026.04.01"
+      dateRangeLabel: ""
     });
     expect(decision.allServices[0]?.detailTiming).toEqual(
       expect.objectContaining({

@@ -229,7 +229,7 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
     expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
-    expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("高峰");
+    expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("更少额度");
     expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
 
     act(() => {
@@ -239,14 +239,14 @@ describe("AppShell", () => {
       "Codex正在优惠时段2x"
     );
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
-      "Claude Code高峰时段受限"
+      "Claude Code高峰时段更少额度"
     );
     expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
       "正在优惠时段"
     );
     expect(screen.getByTestId("promotion-popover-benefit-codex")).toHaveTextContent("2x");
     expect(screen.getByTestId("promotion-popover-status-claude-code")).toHaveTextContent(
-      "高峰时段受限"
+      "高峰时段更少额度"
     );
     expect(screen.queryByTestId("promotion-popover-benefit-claude-code")).toBeNull();
     expect(screen.getByTestId("promotion-popover-detail-codex")).toHaveTextContent(
@@ -289,7 +289,7 @@ describe("AppShell", () => {
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("promotion-status-trigger"));
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
-      "Claude Code高峰时段受限"
+      "Claude Code高峰时段更少额度"
     );
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
       expectedClaudePromotionDetail
@@ -305,7 +305,7 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
     expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
-    expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("高峰");
+    expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("更少额度");
     expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
   });
 

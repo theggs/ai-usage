@@ -42,7 +42,7 @@ const promotionDecision: PromotionDisplayDecision = {
       messageKey: "promotionStatusRestrictedWindow",
       detailTiming: {
         mode: "local-active-window",
-        dateRangeLabel: "2026.04.01",
+        dateRangeLabel: "",
         localWindowRangeLabel: "20:00-02:00",
         localTimeZoneLabel: "UTC+08:00"
       },
@@ -86,21 +86,21 @@ describe("PromotionStatusLine", () => {
       "Codexpromotion active2x"
     );
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
-      "Claude Codepeak-hours restriction active"
+      "Claude Codelower quota during peak hours"
     );
     expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
       "promotion active"
     );
     expect(screen.getByTestId("promotion-popover-benefit-codex")).toHaveTextContent("2x");
     expect(screen.getByTestId("promotion-popover-status-claude-code")).toHaveTextContent(
-      "peak-hours restriction active"
+      "lower quota during peak hours"
     );
     expect(screen.queryByTestId("promotion-popover-benefit-claude-code")).toBeNull();
     expect(screen.getByTestId("promotion-popover-detail-codex")).toHaveTextContent(
       "All-day promotion"
     );
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
-      "2026.04.01 · weekdays 20:00-02:00 (UTC+08:00)"
+      "weekdays 20:00-02:00 (UTC+08:00)"
     );
     expect(screen.getByRole("dialog", { name: "All promotion states" })).toBe(popover);
   });

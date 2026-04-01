@@ -314,7 +314,7 @@ const getDetailTiming = (
 
     return {
       mode: getCapacityEffect(campaign) === "restriction" ? "local-active-window" : "local-window",
-      dateRangeLabel: formatDateRangeLabel(campaign),
+      dateRangeLabel: getCapacityEffect(campaign) === "restriction" ? "" : formatDateRangeLabel(campaign),
       localWindowRangeLabel: getLocalWindowRangeLabel(campaign),
       localTimeZoneLabel: formatLocalTimeZoneLabel(localWindowReference)
     };
