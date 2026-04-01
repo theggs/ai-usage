@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppStateContext, type AppStateValue } from "../shared/appState";
 import { SettingsView } from "./SettingsView";
@@ -53,6 +53,18 @@ const renderSettings = (overrides: Partial<AppStateValue> = {}) => {
   );
   return state;
 };
+
+const fourProviderPreferences = {
+  ...defaultPreferences,
+  claudeCodeUsageEnabled: true,
+  providerEnabled: {
+    codex: true,
+    "claude-code": true,
+    "kimi-code": true,
+    "glm-coding": true
+  },
+  serviceOrder: ["codex", "claude-code", "kimi-code", "glm-coding"]
+} as const;
 
 describe("SettingsView", () => {
   it("renders the main settings card and a separate Claude Code query card", () => {
@@ -111,22 +123,13 @@ describe("SettingsView", () => {
     expect(screen.queryByText("可选 5 / 10 / 15 / 30 分钟")).not.toBeInTheDocument();
   });
 
-  it("uses lighter control chrome and more compact service-order pills", () => {
+  it("uses lighter control chrome for inline controls", () => {
     renderSettings();
 
     const traySummary = screen.getByRole("combobox", { name: "菜单栏数值" });
     expect(traySummary.className).toContain("rounded-xl");
     expect(traySummary.className).toContain("bg-slate-50/70");
     expect(traySummary.className).toContain("text-[15px]");
-
-    const claudePill = screen.getByRole("button", { name: "Claude Code" });
-    expect(claudePill.className).toContain("min-h-7");
-    expect(claudePill.className).toContain("px-2");
-    expect(claudePill.className).toContain("py-1");
-    expect(claudePill.className).toContain("text-[13px]");
-    expect(claudePill).toHaveAttribute("title", "Claude Code");
-    expect(claudePill.querySelector("span:last-child")?.className).toContain("whitespace-nowrap");
-    expect(claudePill).toHaveTextContent("Claude");
   });
 
   it("applies non-proxy preferences immediately and rolls back when persistence fails", async () => {
@@ -167,7 +170,59 @@ describe("SettingsView", () => {
     expect(toggle).toHaveAttribute("aria-checked", "true");
   });
 
-  it("renders panel order as wrapping pills and keeps drag disabled when only one service exists", () => {
+  it("renders panel order as a multiline sortable list with full-width layout", () => {
+    renderSettings({
+      preferences: fourProviderPreferences
+    });
+
+    const serviceOrderList = screen.getByRole("list", { name: "显示顺序" });
+    const serviceOrderRow = serviceOrderList.closest("label");
+    expect(serviceOrderRow?.className).not.toContain("grid-cols-[112px_minmax(0,1fr)]");
+
+    const listItems = within(serviceOrderList).getAllByRole("listitem");
+    expect(listItems).toHaveLength(4);
+    expect(within(serviceOrderList).getByRole("button", { name: "Codex" })).toBeInTheDocument();
+    expect(within(serviceOrderList).getByRole("button", { name: "Claude Code" })).toBeInTheDocument();
+    expect(within(serviceOrderList).getByRole("button", { name: "Kimi Code" })).toBeInTheDocument();
+    expect(within(serviceOrderList).getByRole("button", { name: "GLM Coding Plan" })).toBeInTheDocument();
+    expect(within(serviceOrderList).getAllByText("⋮⋮")).toHaveLength(4);
+  });
+
+  it("keeps provider labels readable in English and Chinese service-order layouts", () => {
+    const { rerender } = render(
+      <AppStateContext.Provider
+        value={createState({
+          preferences: fourProviderPreferences
+        })}
+      >
+        <SettingsView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByRole("button", { name: "Claude Code" })).toHaveTextContent("Claude Code");
+    expect(screen.getByRole("button", { name: "Kimi Code" })).toHaveTextContent("Kimi Code");
+    expect(screen.getByRole("button", { name: "GLM Coding Plan" })).toHaveTextContent("GLM Coding Plan");
+
+    rerender(
+      <AppStateContext.Provider
+        value={createState({
+          preferences: {
+            ...fourProviderPreferences,
+            language: "en-US"
+          }
+        })}
+      >
+        <SettingsView />
+      </AppStateContext.Provider>
+    );
+
+    expect(screen.getByRole("list", { name: "Display order" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Claude Code" })).toHaveTextContent("Claude Code");
+    expect(screen.getByRole("button", { name: "Kimi Code" })).toHaveTextContent("Kimi Code");
+    expect(screen.getByRole("button", { name: "GLM Coding Plan" })).toHaveTextContent("GLM Coding Plan");
+  });
+
+  it("renders panel order as a multiline sortable list and keeps drag disabled when only one service exists", () => {
     renderSettings({
       preferences: {
         ...defaultPreferences,
@@ -177,12 +232,11 @@ describe("SettingsView", () => {
       }
     });
 
-    const codexPill = screen.getByLabelText("Codex");
+    const serviceOrderList = screen.getByRole("list", { name: "显示顺序" });
+    const codexPill = within(serviceOrderList).getByLabelText("Codex");
     expect(codexPill).toBeInTheDocument();
     expect(codexPill.className).toContain("cursor-default");
-
-    const wrapContainer = codexPill.parentElement?.parentElement;
-    expect(wrapContainer?.className).toContain("flex-wrap");
+    expect(within(serviceOrderList).getAllByRole("listitem")).toHaveLength(1);
   });
 
   it("hides Claude Code from menubar and panel order settings when usage is disabled", () => {
