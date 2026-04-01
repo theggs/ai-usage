@@ -282,9 +282,10 @@ export const AppShell = () => {
         const previousEnabled = new Set(getVisibleServiceScope(previousPreferences).visiblePanelServiceOrder);
         const nextEnabled = getVisibleServiceScope(nextPreferences).visiblePanelServiceOrder;
         const proxyChanged = "networkProxyMode" in patch || "networkProxyUrl" in patch;
+        const tokenChanged = "providerTokens" in patch;
         for (const id of nextEnabled) {
           const enablingProvider = !previousEnabled.has(id);
-          if (enablingProvider || proxyChanged) {
+          if (enablingProvider || proxyChanged || tokenChanged) {
             refreshIds.push(id);
           }
         }

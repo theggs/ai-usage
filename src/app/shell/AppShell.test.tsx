@@ -339,6 +339,7 @@ describe("AppShell", () => {
     const prefs = makePreferences({
       claudeCodeUsageEnabled: true,
       providerEnabled: { codex: true, "claude-code": true, "kimi-code": true },
+      serviceOrder: ["codex", "claude-code", "kimi-code"],
       providerTokens: {}
     });
     getPreferences.mockResolvedValue(prefs);
@@ -382,6 +383,7 @@ describe("AppShell", () => {
     const prefs = makePreferences({
       claudeCodeUsageEnabled: true,
       providerEnabled: { codex: true, "claude-code": true, "kimi-code": true },
+      serviceOrder: ["codex", "claude-code", "kimi-code"],
       providerTokens: { "kimi-code": "existing-token" }
     });
     getPreferences.mockResolvedValue(prefs);
