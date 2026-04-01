@@ -4,6 +4,7 @@ import {
   formatPromotionPopoverLine,
   formatPromotionServiceDecision,
   getCopy,
+  getPlaceholderCopy,
   getPromotionPopoverLabel,
   getPromotionTriggerLabel,
   localizeDimensionLabel,
@@ -136,5 +137,51 @@ describe("i18n fallback", () => {
         mode: "continuous"
       })
     ).toBe("All-day promotion");
+  });
+});
+
+describe("getPlaceholderCopy provider routing", () => {
+  const enCopy = getCopy("en-US");
+  const zhCopy = getCopy("zh-CN");
+
+  it("returns tokenNotConfiguredTitle/Body for kimi-code with NoCredentials", () => {
+    const result = getPlaceholderCopy(enCopy, { kind: "NoCredentials" }, "kimi-code");
+    expect(result.title).toBe(enCopy.tokenNotConfiguredTitle);
+    expect(result.body).toBe(enCopy.tokenNotConfiguredBody);
+    expect(result.title).not.toBe(enCopy.claudeCodeNotConnectedTitle);
+  });
+
+  it("returns tokenNotConfiguredTitle/Body for glm-coding with NoCredentials", () => {
+    const result = getPlaceholderCopy(enCopy, { kind: "NoCredentials" }, "glm-coding");
+    expect(result.title).toBe(enCopy.tokenNotConfiguredTitle);
+    expect(result.body).toBe(enCopy.tokenNotConfiguredBody);
+  });
+
+  it("returns claudeCodeNotConnectedTitle/Body for claude-code with NoCredentials (backward compatible)", () => {
+    const result = getPlaceholderCopy(enCopy, { kind: "NoCredentials" }, "claude-code");
+    expect(result.title).toBe(enCopy.claudeCodeNotConnectedTitle);
+    expect(result.body).toBe(enCopy.claudeCodeNotConnectedBody);
+  });
+
+  it("returns existing copy for codex with CliNotFound (no regression)", () => {
+    const result = getPlaceholderCopy(enCopy, { kind: "CliNotFound" }, "codex");
+    expect(result.title).toBe(enCopy.serviceNotInstalledTitle);
+    expect(result.body).toBe(enCopy.serviceNotInstalledBody);
+  });
+
+  it("returns statusAccessDeniedTitle/Body for kimi-code with AccessDenied (non-NoCredentials statuses unchanged)", () => {
+    const result = getPlaceholderCopy(enCopy, { kind: "AccessDenied" }, "kimi-code");
+    expect(result.title).toBe(enCopy.statusAccessDeniedTitle);
+    expect(result.body).toBe(enCopy.statusAccessDeniedBody);
+  });
+
+  it("en-US tokenNotConfiguredTitle/Body text does NOT mention Claude Code", () => {
+    expect(enCopy.tokenNotConfiguredTitle).not.toMatch(/Claude Code/i);
+    expect(enCopy.tokenNotConfiguredBody).not.toMatch(/Claude Code/i);
+  });
+
+  it("zh-CN tokenNotConfiguredTitle/Body text does NOT mention Claude Code", () => {
+    expect(zhCopy.tokenNotConfiguredTitle).not.toMatch(/Claude Code/i);
+    expect(zhCopy.tokenNotConfiguredBody).not.toMatch(/Claude Code/i);
   });
 });
