@@ -499,8 +499,10 @@ describe("PanelView", () => {
     const codexCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
     expect(codexCard).not.toBeNull();
     expect(within(codexCard!).queryByText("On track")).not.toBeInTheDocument();
-    expect(within(codexCard!).getByText("Behind")).toBeInTheDocument();
-    expect(within(codexCard!).getByText(/Runs out in ~/)).toBeInTheDocument();
+    expect(within(codexCard!).getAllByText("Behind")).toHaveLength(2);
+    expect(within(codexCard!).queryByText(/Runs out in ~/)).not.toBeInTheDocument();
+    expect(within(codexCard!).queryByText(/约 .* 后用尽/)).not.toBeInTheDocument();
+    expect(within(codexCard!).getAllByText(/Resets in/).length).toBeGreaterThan(0);
     expect(within(codexCard!).getByText(/Last refreshed:/)).toBeInTheDocument();
   });
 

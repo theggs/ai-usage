@@ -47,6 +47,16 @@ describe("i18n fallback", () => {
     expect(warning.length).toBeLessThanOrEqual(32);
   });
 
+  it("provides exact pace-summary copy in both locales", () => {
+    const en = getCopy("en-US");
+    const zh = getCopy("zh-CN");
+
+    expect(en.panelPaceWarningSummary).toBe("{service} {dimension} burning too fast");
+    expect(en.panelPaceDangerSummary).toBe("{service} {dimension} burning far too fast");
+    expect(zh.panelPaceWarningSummary).toBe("{service}{dimension}消耗偏快");
+    expect(zh.panelPaceDangerSummary).toBe("{service}{dimension}消耗过快");
+  });
+
   it("formats promotion service decisions and all-state popover copy without expanding into long-form text", () => {
     const zh = getCopy("zh-CN");
     const en = getCopy("en-US");

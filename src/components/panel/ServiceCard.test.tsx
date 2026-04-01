@@ -2,6 +2,21 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ServiceCard } from "./ServiceCard";
 import { getCopy } from "../../app/shared/i18n";
+import type { PanelPlaceholderItem } from "../../lib/tauri/contracts";
+
+const createService = (
+  quotaDimensions: PanelPlaceholderItem["quotaDimensions"],
+  overrides: Partial<PanelPlaceholderItem> = {}
+): PanelPlaceholderItem => ({
+  serviceId: "codex",
+  serviceName: "Codex",
+  iconKey: "codex",
+  statusLabel: "refreshing",
+  badgeLabel: "Live",
+  lastSuccessfulRefreshAt: "1742321579",
+  quotaDimensions,
+  ...overrides
+});
 
 describe("ServiceCard", () => {
   it("formats second-based timestamps without showing Invalid Date", () => {
@@ -382,16 +397,14 @@ describe("ServiceCard", () => {
       />
     );
 
-    expect(screen.getByText("Far behind")).toBeInTheDocument();
-    expect(screen.getByText("Runs out in ~1h 30m")).toBeInTheDocument();
+    expect(screen.getAllByText("Far behind")).toHaveLength(2);
+    expect(screen.queryByText("Runs out in ~1h 30m")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Far behind. Runs out in ~1h 30m")).toBeInTheDocument();
 
     const visibleBurnRateBlock = screen.getByTestId("progress-track-codex / 5h").parentElement;
     expect(visibleBurnRateBlock?.textContent).toContain("Far behind");
-    expect(visibleBurnRateBlock?.textContent).toContain("Runs out in ~1h 30m");
+    expect(visibleBurnRateBlock?.textContent).not.toContain("Runs out in ~1h 30m");
     expect(visibleBurnRateBlock?.textContent).toContain("Resets in 4h 00m");
-    expect(visibleBurnRateBlock?.textContent?.indexOf("Runs out in ~1h 30m")).toBeLessThan(
-      visibleBurnRateBlock?.textContent?.indexOf("Resets in 4h 00m") ?? 0
-    );
 
     const onTrackBlock = screen.getByTestId("progress-track-codex / week").parentElement;
     expect(onTrackBlock?.textContent).not.toContain("On track");
@@ -400,5 +413,80 @@ describe("ServiceCard", () => {
     const invalidResetBlock = screen.getByTestId("progress-track-codex / day").parentElement;
     expect(invalidResetBlock?.textContent).not.toContain("Far behind");
     expect(invalidResetBlock?.textContent).not.toContain("Runs out in ~");
+  });
+
+  it("makes a pace-danger row drive the card accent and header badge", () => {
+    const nowMs = Date.parse("2026-04-02T12:00:00Z");
+
+    render(
+      <ServiceCard
+        copy={getCopy("en-US")}
+        nowMs={nowMs}
+        service={createService([
+          {
+            label: "codex / 5h",
+            remainingPercent: 50,
+            remainingAbsolute: "50% remaining",
+            resetsAt: "2026-04-02T16:00:00Z",
+            status: "warning",
+            progressTone: "warning"
+          }
+        ])}
+      />
+    );
+
+    const card = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    expect(card?.className).toContain("border-rose-200");
+    expect(card?.querySelector("[aria-hidden='true']")?.className).toContain("bg-rose-500");
+    expect(within(card as HTMLElement).getAllByText("Far behind")).toHaveLength(2);
+  });
+
+  it("keeps the old static warning label for fallback-warning rows", () => {
+    const nowMs = Date.parse("2026-04-02T12:00:00Z");
+
+    render(
+      <ServiceCard
+        copy={getCopy("en-US")}
+        nowMs={nowMs}
+        service={createService([
+          {
+            label: "codex / 5h",
+            remainingPercent: 45,
+            remainingAbsolute: "45% remaining",
+            status: "warning",
+            progressTone: "warning"
+          }
+        ])}
+      />
+    );
+
+    const card = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    expect(card?.className).toContain("border-amber-200");
+    expect(within(card as HTMLElement).getAllByText("Low")).toHaveLength(2);
+  });
+
+  it("keeps on-track rows visually quiet with no pace badge", () => {
+    const nowMs = Date.parse("2026-04-02T12:00:00Z");
+
+    render(
+      <ServiceCard
+        copy={getCopy("en-US")}
+        nowMs={nowMs}
+        service={createService([
+          {
+            label: "codex / 5h",
+            remainingPercent: 60,
+            remainingAbsolute: "60% remaining",
+            resetsAt: "2026-04-02T15:00:00Z",
+            status: "warning",
+            progressTone: "warning"
+          }
+        ])}
+      />
+    );
+
+    const card = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    expect(card?.querySelector("[aria-hidden='true']")).toBeNull();
+    expect(within(card as HTMLElement).queryByText("On track")).not.toBeInTheDocument();
   });
 });

@@ -1,8 +1,8 @@
 import type { PanelPlaceholderItem } from "../../lib/tauri/contracts";
 import { QuotaSummary } from "./QuotaSummary";
 import type { CopyTree } from "../../app/shared/i18n";
-import { formatAbsoluteTime, formatRelativeTime, localizeBadgeLabel, localizeStatusLabel } from "../../app/shared/i18n";
-import { getServiceAlertLevel, getSeverityLabelKey, sortQuotaDimensionsForDisplay } from "../../lib/tauri/summary";
+import { formatAbsoluteTime, formatRelativeTime, localizeBadgeLabel, localizeBurnRatePace, localizeStatusLabel } from "../../app/shared/i18n";
+import { getMostUrgentQuotaDimension, sortQuotaDimensionsForDisplay } from "../../lib/tauri/summary";
 
 export const ServiceCard = ({
   service,
@@ -18,7 +18,8 @@ export const ServiceCard = ({
   const badgeLabel = service.badgeLabel ? localizeBadgeLabel(copy, service.badgeLabel) : null;
   const shouldShowBadge =
     badgeLabel !== null && badgeLabel !== copy.quotaStatusLive && badgeLabel !== copy.snapshotFresh;
-  const alertLevel = getServiceAlertLevel(service);
+  const urgentCandidate = getMostUrgentQuotaDimension([service], nowMs);
+  const alertLevel = urgentCandidate?.health.level ?? "normal";
   const cardClass =
     alertLevel === "danger"
       ? "border-rose-200 bg-rose-50/70 shadow-rose-100"
@@ -31,7 +32,16 @@ export const ServiceCard = ({
       : alertLevel === "warning"
         ? "bg-amber-400"
         : "bg-transparent";
-  const severityLabel = localizeStatusLabel(copy, getSeverityLabelKey(service));
+  const severityLabel =
+    urgentCandidate?.health.source === "pace" &&
+    (urgentCandidate.health.pace === "behind" || urgentCandidate.health.pace === "far-behind")
+      ? localizeBurnRatePace(copy, urgentCandidate.health.pace)
+      : urgentCandidate?.health.source === "fallback" && urgentCandidate.health.level !== "normal"
+        ? localizeStatusLabel(
+            copy,
+            urgentCandidate.health.level === "danger" ? "danger" : "warning"
+          )
+        : undefined;
   const sortedDimensions = sortQuotaDimensionsForDisplay(service.quotaDimensions);
 
   return (

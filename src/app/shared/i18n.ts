@@ -14,6 +14,8 @@ export type CopyTree = {
   noServicesConnected: string;
   panelWarningSummary: string;
   panelDangerSummary: string;
+  panelPaceWarningSummary: string;
+  panelPaceDangerSummary: string;
   settings: string;
   preferences: string;
   notifications: string;
@@ -197,6 +199,8 @@ const baseCopy: CopyTree = {
   noServicesConnected: "No services connected yet",
   panelWarningSummary: "{service} {dimension} running low",
   panelDangerSummary: "{service} {dimension} critical",
+  panelPaceWarningSummary: "{service} {dimension} burning too fast",
+  panelPaceDangerSummary: "{service} {dimension} burning far too fast",
   settings: "Settings",
   preferences: "Preferences",
   notifications: "Notifications",
@@ -383,6 +387,8 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     noServicesConnected: "尚未连接任何服务",
     panelWarningSummary: "{service}{dimension}偏低",
     panelDangerSummary: "{service}{dimension}紧张",
+    panelPaceWarningSummary: "{service}{dimension}消耗偏快",
+    panelPaceDangerSummary: "{service}{dimension}消耗过快",
     settings: "设置",
     preferences: "偏好设置",
     notifications: "通知",

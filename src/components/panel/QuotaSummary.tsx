@@ -8,7 +8,7 @@ import {
   localizeResetHint,
   localizeStatusLabel
 } from "../../app/shared/i18n";
-import { getQuotaBurnRateDisplay } from "../../lib/tauri/summary";
+import { getQuotaBurnRateDisplay, getQuotaHealthSignal } from "../../lib/tauri/summary";
 
 const toneClasses: Record<QuotaDimension["progressTone"], string> = {
   success: "bg-emerald-500",
@@ -32,19 +32,23 @@ export const QuotaSummary = ({
   copy: CopyTree;
   nowMs?: number;
 }) => {
-  const { label, remainingPercent, remainingAbsolute, resetsAt, resetHint, progressTone } = dimension;
+  const { label, remainingPercent, remainingAbsolute, resetsAt, resetHint } = dimension;
   const localizedRemaining = localizeRemaining(copy, remainingPercent, remainingAbsolute);
   const localizedResetHint = localizeResetHint(copy, resetsAt ?? resetHint, nowMs);
   const displayLabel = localizeDimensionLabel(copy, label);
   const burnRate = getQuotaBurnRateDisplay(dimension, nowMs);
-  const showBurnRateBlock = !!burnRate && !burnRate.willLastUntilReset;
+  const health = getQuotaHealthSignal(dimension, nowMs);
   const burnRateSecondaryLine = burnRate ? localizeBurnRateSecondaryLine(copy, burnRate) : undefined;
   const severityLabel =
-    dimension.status === "exhausted"
-      ? localizeStatusLabel(copy, "danger")
-      : dimension.status === "warning"
-        ? localizeStatusLabel(copy, "warning")
+    health.source === "pace" && (health.pace === "behind" || health.pace === "far-behind")
+      ? localizeBurnRatePace(copy, health.pace)
+      : health.source === "fallback" && health.level !== "normal"
+        ? localizeStatusLabel(copy, health.level === "danger" ? "danger" : "warning")
         : undefined;
+  const severityBadgeTitle =
+    health.source === "pace" && burnRate?.willLastUntilReset === false ? burnRateSecondaryLine : undefined;
+  const severityBadgeAriaLabel =
+    severityLabel && severityBadgeTitle ? `${severityLabel}. ${severityBadgeTitle}` : undefined;
 
   return (
     <div className="grid gap-2.5 rounded-2xl bg-slate-50 px-3 py-3">
@@ -52,31 +56,25 @@ export const QuotaSummary = ({
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{displayLabel}</span>
           {severityLabel ? (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${progressTone === "danger" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+            <span
+              aria-label={severityBadgeAriaLabel}
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${health.progressTone === "danger" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}
+              title={severityBadgeTitle}
+            >
               {severityLabel}
             </span>
           ) : null}
         </div>
-        <span className={`text-sm font-semibold ${textToneClasses[progressTone]}`}>{localizedRemaining}</span>
+        <span className={`text-sm font-semibold ${textToneClasses[health.progressTone]}`}>{localizedRemaining}</span>
       </div>
       <div className="relative h-4 overflow-hidden rounded-full bg-slate-200/90" data-testid={`progress-track-${label}`}>
         <div
-          className={`h-full rounded-full transition-[width] duration-500 ease-out ${toneClasses[progressTone]}`}
+          className={`h-full rounded-full transition-[width] duration-500 ease-out ${toneClasses[health.progressTone]}`}
           data-testid={`progress-fill-${label}`}
           style={{ width: remainingPercent !== undefined ? `${remainingPercent}%` : "100%" }}
         />
       </div>
-      {showBurnRateBlock ? (
-        <div className="grid gap-0.5">
-          <span className="text-xs font-semibold text-slate-700">
-            {localizeBurnRatePace(copy, burnRate.pace)}
-          </span>
-          <div className="flex items-center justify-between gap-3">
-            {burnRateSecondaryLine ? <span className="text-xs text-slate-500">{burnRateSecondaryLine}</span> : <span />}
-            {localizedResetHint ? <span className="text-right text-xs text-slate-500">{localizedResetHint}</span> : null}
-          </div>
-        </div>
-      ) : localizedResetHint ? (
+      {localizedResetHint ? (
         <span className="text-right text-xs text-slate-500">{localizedResetHint}</span>
       ) : null}
     </div>
