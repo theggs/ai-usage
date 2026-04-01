@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Fetch Pipeline & Migration** - Generalize credential fetch pipeline; migrate Codex and Claude Code into it
 - [ ] **Phase 3: New Providers** - Add Kimi Code and GLM Coding Plan via the validated registry and pipeline
 - [x] **Phase 4: Burn Rate Engine** - Pure frontend burn rate calculation with depletion ETA display
-- [x] **Phase 5: Time-Aware Alert Thresholds** - Replace static percentage thresholds with time-relative quota health classification
+- [ ] **Phase 5: Time-Aware Alert Thresholds** - Replace static percentage thresholds with time-relative quota health classification
 - [ ] **Phase 6: About Page** - Standalone About page with version, license, and dependency audit info
 
 ## Phase Details
@@ -130,7 +130,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 | 2. Fetch Pipeline & Migration | 2/2 | Complete | - |
 | 3. New Providers | 4/4 | Complete | 2026-04-01 |
 | 4. Burn Rate Engine | 2/2 | Complete | 2026-04-02 |
-| 5. Time-Aware Alert Thresholds | 3/3 | Complete | 2026-04-02 |
+| 5. Time-Aware Alert Thresholds | 3/4 | Gap closure planned | - |
 | 6. About Page | 0/? | Not started | - |
 
 ## Backlog
