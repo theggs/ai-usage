@@ -317,7 +317,7 @@ describe("AppShell", () => {
 
     expect(screen.getByTestId("app-shell-surface")).toBeInTheDocument();
     expect(container.firstElementChild).toHaveClass("h-screen");
-    expect(container.querySelector(".shadow-sm")).toBeInTheDocument();
+    expect(container.querySelector(".transition-shadow")).toBeInTheDocument();
   });
 
   it("resets to the panel view when the shell regains focus", async () => {
