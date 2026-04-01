@@ -79,8 +79,7 @@ export type CopyTree = {
   burnRateOnTrack: string;
   burnRateBehind: string;
   burnRateFarBehind: string;
-  burnRateWillLastUntilReset: string;
-  burnRateRunsOutInFormat: string;
+  burnRateLeftFormat: string;
   resetsInFormat: string;
   resetDue: string;
   minuteShort: string;
@@ -263,8 +262,7 @@ const baseCopy: CopyTree = {
   burnRateOnTrack: "On track",
   burnRateBehind: "Behind",
   burnRateFarBehind: "Far behind",
-  burnRateWillLastUntilReset: "Will last until reset",
-  burnRateRunsOutInFormat: "Runs out in ~{value}",
+  burnRateLeftFormat: "~{value} left",
   resetsInFormat: "Resets in {value}",
   resetDue: "Reset due",
   minuteShort: "m",
@@ -450,8 +448,7 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     burnRateOnTrack: "进度正常",
     burnRateBehind: "消耗偏快",
     burnRateFarBehind: "消耗过快",
-    burnRateWillLastUntilReset: "可撑到重置",
-    burnRateRunsOutInFormat: "约 {value} 后用尽",
+    burnRateLeftFormat: "约 {value}",
     resetsInFormat: "{value}后重置",
     resetDue: "即将重置",
     minuteShort: " 分钟",
@@ -763,16 +760,16 @@ export const localizeBurnRatePace = (
   }
 };
 
-export const localizeBurnRateSecondaryLine = (
+export const localizeBurnRateInlineTail = (
   copy: CopyTree,
   burnRate: { willLastUntilReset: boolean; depletionEtaMs: number | null }
 ) => {
   if (burnRate.willLastUntilReset) {
-    return copy.burnRateWillLastUntilReset;
+    return undefined;
   }
 
   const totalMinutes = Math.max(1, Math.ceil((burnRate.depletionEtaMs ?? 0) / 60_000));
-  return copy.burnRateRunsOutInFormat.replace(
+  return copy.burnRateLeftFormat.replace(
     "{value}",
     formatCompactDurationValue(copy, totalMinutes)
   );

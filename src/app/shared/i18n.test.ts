@@ -7,8 +7,8 @@ import {
   getPlaceholderCopy,
   getPromotionPopoverLabel,
   getPromotionTriggerLabel,
+  localizeBurnRateInlineTail,
   localizeBurnRatePace,
-  localizeBurnRateSecondaryLine,
   localizeResetHint,
   localizeDimensionLabel,
   resolveCopyTree
@@ -239,50 +239,48 @@ describe("burn-rate copy", () => {
 
   it("returns positive confirmation text when the quota will last until reset", () => {
     expect(
-      localizeBurnRateSecondaryLine(getCopy("en-US"), {
+      localizeBurnRateInlineTail(getCopy("en-US"), {
         willLastUntilReset: true,
         depletionEtaMs: null
       })
-    ).toBe("Will last until reset");
+    ).toBeUndefined();
     expect(
-      localizeBurnRateSecondaryLine(getCopy("zh-CN"), {
+      localizeBurnRateInlineTail(getCopy("zh-CN"), {
         willLastUntilReset: true,
         depletionEtaMs: null
       })
-    ).toBe("可撑到重置");
+    ).toBeUndefined();
   });
 
-  it("formats compact burn-rate ETAs for minute, hour, and day ranges", () => {
+  it("formats compact burn-rate inline tails for minute, hour, and day ranges", () => {
     const en = getCopy("en-US");
     const zh = getCopy("zh-CN");
 
     expect(
-      localizeBurnRateSecondaryLine(en, {
+      localizeBurnRateInlineTail(en, {
         willLastUntilReset: false,
         depletionEtaMs: 45 * 60 * 1000
       })
-    ).toBe("Runs out in ~45m");
+    ).toBe("~45m left");
     expect(
-      localizeBurnRateSecondaryLine(en, {
+      localizeBurnRateInlineTail(en, {
         willLastUntilReset: false,
         depletionEtaMs: (3 * 60 + 5) * 60 * 1000
       })
-    ).toBe("Runs out in ~3h 05m");
+    ).toBe("~3h 05m left");
     expect(
-      localizeBurnRateSecondaryLine(zh, {
+      localizeBurnRateInlineTail(zh, {
         willLastUntilReset: false,
         depletionEtaMs: (2 * 24 * 60 + 3 * 60) * 60 * 1000
       })
-    ).toBe("约 2 天 03 小时 后用尽");
+    ).toBe("约 2 天 03 小时");
   });
 
   it("keeps burn-rate strings compact with no expanded prose", () => {
     const en = getCopy("en-US");
     const zh = getCopy("zh-CN");
 
-    expect(en.burnRateWillLastUntilReset).toBe("Will last until reset");
-    expect(en.burnRateRunsOutInFormat).toBe("Runs out in ~{value}");
-    expect(zh.burnRateWillLastUntilReset).toBe("可撑到重置");
-    expect(zh.burnRateRunsOutInFormat).toBe("约 {value} 后用尽");
+    expect(en.burnRateLeftFormat).toBe("~{value} left");
+    expect(zh.burnRateLeftFormat).toBe("约 {value}");
   });
 });

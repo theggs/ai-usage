@@ -1,8 +1,8 @@
 import type { QuotaDimension } from "../../lib/tauri/contracts";
 import type { CopyTree } from "../../app/shared/i18n";
 import {
+  localizeBurnRateInlineTail,
   localizeBurnRatePace,
-  localizeBurnRateSecondaryLine,
   localizeDimensionLabel,
   localizeRemaining,
   localizeResetHint,
@@ -37,6 +37,7 @@ export const QuotaSummary = ({
   const localizedResetHint = localizeResetHint(copy, resetsAt ?? resetHint, nowMs);
   const displayLabel = localizeDimensionLabel(copy, label);
   const burnRate = getQuotaBurnRateDisplay(dimension, nowMs);
+  const burnRateInlineTail = burnRate ? localizeBurnRateInlineTail(copy, burnRate) : undefined;
   const severityLabel =
     dimension.status === "exhausted"
       ? localizeStatusLabel(copy, "danger")
@@ -65,16 +66,16 @@ export const QuotaSummary = ({
         />
       </div>
       {burnRate ? (
-        <div className="grid gap-0.5">
+        <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-semibold text-slate-700">
             {localizeBurnRatePace(copy, burnRate.pace)}
+            {burnRateInlineTail ? ` · ${burnRateInlineTail}` : ""}
           </span>
-          <span className="text-xs text-slate-500">
-            {localizeBurnRateSecondaryLine(copy, burnRate)}
-          </span>
+          {localizedResetHint ? <span className="text-right text-xs text-slate-500">{localizedResetHint}</span> : null}
         </div>
+      ) : localizedResetHint ? (
+        <span className="text-right text-xs text-slate-500">{localizedResetHint}</span>
       ) : null}
-      {localizedResetHint ? <span className="text-right text-xs text-slate-500">{localizedResetHint}</span> : null}
     </div>
   );
 };
