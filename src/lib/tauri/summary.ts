@@ -15,6 +15,15 @@ import { getProvider, providerIds } from "./registry";
 export { getBurnRateDisplay } from "./burnRate";
 
 export type ServiceAlertLevel = "normal" | "warning" | "danger";
+export type QuotaHealthSource = "pace" | "fallback" | "none";
+
+export interface QuotaHealthSignal {
+  level: ServiceAlertLevel;
+  source: QuotaHealthSource;
+  pace?: "on-track" | "behind" | "far-behind";
+  status: CodexLimitStatus;
+  progressTone: QuotaProgressTone;
+}
 
 export interface PanelHealthSummary {
   tone: "healthy" | "warning" | "danger" | "empty";
@@ -22,6 +31,8 @@ export interface PanelHealthSummary {
   serviceName?: string;
   dimensionLabel?: string;
   remainingPercent?: number;
+  source?: QuotaHealthSource;
+  pace?: "on-track" | "behind" | "far-behind";
 }
 
 export interface TrayVisualState {
@@ -36,6 +47,12 @@ export interface VisibleServiceScope {
   visiblePanelServiceOrder: string[];
   visibleMenubarServices: string[];
   hasVisibleClaudeCode: boolean;
+}
+
+export interface QuotaHealthCandidate {
+  item: PanelPlaceholderItem;
+  dimension: QuotaDimension;
+  health: QuotaHealthSignal;
 }
 
 const MENUBAR_AUTO_SERVICE = "auto";
@@ -123,6 +140,70 @@ export const getQuotaBurnRateDisplay = (
     nowMs
   });
 
+const statusToAlertLevel = (status: CodexLimitStatus): ServiceAlertLevel => {
+  switch (status) {
+    case "exhausted":
+      return "danger";
+    case "warning":
+      return "warning";
+    default:
+      return "normal";
+  }
+};
+
+export const getQuotaHealthSignal = (
+  dimension: QuotaDimension,
+  nowMs?: number
+): QuotaHealthSignal => {
+  const burnRate = getQuotaBurnRateDisplay(dimension, nowMs);
+  if (burnRate?.pace === "far-behind") {
+    return {
+      level: "danger",
+      source: "pace",
+      pace: "far-behind",
+      status: "exhausted",
+      progressTone: "danger"
+    };
+  }
+
+  if (burnRate?.pace === "behind") {
+    return {
+      level: "warning",
+      source: "pace",
+      pace: "behind",
+      status: "warning",
+      progressTone: "warning"
+    };
+  }
+
+  if (burnRate?.pace === "on-track") {
+    return {
+      level: "normal",
+      source: "pace",
+      pace: "on-track",
+      status: "healthy",
+      progressTone: "success"
+    };
+  }
+
+  if (dimension.remainingPercent === undefined) {
+    return {
+      level: "normal",
+      source: "none",
+      status: "unknown",
+      progressTone: "muted"
+    };
+  }
+
+  const status = getQuotaStatus(dimension.remainingPercent);
+  return {
+    level: statusToAlertLevel(status),
+    source: "fallback",
+    status,
+    progressTone: getQuotaProgressTone(dimension.remainingPercent)
+  };
+};
+
 const allDimensions = (items: PanelPlaceholderItem[]) => items.flatMap((item) => item.quotaDimensions);
 
 const parseTimestamp = (value?: string) => {
@@ -168,6 +249,58 @@ export const sortQuotaDimensionsForDisplay = (dimensions: QuotaDimension[]) =>
 const sortByWindowDuration = (dimensions: QuotaDimension[]) =>
   sortQuotaDimensionsForDisplay(dimensions).filter((dimension) => dimension.remainingPercent !== undefined);
 
+const healthLevelRank: Record<ServiceAlertLevel, number> = {
+  danger: 0,
+  warning: 1,
+  normal: 2
+};
+
+const healthSourceRank: Record<QuotaHealthSource, number> = {
+  pace: 0,
+  fallback: 1,
+  none: 2
+};
+
+export const getMostUrgentQuotaDimension = (
+  items: PanelPlaceholderItem[],
+  nowMs?: number
+): QuotaHealthCandidate | undefined => {
+  const rankedCandidates = items.flatMap((item, itemIndex) =>
+    item.quotaDimensions.map((dimension, dimensionIndex) => ({
+      item,
+      dimension,
+      health: getQuotaHealthSignal(dimension, nowMs),
+      itemIndex,
+      dimensionIndex
+    }))
+  );
+
+  rankedCandidates.sort((left, right) => {
+    const levelDifference = healthLevelRank[left.health.level] - healthLevelRank[right.health.level];
+    if (levelDifference !== 0) {
+      return levelDifference;
+    }
+
+    const sourceDifference = healthSourceRank[left.health.source] - healthSourceRank[right.health.source];
+    if (sourceDifference !== 0) {
+      return sourceDifference;
+    }
+
+    const windowDifference = inferWindowMinutes(left.dimension.label) - inferWindowMinutes(right.dimension.label);
+    if (windowDifference !== 0) {
+      return windowDifference;
+    }
+
+    if (left.itemIndex !== right.itemIndex) {
+      return left.itemIndex - right.itemIndex;
+    }
+
+    return left.dimensionIndex - right.dimensionIndex;
+  });
+
+  return rankedCandidates[0];
+};
+
 const pickDimension = (summaryMode: SummaryMode, items: PanelPlaceholderItem[]) => {
   const dimensions = allDimensions(items);
   const sorted = sortByRemainingPercent(dimensions);
@@ -211,20 +344,15 @@ export const formatTraySummary = (
     .join(" / ") || undefined;
 };
 
-export const getServiceAlertLevel = (item: PanelPlaceholderItem): ServiceAlertLevel => {
-  if (item.quotaDimensions.some((dimension) => dimension.status === "exhausted")) {
-    return "danger";
-  }
-
-  if (item.quotaDimensions.some((dimension) => dimension.status === "warning")) {
-    return "warning";
-  }
-
-  return "normal";
+export const getServiceAlertLevel = (
+  item: PanelPlaceholderItem,
+  nowMs?: number
+): ServiceAlertLevel => {
+  return getMostUrgentQuotaDimension([item], nowMs)?.health.level ?? "normal";
 };
 
-export const getSeverityLabelKey = (item: PanelPlaceholderItem) => {
-  const level = getServiceAlertLevel(item);
+export const getSeverityLabelKey = (item: PanelPlaceholderItem, nowMs?: number) => {
+  const level = getServiceAlertLevel(item, nowMs);
   if (level === "danger") {
     return "danger";
   }
@@ -234,44 +362,30 @@ export const getSeverityLabelKey = (item: PanelPlaceholderItem) => {
   return undefined;
 };
 
-export const getPanelHealthSummary = (items: PanelPlaceholderItem[]): PanelHealthSummary => {
+export const getPanelHealthSummary = (items: PanelPlaceholderItem[], nowMs?: number): PanelHealthSummary => {
   if (items.length === 0) {
     return { tone: "empty" };
   }
 
-  const candidates = items
-    .flatMap((item) =>
-      item.quotaDimensions.map((dimension) => ({
-        item,
-        dimension
-      }))
-    )
-    .filter(({ dimension }) => dimension.remainingPercent !== undefined)
-    .sort((left, right) => (left.dimension.remainingPercent ?? 101) - (right.dimension.remainingPercent ?? 101));
-
-  const critical = candidates.find(({ dimension }) => dimension.status === "exhausted");
-  if (critical) {
-    return {
-      tone: "danger",
-      serviceId: critical.item.serviceId,
-      serviceName: critical.item.serviceName,
-      dimensionLabel: critical.dimension.label,
-      remainingPercent: critical.dimension.remainingPercent
-    };
+  const candidate = getMostUrgentQuotaDimension(items, nowMs);
+  if (!candidate) {
+    return { tone: "healthy" };
   }
 
-  const warning = candidates.find(({ dimension }) => dimension.status === "warning");
-  if (warning) {
-    return {
-      tone: "warning",
-      serviceId: warning.item.serviceId,
-      serviceName: warning.item.serviceName,
-      dimensionLabel: warning.dimension.label,
-      remainingPercent: warning.dimension.remainingPercent
-    };
-  }
-
-  return { tone: "healthy" };
+  return {
+    tone:
+      candidate.health.level === "danger"
+        ? "danger"
+        : candidate.health.level === "warning"
+          ? "warning"
+          : "healthy",
+    serviceId: candidate.item.serviceId,
+    serviceName: candidate.item.serviceName,
+    dimensionLabel: candidate.dimension.label,
+    remainingPercent: candidate.dimension.remainingPercent,
+    source: candidate.health.source,
+    pace: candidate.health.pace
+  };
 };
 
 export const haveAlignedRefreshTimes = (items: PanelPlaceholderItem[]) => {
@@ -295,19 +409,15 @@ export const getSharedRefreshTimestamp = (items: PanelPlaceholderItem[]) => {
 export const getTrayVisualState = (
   summaryMode: SummaryMode,
   menubarService: string,
-  items: PanelPlaceholderItem[]
+  items: PanelPlaceholderItem[],
+  nowMs?: number
 ): TrayVisualState => {
   const selectedItems = items.filter((item) => item.serviceId === menubarService);
   const serviceName = selectedItems[0]?.serviceName ?? (getProvider(menubarService)?.displayName ?? menubarService);
   const summaryText = formatTraySummary(summaryMode, selectedItems);
-  const severity =
-    selectedItems.length === 0
-      ? "empty"
-      : selectedItems.some((item) => getServiceAlertLevel(item) === "danger")
-        ? "danger"
-        : selectedItems.some((item) => getServiceAlertLevel(item) === "warning")
-          ? "warning"
-          : "normal";
+  const severity = selectedItems.length === 0
+    ? "empty"
+    : getMostUrgentQuotaDimension(selectedItems, nowMs)?.health.level ?? "normal";
 
   return {
     serviceId: menubarService,
