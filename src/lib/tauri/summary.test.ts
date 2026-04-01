@@ -3,8 +3,10 @@ import {
   decorateQuotaDimension,
   formatTraySummary,
   getBurnRateDisplay,
+  getMostUrgentQuotaDimension,
   getPanelHealthSummary,
   getQuotaBurnRateDisplay,
+  getQuotaHealthSignal,
   getQuotaProgressTone,
   getQuotaStatus,
   getServiceAlertLevel,
@@ -295,6 +297,222 @@ describe("getBurnRateDisplay", () => {
     ).toMatchObject({
       pace: "behind",
       willLastUntilReset: false
+    });
+  });
+});
+
+describe("time-aware quota health", () => {
+  const nowMs = Date.parse("2026-04-02T12:00:00Z");
+
+  const createDimension = (overrides: Partial<PanelPlaceholderItem["quotaDimensions"][number]> = {}) =>
+    decorateQuotaDimension({
+      label: "codex / 5h",
+      remainingPercent: 45,
+      remainingAbsolute: "45% remaining",
+      ...overrides
+    });
+
+  const createItem = (
+    serviceId: string,
+    serviceName: string,
+    quotaDimensions: PanelPlaceholderItem["quotaDimensions"]
+  ): PanelPlaceholderItem => ({
+    serviceId,
+    serviceName,
+    iconKey: serviceId,
+    statusLabel: "refreshing",
+    lastSuccessfulRefreshAt: "1742321579",
+    quotaDimensions
+  });
+
+  it("maps an imminent 5h window to pace danger when burn rate is far behind", () => {
+    expect(
+      getQuotaHealthSignal(
+        createDimension({
+          remainingPercent: 80,
+          resetsAt: "2026-04-02T12:05:00Z"
+        }),
+        nowMs
+      )
+    ).toMatchObject({
+      source: "pace",
+      pace: "far-behind",
+      level: "danger",
+      progressTone: "danger"
+    });
+  });
+
+  it("maps an on-track weekly row back to normal severity", () => {
+    expect(
+      getQuotaHealthSignal(
+        createDimension({
+          label: "codex / week",
+          remainingPercent: 20,
+          resetsAt: "2026-04-02T18:00:00Z"
+        }),
+        nowMs
+      )
+    ).toMatchObject({
+      source: "pace",
+      pace: "on-track",
+      level: "normal"
+    });
+  });
+
+  it("falls back to static warning when resetsAt is unavailable", () => {
+    expect(
+      getQuotaHealthSignal(
+        createDimension({
+          remainingPercent: 45,
+          resetsAt: undefined
+        }),
+        nowMs
+      )
+    ).toMatchObject({
+      source: "fallback",
+      level: "warning"
+    });
+  });
+
+  it("falls back to static normal when resetsAt is outside the supported window", () => {
+    expect(
+      getQuotaHealthSignal(
+        createDimension({
+          remainingPercent: 80,
+          resetsAt: "2026-04-02T18:30:00Z"
+        }),
+        nowMs
+      )
+    ).toMatchObject({
+      source: "fallback",
+      level: "normal"
+    });
+  });
+
+  it("returns a muted none source when remainingPercent is unavailable", () => {
+    expect(
+      getQuotaHealthSignal(
+        createDimension({
+          remainingPercent: undefined,
+          remainingAbsolute: "unknown",
+          resetsAt: undefined
+        }),
+        nowMs
+      )
+    ).toMatchObject({
+      source: "none",
+      progressTone: "muted"
+    });
+  });
+
+  it("prefers a pace danger row over a fallback warning row", () => {
+    const codex = createItem("codex", "Codex", [
+      createDimension({
+        label: "codex / 5h",
+        remainingPercent: 50,
+        resetsAt: "2026-04-02T16:00:00Z"
+      })
+    ]);
+    const claude = createItem("claude-code", "Claude Code", [
+      createDimension({
+        label: "claude / week",
+        remainingPercent: 45,
+        resetsAt: undefined
+      })
+    ]);
+
+    expect(getMostUrgentQuotaDimension([claude, codex], nowMs)).toMatchObject({
+      item: { serviceId: "codex" },
+      health: { source: "pace", level: "danger" }
+    });
+  });
+
+  it("does not let source outrank severity when fallback danger is worse", () => {
+    const codex = createItem("codex", "Codex", [
+      createDimension({
+        label: "codex / week",
+        remainingPercent: 63,
+        resetsAt: "2026-04-07T12:00:00Z"
+      })
+    ]);
+    const claude = createItem("claude-code", "Claude Code", [
+      createDimension({
+        label: "claude / 5h",
+        remainingPercent: 19,
+        resetsAt: undefined
+      })
+    ]);
+
+    expect(getMostUrgentQuotaDimension([codex, claude], nowMs)).toMatchObject({
+      item: { serviceId: "claude-code" },
+      health: { source: "fallback", level: "danger" }
+    });
+  });
+
+  it("breaks severity and source ties by shorter window first", () => {
+    const codex = createItem("codex", "Codex", [
+      createDimension({
+        label: "codex / week",
+        remainingPercent: 45,
+        resetsAt: undefined
+      })
+    ]);
+    const kimi = createItem("kimi", "Kimi", [
+      createDimension({
+        label: "kimi / 5h",
+        remainingPercent: 45,
+        resetsAt: undefined
+      })
+    ]);
+
+    expect(getMostUrgentQuotaDimension([codex, kimi], nowMs)).toMatchObject({
+      item: { serviceId: "kimi" },
+      dimension: { label: "kimi / 5h" }
+    });
+  });
+
+  it("exposes the selected row metadata in the panel health summary", () => {
+    const panelItems = [
+      createItem("codex", "Codex", [
+        createDimension({
+          label: "codex / week",
+          remainingPercent: 20,
+          resetsAt: "2026-04-02T18:00:00Z"
+        })
+      ])
+    ];
+
+    expect(getPanelHealthSummary(panelItems, nowMs)).toMatchObject({
+      tone: "healthy",
+      serviceName: "Codex",
+      dimensionLabel: "codex / week",
+      remainingPercent: 20,
+      source: "pace",
+      pace: "on-track"
+    });
+  });
+
+  it("keeps tray severity aligned with the selected row", () => {
+    const panelItems = [
+      createItem("codex", "Codex", [
+        createDimension({
+          label: "codex / 5h",
+          remainingPercent: 50,
+          resetsAt: "2026-04-02T16:00:00Z"
+        })
+      ]),
+      createItem("claude-code", "Claude Code", [
+        createDimension({
+          label: "claude / week",
+          remainingPercent: 80,
+          resetsAt: undefined
+        })
+      ])
+    ];
+
+    expect(getTrayVisualState("window-5h", "codex", panelItems, nowMs)).toMatchObject({
+      serviceName: "Codex",
+      severity: "danger"
     });
   });
 });
