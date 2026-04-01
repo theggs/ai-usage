@@ -114,6 +114,18 @@ export const normalizePreferences = (
     }
   }
 
+  // Normalize provider tokens: trim whitespace, remove blanks
+  const rawTokens = patch.providerTokens ?? current.providerTokens ?? {};
+  const providerTokens: Record<string, string> = {};
+  for (const [key, value] of Object.entries(rawTokens)) {
+    const trimmed = (value ?? "").trim();
+    if (trimmed) providerTokens[key] = trimmed;
+  }
+
+  // Normalize GLM platform
+  const glmPlatform: UserPreferences["glmPlatform"] =
+    (patch.glmPlatform ?? current.glmPlatform) === "china" ? "china" : "global";
+
   const next: UserPreferences = {
     ...current,
     ...patch,
@@ -126,6 +138,8 @@ export const normalizePreferences = (
     claudeCodeDisclosureDismissedAt:
       patch.claudeCodeDisclosureDismissedAt ?? current.claudeCodeDisclosureDismissedAt,
     providerEnabled: providerEnabledMap,
+    providerTokens,
+    glmPlatform,
     refreshIntervalMinutes: Math.max(
       MIN_REFRESH_INTERVAL,
       patch.refreshIntervalMinutes ?? current.refreshIntervalMinutes

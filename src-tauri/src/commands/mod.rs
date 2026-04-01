@@ -413,6 +413,12 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
             current.provider_enabled.insert(key, value);
         }
     }
+    if let Some(provider_tokens) = patch.provider_tokens {
+        current.provider_tokens = provider_tokens;
+    }
+    if let Some(glm_platform) = patch.glm_platform {
+        current.glm_platform = glm_platform;
+    }
     if let Some(claude_code_usage_enabled) = patch.claude_code_usage_enabled {
         current.claude_code_usage_enabled = claude_code_usage_enabled;
         current.provider_enabled.insert("claude-code".into(), claude_code_usage_enabled);

@@ -36,6 +36,10 @@ fn default_claude_code_disclosure_dismissed_at() -> Option<String> {
     None
 }
 
+fn default_glm_platform() -> String {
+    "global".into()
+}
+
 pub const AUTO_ACTIVITY_WINDOW_SECS: u64 = 5 * 60;
 pub const AUTO_ROTATION_INTERVAL_SECS: u64 = 15;
 pub const AUTO_SCAN_INTERVAL_SECS: u64 = 15;
@@ -191,6 +195,10 @@ pub struct UserPreferences {
     pub claude_code_disclosure_dismissed_at: Option<String>,
     #[serde(default)]
     pub provider_enabled: HashMap<String, bool>,
+    #[serde(default)]
+    pub provider_tokens: HashMap<String, String>,
+    #[serde(default = "default_glm_platform")]
+    pub glm_platform: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -210,6 +218,8 @@ pub struct PreferencePatch {
     pub claude_code_usage_enabled: Option<bool>,
     pub claude_code_disclosure_dismissed_at: Option<String>,
     pub provider_enabled: Option<HashMap<String, bool>>,
+    pub provider_tokens: Option<HashMap<String, String>>,
+    pub glm_platform: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,6 +278,8 @@ pub fn default_preferences() -> UserPreferences {
         claude_code_usage_enabled: default_claude_code_usage_enabled(),
         claude_code_disclosure_dismissed_at: default_claude_code_disclosure_dismissed_at(),
         provider_enabled: HashMap::new(),
+        provider_tokens: HashMap::new(),
+        glm_platform: default_glm_platform(),
     })
 }
 
@@ -318,6 +330,19 @@ pub fn normalize_preferences(mut preferences: UserPreferences) -> UserPreference
                 .entry(provider.id.into())
                 .or_insert(provider.default_enabled);
         }
+    }
+
+    // Trim whitespace from provider tokens and remove blank entries
+    preferences.provider_tokens = preferences
+        .provider_tokens
+        .into_iter()
+        .map(|(k, v)| (k, v.trim().to_string()))
+        .filter(|(_, v)| !v.is_empty())
+        .collect();
+
+    // Normalize glm_platform
+    if preferences.glm_platform != "global" && preferences.glm_platform != "china" {
+        preferences.glm_platform = default_glm_platform();
     }
 
     if preferences.menubar_service == "auto" {
@@ -416,10 +441,12 @@ mod tests {
             claude_code_usage_enabled: false,
             claude_code_disclosure_dismissed_at: None,
             provider_enabled: HashMap::new(),
+            provider_tokens: HashMap::new(),
+            glm_platform: "global".into(),
         });
 
         assert_eq!(prefs.menubar_service, "codex");
-        assert_eq!(prefs.service_order, vec!["claude-code", "codex"]);
+        assert_eq!(prefs.service_order, vec!["claude-code", "codex", "kimi-code", "glm-coding"]);
         assert_eq!(prefs.refresh_interval_minutes, 5);
         // provider_enabled should reflect claude-code disabled (from legacy field)
         assert_eq!(prefs.provider_enabled.get("claude-code"), Some(&false));
@@ -442,6 +469,8 @@ mod tests {
             claude_code_usage_enabled: false,
             claude_code_disclosure_dismissed_at: None,
             provider_enabled: HashMap::new(),
+            provider_tokens: HashMap::new(),
+            glm_platform: "global".into(),
         });
 
         assert_eq!(prefs.menubar_service, "auto");
@@ -464,6 +493,8 @@ mod tests {
             claude_code_usage_enabled: true,
             claude_code_disclosure_dismissed_at: None,
             provider_enabled: HashMap::new(),
+            provider_tokens: HashMap::new(),
+            glm_platform: "global".into(),
         });
 
         assert_eq!(prefs.provider_enabled.get("codex"), Some(&true));
@@ -491,6 +522,8 @@ mod tests {
             claude_code_usage_enabled: false,
             claude_code_disclosure_dismissed_at: None,
             provider_enabled,
+            provider_tokens: HashMap::new(),
+            glm_platform: "global".into(),
         });
 
         // Existing map should be preserved, not overridden by legacy field

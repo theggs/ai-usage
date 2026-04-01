@@ -85,6 +85,8 @@ export interface UserPreferences {
   claudeCodeUsageEnabled: boolean;
   claudeCodeDisclosureDismissedAt?: string;
   providerEnabled: Record<string, boolean>;
+  providerTokens: Record<string, string>;
+  glmPlatform: "global" | "china";
 }
 
 export interface PreferencePatch {
@@ -101,6 +103,8 @@ export interface PreferencePatch {
   claudeCodeUsageEnabled?: boolean;
   claudeCodeDisclosureDismissedAt?: string;
   providerEnabled?: Record<string, boolean>;
+  providerTokens?: Record<string, string>;
+  glmPlatform?: UserPreferences["glmPlatform"];
 }
 
 export interface ServiceStatusCard {

@@ -75,7 +75,7 @@ describe("SettingsView", () => {
     expect(screen.getByRole("switch", { name: "启用 Claude Code 查询" })).toBeInTheDocument();
 
     const surfaces = document.querySelectorAll(".settings-surface");
-    expect(surfaces).toHaveLength(2);
+    expect(surfaces).toHaveLength(4);
     expect(screen.getByRole("combobox", { name: "菜单栏数值" }).closest(".settings-surface")).toBe(
       surfaces[0]
     );

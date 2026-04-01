@@ -22,6 +22,18 @@ pub const PROVIDERS: &[ProviderDescriptor] = &[
         default_enabled: false,
         dashboard_url: Some("https://console.anthropic.com/settings/usage"),
     },
+    ProviderDescriptor {
+        id: "kimi-code",
+        display_name: "Kimi Code",
+        default_enabled: false,
+        dashboard_url: Some("https://www.kimi.com/code/console"),
+    },
+    ProviderDescriptor {
+        id: "glm-coding",
+        display_name: "GLM Coding Plan",
+        default_enabled: false,
+        dashboard_url: Some("https://z.ai/subscribe"),
+    },
 ];
 
 /// Returns all provider IDs in registration order.
@@ -46,9 +58,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn providers_contains_codex_and_claude_code() {
+    fn providers_contains_all_four() {
         let ids: Vec<&str> = PROVIDERS.iter().map(|p| p.id).collect();
-        assert_eq!(ids, vec!["codex", "claude-code"]);
+        assert_eq!(ids, vec!["codex", "claude-code", "kimi-code", "glm-coding"]);
     }
 
     #[test]
@@ -66,17 +78,31 @@ mod tests {
     }
 
     #[test]
+    fn get_provider_kimi_code() {
+        let p = get_provider("kimi-code").expect("kimi-code should exist");
+        assert_eq!(p.display_name, "Kimi Code");
+        assert!(!p.default_enabled);
+    }
+
+    #[test]
+    fn get_provider_glm_coding() {
+        let p = get_provider("glm-coding").expect("glm-coding should exist");
+        assert_eq!(p.display_name, "GLM Coding Plan");
+        assert!(!p.default_enabled);
+    }
+
+    #[test]
     fn get_provider_unknown_returns_none() {
         assert!(get_provider("unknown").is_none());
     }
 
     #[test]
     fn provider_ids_returns_all() {
-        assert_eq!(provider_ids(), vec!["codex", "claude-code"]);
+        assert_eq!(provider_ids(), vec!["codex", "claude-code", "kimi-code", "glm-coding"]);
     }
 
     #[test]
     fn menubar_service_ids_includes_auto() {
-        assert_eq!(menubar_service_ids(), vec!["codex", "claude-code", "auto"]);
+        assert_eq!(menubar_service_ids(), vec!["codex", "claude-code", "kimi-code", "glm-coding", "auto"]);
     }
 }

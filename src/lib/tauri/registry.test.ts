@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { PROVIDERS, getProvider, providerIds, menubarServiceIds } from "./registry";
 
 describe("registry", () => {
-  it("PROVIDERS array contains exactly codex and claude-code IDs", () => {
+  it("PROVIDERS array contains all four provider IDs", () => {
     const ids = PROVIDERS.map((p) => p.id);
-    expect(ids).toEqual(["codex", "claude-code"]);
+    expect(ids).toEqual(["codex", "claude-code", "kimi-code", "glm-coding"]);
   });
 
   it("getProvider codex returns descriptor with displayName Codex and defaultEnabled true", () => {
@@ -25,11 +25,11 @@ describe("registry", () => {
     expect(getProvider("unknown")).toBeUndefined();
   });
 
-  it("providerIds returns codex and claude-code", () => {
-    expect(providerIds()).toEqual(["codex", "claude-code"]);
+  it("providerIds returns all four providers", () => {
+    expect(providerIds()).toEqual(["codex", "claude-code", "kimi-code", "glm-coding"]);
   });
 
-  it("menubarServiceIds returns codex, claude-code, and auto", () => {
-    expect(menubarServiceIds()).toEqual(["codex", "claude-code", "auto"]);
+  it("menubarServiceIds returns all providers plus auto", () => {
+    expect(menubarServiceIds()).toEqual(["codex", "claude-code", "kimi-code", "glm-coding", "auto"]);
   });
 });

@@ -705,6 +705,159 @@ export const SettingsView = () => {
         </div>
       </div>
 
+      <div className="settings-surface overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.2)]">
+        <div className={rowClassName}>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+              <div className="min-w-0 text-[15px] font-semibold leading-6 text-slate-900">
+                {copy.kimiCodeSectionTitle}
+              </div>
+              <div className="flex justify-end">
+                <button
+                  aria-checked={draft.providerEnabled?.["kimi-code"] ?? false}
+                  aria-label={copy.kimiCodeToggleAriaLabel}
+                  className={`inline-flex w-14 items-center rounded-full p-1 shadow-sm transition-colors ${
+                    draft.providerEnabled?.["kimi-code"] ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                  onClick={() =>
+                    void applyImmediatePatch(
+                      { providerEnabled: { ...draft.providerEnabled, "kimi-code": !(draft.providerEnabled?.["kimi-code"] ?? false) } },
+                      draft
+                    )
+                  }
+                  role="switch"
+                  title={copy.kimiCodeToggleAriaLabel}
+                  type="button"
+                >
+                  <span className="sr-only">{copy.kimiCodeToggleAriaLabel}</span>
+                  <span
+                    className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      draft.providerEnabled?.["kimi-code"] ? "translate-x-7" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+            <p className="text-[13px] leading-6 text-slate-500">
+              {copy.kimiCodeSectionBody}
+            </p>
+            {draft.providerEnabled?.["kimi-code"] ? (
+              <div className="grid gap-2">
+                <label className="text-[13px] font-medium text-slate-600">{copy.kimiCodeTokenLabel}</label>
+                <input
+                  aria-label={copy.kimiCodeTokenLabel}
+                  className={inputClassName}
+                  placeholder={copy.kimiCodeTokenPlaceholder}
+                  type="password"
+                  value={draft.providerTokens?.["kimi-code"] ?? ""}
+                  onBlur={(event) => {
+                    const trimmed = event.target.value.trim();
+                    if (trimmed !== (base.providerTokens?.["kimi-code"] ?? "")) {
+                      void applyImmediatePatch({
+                        providerTokens: { ...draft.providerTokens, "kimi-code": trimmed },
+                      });
+                    }
+                  }}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      providerTokens: { ...current.providerTokens, "kimi-code": event.target.value },
+                    }))
+                  }
+                />
+                <p className="text-[11px] text-slate-400">{copy.kimiCodeTokenHint}</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-surface overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.2)]">
+        <div className={rowClassName}>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+              <div className="min-w-0 text-[15px] font-semibold leading-6 text-slate-900">
+                {copy.glmSectionTitle}
+              </div>
+              <div className="flex justify-end">
+                <button
+                  aria-checked={draft.providerEnabled?.["glm-coding"] ?? false}
+                  aria-label={copy.glmToggleAriaLabel}
+                  className={`inline-flex w-14 items-center rounded-full p-1 shadow-sm transition-colors ${
+                    draft.providerEnabled?.["glm-coding"] ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                  onClick={() =>
+                    void applyImmediatePatch(
+                      { providerEnabled: { ...draft.providerEnabled, "glm-coding": !(draft.providerEnabled?.["glm-coding"] ?? false) } },
+                      draft
+                    )
+                  }
+                  role="switch"
+                  title={copy.glmToggleAriaLabel}
+                  type="button"
+                >
+                  <span className="sr-only">{copy.glmToggleAriaLabel}</span>
+                  <span
+                    className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      draft.providerEnabled?.["glm-coding"] ? "translate-x-7" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+            <p className="text-[13px] leading-6 text-slate-500">
+              {copy.glmSectionBody}
+            </p>
+            {draft.providerEnabled?.["glm-coding"] ? (
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <label className="text-[13px] font-medium text-slate-600">{copy.glmTokenLabel}</label>
+                  <input
+                    aria-label={copy.glmTokenLabel}
+                    className={inputClassName}
+                    placeholder={copy.glmTokenPlaceholder}
+                    type="password"
+                    value={draft.providerTokens?.["glm-coding"] ?? ""}
+                    onBlur={(event) => {
+                      const trimmed = event.target.value.trim();
+                      if (trimmed !== (base.providerTokens?.["glm-coding"] ?? "")) {
+                        void applyImmediatePatch({
+                          providerTokens: { ...draft.providerTokens, "glm-coding": trimmed },
+                        });
+                      }
+                    }}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        providerTokens: { ...current.providerTokens, "glm-coding": event.target.value },
+                      }))
+                    }
+                  />
+                  <p className="text-[11px] text-slate-400">{copy.glmTokenHint}</p>
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-[13px] font-medium text-slate-600">{copy.glmRegionLabel}</label>
+                  <select
+                    aria-label={copy.glmRegionLabel}
+                    className={selectClassName}
+                    value={draft.glmPlatform}
+                    onChange={(event) =>
+                      void applyImmediatePatch(
+                        { glmPlatform: event.target.value as UserPreferences["glmPlatform"] },
+                        draft
+                      )
+                    }
+                  >
+                    <option value="global">{copy.glmRegionGlobal}</option>
+                    <option value="china">{copy.glmRegionChina}</option>
+                  </select>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
       {draggedService && dragOverlay && typeof document !== "undefined"
         ? createPortal(renderServicePill(draggedService, true), document.body)
         : null}

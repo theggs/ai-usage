@@ -162,6 +162,21 @@ export type CopyTree = {
   promotionDetailLocalWindowTemplate: string;
   promotionTriggerAria: string;
   promotionPopoverLabel: string;
+  kimiCodeSectionTitle: string;
+  kimiCodeSectionBody: string;
+  kimiCodeToggleAriaLabel: string;
+  kimiCodeTokenLabel: string;
+  kimiCodeTokenHint: string;
+  kimiCodeTokenPlaceholder: string;
+  glmSectionTitle: string;
+  glmSectionBody: string;
+  glmToggleAriaLabel: string;
+  glmTokenLabel: string;
+  glmTokenHint: string;
+  glmTokenPlaceholder: string;
+  glmRegionLabel: string;
+  glmRegionGlobal: string;
+  glmRegionChina: string;
 };
 
 const baseCopy: CopyTree = {
@@ -320,7 +335,22 @@ const baseCopy: CopyTree = {
   promotionDetailContinuous: "All-day promotion",
   promotionDetailLocalWindowTemplate: "outside weekdays {range} ({timeZone})",
   promotionTriggerAria: "Preview all promotion states",
-  promotionPopoverLabel: "All promotion states"
+  promotionPopoverLabel: "All promotion states",
+  kimiCodeSectionTitle: "Kimi Code Usage",
+  kimiCodeSectionBody: "Display your Kimi Code usage quota. Requires an API token from your Kimi Code console.",
+  kimiCodeToggleAriaLabel: "Enable Kimi Code usage display",
+  kimiCodeTokenLabel: "API Token",
+  kimiCodeTokenHint: "From kimi.com/code/console or ~/.kimi/config.toml",
+  kimiCodeTokenPlaceholder: "sk-...",
+  glmSectionTitle: "GLM Coding Plan Usage",
+  glmSectionBody: "Display your GLM Coding Plan usage quota. Requires an API token from your developer console.",
+  glmToggleAriaLabel: "Enable GLM Coding Plan usage display",
+  glmTokenLabel: "API Token",
+  glmTokenHint: "From z.ai developer console",
+  glmTokenPlaceholder: "(token)",
+  glmRegionLabel: "Region",
+  glmRegionGlobal: "Global (z.ai)",
+  glmRegionChina: "China (bigmodel.cn)"
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
@@ -480,7 +510,22 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     promotionDetailContinuous: "全天优惠",
     promotionDetailLocalWindowTemplate: "工作日 {range} ({timeZone}) 之外",
     promotionTriggerAria: "预览全部促销状态",
-    promotionPopoverLabel: "全部促销状态"
+    promotionPopoverLabel: "全部促销状态",
+    kimiCodeSectionTitle: "Kimi Code 用量",
+    kimiCodeSectionBody: "显示 Kimi Code 用量配额。需要从 Kimi Code 控制台获取 API Token。",
+    kimiCodeToggleAriaLabel: "启用 Kimi Code 用量显示",
+    kimiCodeTokenLabel: "API Token",
+    kimiCodeTokenHint: "来自 kimi.com/code/console 或 ~/.kimi/config.toml",
+    kimiCodeTokenPlaceholder: "sk-...",
+    glmSectionTitle: "GLM 编程套餐用量",
+    glmSectionBody: "显示 GLM 编程套餐用量配额。需要从开发者控制台获取 API Token。",
+    glmToggleAriaLabel: "启用 GLM 编程套餐用量显示",
+    glmTokenLabel: "API Token",
+    glmTokenHint: "来自 z.ai 开发者控制台",
+    glmTokenPlaceholder: "(token)",
+    glmRegionLabel: "区域",
+    glmRegionGlobal: "国际 (z.ai)",
+    glmRegionChina: "国内 (bigmodel.cn)"
   }
   ,
   "en-US": baseCopy

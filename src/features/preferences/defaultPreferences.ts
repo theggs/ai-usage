@@ -16,4 +16,6 @@ export const defaultPreferences: UserPreferences = {
   claudeCodeUsageEnabled: false,
   claudeCodeDisclosureDismissedAt: undefined,
   providerEnabled: Object.fromEntries(PROVIDERS.map((p) => [p.id, p.defaultEnabled])),
+  providerTokens: {},
+  glmPlatform: "global" as const,
 };

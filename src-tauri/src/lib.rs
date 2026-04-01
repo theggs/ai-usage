@@ -5,6 +5,7 @@ pub mod codex;
 pub mod commands;
 pub mod notifications;
 pub mod pipeline;
+pub mod proxy;
 pub mod registry;
 pub mod snapshot;
 pub mod state;

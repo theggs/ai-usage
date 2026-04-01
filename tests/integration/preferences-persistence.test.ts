@@ -30,7 +30,7 @@ describe("preferences persistence", () => {
     expect(loaded.language).toBe("en-US");
     expect(loaded.traySummaryMode).toBe("window-week");
     expect(loaded.menubarService).toBe("auto");
-    expect(loaded.serviceOrder).toEqual(["claude-code", "codex"]);
+    expect(loaded.serviceOrder).toEqual(["claude-code", "codex", "kimi-code", "glm-coding"]);
     expect(loaded.networkProxyMode).toBe("manual");
     expect(loaded.networkProxyUrl).toBe("http://127.0.0.1:7890");
     expect(loaded.onboardingDismissedAt).toBe("2026-03-23T00:00:00.000Z");
@@ -55,7 +55,7 @@ describe("preferences persistence", () => {
     expect(loaded.onboardingDismissedAt).toBeUndefined();
     expect(loaded.claudeCodeUsageEnabled).toBe(false);
     expect(loaded.claudeCodeDisclosureDismissedAt).toBeUndefined();
-    expect(loaded.serviceOrder).toEqual(["codex", "claude-code"]);
+    expect(loaded.serviceOrder).toEqual(["codex", "claude-code", "kimi-code", "glm-coding"]);
   });
 
   it("keeps auto valid even when Claude Code usage is disabled", () => {

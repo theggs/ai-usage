@@ -4,6 +4,8 @@ use std::sync::OnceLock;
 
 pub mod claude_code;
 pub mod codex;
+pub mod glm;
+pub mod kimi;
 
 /// Describes when a refresh was triggered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,6 +52,8 @@ fn fetchers() -> &'static Vec<Box<dyn ProviderFetcher>> {
         vec![
             Box::new(codex::CodexFetcher),
             Box::new(claude_code::ClaudeCodeFetcher),
+            Box::new(kimi::KimiFetcher),
+            Box::new(glm::GlmFetcher),
         ]
     })
 }
@@ -120,9 +124,9 @@ mod tests {
     }
 
     #[test]
-    fn fetchers_contains_exactly_two_entries() {
+    fn fetchers_contains_exactly_four_entries() {
         let all = fetchers();
-        assert_eq!(all.len(), 2, "fetchers() should contain exactly 2 entries");
+        assert_eq!(all.len(), 4, "fetchers() should contain exactly 4 entries");
     }
 
     #[test]

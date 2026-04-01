@@ -7,6 +7,8 @@ describe("preferencesStore", () => {
     expect(prefs.providerEnabled).toEqual({
       codex: true,
       "claude-code": false,
+      "kimi-code": false,
+      "glm-coding": false,
     });
   });
 
@@ -18,8 +20,8 @@ describe("preferencesStore", () => {
 
   it("normalizeServiceOrder uses registry provider IDs and filters unknown", () => {
     const prefs = normalizePreferences({ serviceOrder: ["unknown", "claude-code"] });
-    // "unknown" should be filtered out, "codex" appended
-    expect(prefs.serviceOrder).toEqual(["claude-code", "codex"]);
+    // "unknown" should be filtered out, remaining providers appended
+    expect(prefs.serviceOrder).toEqual(["claude-code", "codex", "kimi-code", "glm-coding"]);
   });
 
   it("normalizeMenubarService falls back when disabled provider selected", () => {
@@ -47,5 +49,36 @@ describe("preferencesStore", () => {
       providerEnabled: { codex: true, "claude-code": false },
     });
     expect(prefs.menubarService).toBe("auto");
+  });
+
+  it("normalizePreferences trims provider token whitespace", () => {
+    const prefs = normalizePreferences({
+      providerTokens: { "kimi-code": "  sk-abc  " },
+    });
+    expect(prefs.providerTokens["kimi-code"]).toBe("sk-abc");
+  });
+
+  it("normalizePreferences removes blank provider tokens", () => {
+    const prefs = normalizePreferences({
+      providerTokens: { "kimi-code": "  " },
+    });
+    expect(prefs.providerTokens["kimi-code"]).toBeUndefined();
+  });
+
+  it("normalizePreferences defaults glmPlatform to global", () => {
+    const prefs = normalizePreferences({});
+    expect(prefs.glmPlatform).toBe("global");
+  });
+
+  it("normalizePreferences validates glmPlatform values", () => {
+    const prefs = normalizePreferences({
+      glmPlatform: "invalid" as "global",
+    });
+    expect(prefs.glmPlatform).toBe("global");
+  });
+
+  it("normalizePreferences preserves china glmPlatform", () => {
+    const prefs = normalizePreferences({ glmPlatform: "china" });
+    expect(prefs.glmPlatform).toBe("china");
   });
 });
