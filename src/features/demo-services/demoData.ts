@@ -44,12 +44,14 @@ const buildItems = (mode: FallbackSessionMode): CodexPanelState["items"] => {
         },
         {
           label: "Code Reviews / week",
-          remainingPercent: 82,
-          remainingAbsolute: "82% remaining",
+          remainingPercent: 63,
+          remainingAbsolute: "63% remaining",
           resetsAt: minutesFromNow(4 * 24 * 60),
           burnRateHistory: [
-            { capturedAt: minutesAgo(120), remainingPercent: 100 },
-            { capturedAt: minutesAgo(60), remainingPercent: 90 }
+            { capturedAt: minutesAgo(48 * 60), remainingPercent: 100 },
+            { capturedAt: minutesAgo(36 * 60), remainingPercent: 84 },
+            { capturedAt: minutesAgo(24 * 60), remainingPercent: 72 },
+            { capturedAt: minutesAgo(60), remainingPercent: 63 }
           ]
         },
         {

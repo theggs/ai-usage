@@ -117,6 +117,7 @@ export const getQuotaBurnRateDisplay = (
   nowMs?: number
 ) =>
   getComputedBurnRateDisplay({
+    label: dimension.label,
     remainingPercent: dimension.remainingPercent,
     resetsAt: dimension.resetsAt,
     samples: dimension.burnRateHistory,

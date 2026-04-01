@@ -8,6 +8,9 @@ export interface BurnRateDisplay {
   willLastUntilReset: boolean;
 }
 
+const WEEKLY_MIN_HISTORY_MS = 24 * 60 * 60 * 1000;
+const WEEKLY_MIN_SAMPLE_COUNT = 4;
+
 const parseSampleTimestamp = (capturedAt: string): number | undefined => {
   const timestamp = /^\d+$/.test(capturedAt)
     ? Number(capturedAt) * 1000
@@ -16,12 +19,20 @@ const parseSampleTimestamp = (capturedAt: string): number | undefined => {
   return Number.isFinite(timestamp) ? timestamp : undefined;
 };
 
+const isWeeklyLabel = (label?: string) => {
+  if (!label) return false;
+  const normalized = label.toLowerCase();
+  return normalized.includes("week") || normalized.includes("7d");
+};
+
 export const getBurnRateDisplay = ({
+  label,
   remainingPercent,
   resetsAt,
   samples,
   nowMs = Date.now()
 }: {
+  label?: string;
   remainingPercent?: number;
   resetsAt?: string;
   samples?: readonly BurnRateSample[];
@@ -65,6 +76,15 @@ export const getBurnRateDisplay = ({
   const elapsedMs = last.timestampMs - first.timestampMs;
   if (elapsedMs <= 0) {
     return undefined;
+  }
+
+  if (isWeeklyLabel(label)) {
+    if (validSamples.length < WEEKLY_MIN_SAMPLE_COUNT) {
+      return undefined;
+    }
+    if (elapsedMs < WEEKLY_MIN_HISTORY_MS) {
+      return undefined;
+    }
   }
 
   if (consumed <= 0) {

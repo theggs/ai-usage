@@ -100,9 +100,23 @@ fn burn_rate_history_key(service_id: &str, label: &str) -> String {
     format!("{service_id}::{label}")
 }
 
-fn prune_burn_rate_samples(samples: &mut Vec<BurnRateSample>) {
-    if samples.len() > 3 {
-        let keep_from = samples.len() - 3;
+fn is_weekly_burn_rate_label(label: &str) -> bool {
+    let normalized = label.to_ascii_lowercase();
+    normalized.contains("week") || normalized.contains("7d")
+}
+
+fn burn_rate_sample_limit(label: &str) -> usize {
+    if is_weekly_burn_rate_label(label) {
+        288
+    } else {
+        3
+    }
+}
+
+fn prune_burn_rate_samples(label: &str, samples: &mut Vec<BurnRateSample>) {
+    let limit = burn_rate_sample_limit(label);
+    if samples.len() > limit {
+        let keep_from = samples.len() - limit;
         samples.drain(..keep_from);
     }
 }
@@ -142,7 +156,7 @@ fn record_successful_burn_rate_history(
                 captured_at: state.last_successful_refresh_at.clone(),
                 remaining_percent,
             });
-            prune_burn_rate_samples(samples);
+            prune_burn_rate_samples(&dimension.label, samples);
         }
     }
 }
@@ -1177,6 +1191,36 @@ mod tests {
         assert_eq!(history.len(), 2);
         assert_eq!(history[0].captured_at, first_at);
         assert_eq!(history[1].captured_at, second_at);
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
+    fn snapshot_cache_keeps_longer_history_for_weekly_dimensions() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-burn-rate-weekly-limit-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        for offset in 0..5 {
+            let captured_at = recent_timestamp(300 - offset * 60);
+            let mut state = make_panel_state("codex", &captured_at);
+            state.items[0].quota_dimensions = vec![
+                make_dimension("codex / 5h", Some(80_u8.saturating_sub(offset as u8))),
+                make_dimension("codex / week", Some(90_u8.saturating_sub(offset as u8))),
+            ];
+            save_to_snapshot_cache("codex", &state);
+        }
+
+        let loaded = load_from_snapshot_cache("codex", 15).unwrap();
+        let short_history = &loaded.items[0].quota_dimensions[0].burn_rate_history;
+        let weekly_history = &loaded.items[0].quota_dimensions[1].burn_rate_history;
+        assert_eq!(short_history.len(), 3);
+        assert_eq!(weekly_history.len(), 5);
 
         let _ = std::fs::remove_dir_all(&tmp);
         env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
