@@ -375,7 +375,7 @@ export const SettingsView = () => {
       data-service-pill-id={overlay ? undefined : service.id}
       className={`group flex min-h-12 w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
         draggedServiceId === service.id
-          ? "border-slate-300 bg-slate-100 shadow-sm"
+          ? "border-slate-300 bg-slate-100 shadow-sm ring-1 ring-slate-200/80"
           : "border-slate-200/80 bg-white"
       } ${
         overlay
@@ -525,6 +525,12 @@ export const SettingsView = () => {
               controlClassName="w-full"
             >
               <div className="rounded-2xl border border-slate-200/70 bg-slate-50/60 p-2.5">
+                <div className="mb-2 flex items-center px-1 text-[11px] font-medium text-slate-400">
+                  <span aria-hidden="true" className="mr-2 text-[10px]">
+                    ⋮⋮
+                  </span>
+                  <span>{copy.reorderHandle}</span>
+                </div>
                 <ul aria-label={copy.serviceOrder} className="grid gap-2.5" role="list">
                   {serviceOptions.map((service, index) => (
                     <li key={service.id}>{renderServicePill(service, index)}</li>
