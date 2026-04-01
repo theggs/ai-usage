@@ -498,8 +498,9 @@ describe("PanelView", () => {
 
     const codexCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
     expect(codexCard).not.toBeNull();
-    expect(within(codexCard!).getByText("On track")).toBeInTheDocument();
-    expect(within(codexCard!).getByText(/Far behind · ~/)).toBeInTheDocument();
+    expect(within(codexCard!).queryByText("On track")).not.toBeInTheDocument();
+    expect(within(codexCard!).getByText("Far behind")).toBeInTheDocument();
+    expect(within(codexCard!).getByText(/Runs out in ~/)).toBeInTheDocument();
     expect(within(codexCard!).getByText(/Last refreshed:/)).toBeInTheDocument();
   });
 

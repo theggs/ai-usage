@@ -7,8 +7,8 @@ import {
   getPlaceholderCopy,
   getPromotionPopoverLabel,
   getPromotionTriggerLabel,
-  localizeBurnRateInlineTail,
   localizeBurnRatePace,
+  localizeBurnRateSecondaryLine,
   localizeResetHint,
   localizeDimensionLabel,
   resolveCopyTree
@@ -239,48 +239,48 @@ describe("burn-rate copy", () => {
 
   it("returns positive confirmation text when the quota will last until reset", () => {
     expect(
-      localizeBurnRateInlineTail(getCopy("en-US"), {
+      localizeBurnRateSecondaryLine(getCopy("en-US"), {
         willLastUntilReset: true,
         depletionEtaMs: null
       })
     ).toBeUndefined();
     expect(
-      localizeBurnRateInlineTail(getCopy("zh-CN"), {
+      localizeBurnRateSecondaryLine(getCopy("zh-CN"), {
         willLastUntilReset: true,
         depletionEtaMs: null
       })
     ).toBeUndefined();
   });
 
-  it("formats compact burn-rate inline tails for minute, hour, and day ranges", () => {
+  it("formats compact burn-rate secondary lines for minute, hour, and day ranges", () => {
     const en = getCopy("en-US");
     const zh = getCopy("zh-CN");
 
     expect(
-      localizeBurnRateInlineTail(en, {
+      localizeBurnRateSecondaryLine(en, {
         willLastUntilReset: false,
         depletionEtaMs: 45 * 60 * 1000
       })
-    ).toBe("~45m left");
+    ).toBe("Runs out in ~45m");
     expect(
-      localizeBurnRateInlineTail(en, {
+      localizeBurnRateSecondaryLine(en, {
         willLastUntilReset: false,
         depletionEtaMs: (3 * 60 + 5) * 60 * 1000
       })
-    ).toBe("~3h 05m left");
+    ).toBe("Runs out in ~3h 05m");
     expect(
-      localizeBurnRateInlineTail(zh, {
+      localizeBurnRateSecondaryLine(zh, {
         willLastUntilReset: false,
         depletionEtaMs: (2 * 24 * 60 + 3 * 60) * 60 * 1000
       })
-    ).toBe("约 2 天 03 小时");
+    ).toBe("约 2 天 03 小时 后用尽");
   });
 
   it("keeps burn-rate strings compact with no expanded prose", () => {
     const en = getCopy("en-US");
     const zh = getCopy("zh-CN");
 
-    expect(en.burnRateLeftFormat).toBe("~{value} left");
-    expect(zh.burnRateLeftFormat).toBe("约 {value}");
+    expect(en.burnRateRunsOutInFormat).toBe("Runs out in ~{value}");
+    expect(zh.burnRateRunsOutInFormat).toBe("约 {value} 后用尽");
   });
 });

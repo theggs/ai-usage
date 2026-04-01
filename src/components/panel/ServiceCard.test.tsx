@@ -338,7 +338,7 @@ describe("ServiceCard", () => {
     ]);
   });
 
-  it("renders one-line burn-rate copy only for dimensions with valid history and shares the row with reset hints", () => {
+  it("renders risk-only burn-rate copy with ETA and reset hint sharing the secondary line", () => {
     const nowMs = Date.parse("2026-04-02T12:00:00Z");
 
     render(
@@ -390,21 +390,23 @@ describe("ServiceCard", () => {
       />
     );
 
-    expect(screen.getByText("Behind · ~3h 00m left")).toBeInTheDocument();
+    expect(screen.getByText("Behind")).toBeInTheDocument();
+    expect(screen.getByText("Runs out in ~3h 00m")).toBeInTheDocument();
 
     const visibleBurnRateBlock = screen.getByTestId("progress-track-codex / 5h").parentElement;
-    expect(visibleBurnRateBlock?.textContent).toContain("Behind · ~3h 00m left");
+    expect(visibleBurnRateBlock?.textContent).toContain("Behind");
+    expect(visibleBurnRateBlock?.textContent).toContain("Runs out in ~3h 00m");
     expect(visibleBurnRateBlock?.textContent).toContain("Resets in 4h 00m");
-    expect(visibleBurnRateBlock?.textContent?.indexOf("Behind · ~3h 00m left")).toBeLessThan(
+    expect(visibleBurnRateBlock?.textContent?.indexOf("Runs out in ~3h 00m")).toBeLessThan(
       visibleBurnRateBlock?.textContent?.indexOf("Resets in 4h 00m") ?? 0
     );
 
     const missingHistoryBlock = screen.getByTestId("progress-track-codex / week").parentElement;
     expect(missingHistoryBlock?.textContent).not.toContain("On track");
-    expect(missingHistoryBlock?.textContent).not.toContain("· ~");
+    expect(missingHistoryBlock?.textContent).not.toContain("Runs out in ~");
 
     const invalidResetBlock = screen.getByTestId("progress-track-codex / day").parentElement;
     expect(invalidResetBlock?.textContent).not.toContain("Behind");
-    expect(invalidResetBlock?.textContent).not.toContain("· ~");
+    expect(invalidResetBlock?.textContent).not.toContain("Runs out in ~");
   });
 });
