@@ -91,8 +91,12 @@ Plans:
   2. A provider at 20% remaining with 6 hours until reset shows a healthy or moderate state when burn rate supports it
   3. When `resetsAt` is unavailable, the app falls back to the existing static percentage thresholds (>50% green, 20-50% amber, <20% red) with no visible error
   4. All SnapshotStatus switch statements are exhaustive — no unhandled variant causes a silent no-op or UI blank
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+Plans:
+- [x] 05-01-PLAN.md — Shared quota-health classifier and deterministic aggregate selection
+- [ ] 05-02-PLAN.md — Panel, card, and summary UI migration to pace-aware labels
+- [x] 05-03-PLAN.md — Tray alignment and SnapshotStatus exhaustiveness audit
 
 ### Phase 6: About Page
 **Goal**: The app has a standalone About page showing version, GitHub link, app license, and a dependency license audit summary generated at build time
@@ -120,7 +124,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 | 2. Fetch Pipeline & Migration | 2/2 | Complete | - |
 | 3. New Providers | 4/4 | Complete | 2026-04-01 |
 | 4. Burn Rate Engine | 2/2 | Complete | 2026-04-02 |
-| 5. Time-Aware Alert Thresholds | 0/? | Not started | - |
+| 5. Time-Aware Alert Thresholds | 2/3 | In Progress | - |
 | 6. About Page | 0/? | Not started | - |
 
 ## Backlog
