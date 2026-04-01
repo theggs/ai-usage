@@ -69,7 +69,7 @@ Users always know whether their AI coding quota will last until reset — across
 | Provider Registry as static struct array (Rust) + frozen array (TypeScript) | Compile-time fixed entries, no trait objects, matches codebase idioms | Phase 1 ✓ |
 | Time-aware thresholds replace absolute thresholds | "80% remaining with 4h left" is fine; "10% remaining with 4h left" is not | — Pending |
 | Separate About page (not Settings tab) | Keeps Settings focused on configuration; About is reference info | — Pending |
-| Kimi Code + GLM Coding Plan as first new providers | Chinese AI coding market is underserved by existing tools | — Pending |
+| Kimi Code + GLM Coding Plan as first new providers | Chinese AI coding market is underserved by existing tools | Phase 3 ✓ |
 
 ## Evolution
 
