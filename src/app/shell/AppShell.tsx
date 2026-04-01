@@ -78,12 +78,17 @@ export const AppShell = () => {
   const [notificationResult, setNotificationResult] = useState<NotificationCheckResult | null>(null);
   const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
   const [promotionOverlayState, setPromotionOverlayState] = useState<PromotionOverlayState>("closed");
+  const [displayNowMs, setDisplayNowMs] = useState(() => Date.now());
   const [isLoading, setIsLoading] = useState(true);
   const [isE2EMode, setIsE2EMode] = useState(false);
+  const [isWindowVisible, setIsWindowVisible] = useState(
+    () => typeof document === "undefined" || document.visibilityState !== "hidden"
+  );
   const [refreshFeedback, setRefreshFeedback] = useState<"idle" | "error">("idle");
   const [settingsHeaderStatus, setSettingsHeaderStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [reopenCycle, setReopenCycle] = useState(0);
   const lastStableProviderStates = useRef<Record<string, CodexPanelState | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const settingsScrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -369,12 +374,48 @@ export const AppShell = () => {
 
   useEffect(() => {
     const handleWindowFocus = () => {
+      setIsWindowVisible(true);
+      setDisplayNowMs(Date.now());
       resetShellViewState();
+      setReopenCycle((current) => current + 1);
     };
 
     window.addEventListener("focus", handleWindowFocus);
     return () => window.removeEventListener("focus", handleWindowFocus);
   }, []);
+
+  useEffect(() => {
+    const handleWindowBlur = () => {
+      setIsWindowVisible(false);
+    };
+    const handleVisibilityChange = () => {
+      const visible = document.visibilityState !== "hidden";
+      setIsWindowVisible(visible);
+      if (visible) {
+        setDisplayNowMs(Date.now());
+      }
+    };
+
+    window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isWindowVisible || currentView !== "panel") {
+      return undefined;
+    }
+
+    setDisplayNowMs(Date.now());
+    const tickerId = window.setInterval(() => {
+      setDisplayNowMs(Date.now());
+    }, 60_000);
+
+    return () => window.clearInterval(tickerId);
+  }, [currentView, isWindowVisible]);
 
   useEffect(() => {
     const handleEscapeToHide = (event: KeyboardEvent) => {
@@ -461,6 +502,7 @@ export const AppShell = () => {
         preferences,
         notificationResult,
         currentView,
+        displayNowMs,
         isLoading,
         isE2EMode,
         error,
@@ -559,6 +601,9 @@ export const AppShell = () => {
               <div className="rounded-2xl bg-slate-50 p-8 text-center text-sm text-slate-500">{copy.loading}</div>
             ) : (
               <div
+                data-testid="app-shell-viewport"
+                data-reopen-cycle={reopenCycle}
+                key={reopenCycle}
                 className={`flex h-full w-[200%] gap-4 transition-transform duration-300 ease-out ${currentView === "panel" ? "translate-x-0" : "-translate-x-[calc(50%+1rem)]"}`}
               >
                 <div

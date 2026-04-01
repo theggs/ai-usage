@@ -117,7 +117,8 @@ fn map_kimi_response(resp: &KimiUsageResponse) -> Vec<QuotaDimension> {
             label: "Weekly".into(),
             remaining_percent: pct,
             remaining_absolute: format_absolute(remaining, limit),
-            reset_hint: usage.reset_time.clone(),
+            resets_at: usage.reset_time.clone(),
+            reset_hint: None,
             status: "normal".into(),
             progress_tone: tone,
         });
@@ -139,7 +140,8 @@ fn map_kimi_response(resp: &KimiUsageResponse) -> Vec<QuotaDimension> {
                     label: "5h Window".into(),
                     remaining_percent: pct,
                     remaining_absolute: format_absolute(remaining, limit),
-                    reset_hint: detail.reset_time.clone(),
+                    resets_at: detail.reset_time.clone(),
+                    reset_hint: None,
                     status: "normal".into(),
                     progress_tone: tone,
                 });
@@ -339,13 +341,15 @@ mod tests {
 
     #[test]
     fn valid_full_response_produces_two_dimensions() {
+        let weekly_reset = (chrono::Utc::now() + chrono::Duration::days(4)).to_rfc3339();
+        let window_reset = (chrono::Utc::now() + chrono::Duration::minutes(90)).to_rfc3339();
         let json = r#"{
             "user": { "userId": "u1", "membership": { "level": "LEVEL_PRO" } },
             "usage": {
                 "limit": "1000000",
                 "used": "250000",
                 "remaining": "750000",
-                "resetTime": "2026-04-07T00:00:00.000Z"
+                "resetTime": "__WEEKLY_RESET__"
             },
             "limits": [{
                 "window": { "duration": 300, "timeUnit": "TIME_UNIT_MINUTE" },
@@ -353,11 +357,13 @@ mod tests {
                     "limit": "200000",
                     "used": "50000",
                     "remaining": "150000",
-                    "resetTime": "2026-03-31T15:00:00.000Z"
+                    "resetTime": "__WINDOW_RESET__"
                 }
             }]
-        }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        }"#
+        .replace("__WEEKLY_RESET__", &weekly_reset)
+        .replace("__WINDOW_RESET__", &window_reset);
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
         assert_eq!(dims.len(), 2);
 
@@ -365,20 +371,14 @@ mod tests {
         assert_eq!(dims[0].label, "Weekly");
         assert_eq!(dims[0].remaining_percent, Some(75));
         assert_eq!(dims[0].remaining_absolute, "750000 / 1000000");
-        assert_eq!(
-            dims[0].reset_hint.as_deref(),
-            Some("2026-04-07T00:00:00.000Z")
-        );
+        assert_eq!(dims[0].resets_at.as_deref(), Some(weekly_reset.as_str()));
         assert_eq!(dims[0].progress_tone, "success");
 
         // 5h Window: 150000/200000 = 75%
         assert_eq!(dims[1].label, "5h Window");
         assert_eq!(dims[1].remaining_percent, Some(75));
         assert_eq!(dims[1].remaining_absolute, "150000 / 200000");
-        assert_eq!(
-            dims[1].reset_hint.as_deref(),
-            Some("2026-03-31T15:00:00.000Z")
-        );
+        assert_eq!(dims[1].resets_at.as_deref(), Some(window_reset.as_str()));
         assert_eq!(dims[1].progress_tone, "success");
     }
 
@@ -390,7 +390,7 @@ mod tests {
                 "remaining": "750000"
             }
         }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
         assert_eq!(dims.len(), 1);
         assert_eq!(dims[0].remaining_percent, Some(75));
@@ -404,7 +404,7 @@ mod tests {
                 "remaining": "200"
             }
         }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
         assert_eq!(dims[0].remaining_percent, Some(100));
     }
@@ -417,7 +417,7 @@ mod tests {
                 "remaining": "100"
             }
         }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
         assert_eq!(dims[0].remaining_percent, None);
         assert_eq!(dims[0].progress_tone, "muted");
@@ -426,7 +426,7 @@ mod tests {
     #[test]
     fn missing_usage_field_produces_empty_dimensions() {
         let json = r#"{ "user": { "userId": "u1" } }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
         assert!(dims.is_empty());
     }
@@ -439,7 +439,7 @@ mod tests {
                 "remaining": "500"
             }
         }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
         assert_eq!(dims.len(), 1);
         assert_eq!(dims[0].label, "Weekly");
@@ -456,7 +456,7 @@ mod tests {
                 "window": { "duration": 300, "timeUnit": "TIME_UNIT_MINUTE" }
             }]
         }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
         assert_eq!(dims.len(), 1);
         assert_eq!(dims[0].label, "Weekly");
@@ -470,27 +470,26 @@ mod tests {
                 "remaining": "def"
             }
         }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
         // limit=0, so remaining_percent = None
         assert_eq!(dims[0].remaining_percent, None);
     }
 
     #[test]
-    fn reset_time_preserved_as_is() {
+    fn reset_time_is_preserved_for_ui_formatting() {
+        let reset_time = (chrono::Utc::now() + chrono::Duration::minutes(90)).to_rfc3339();
         let json = r#"{
             "usage": {
                 "limit": "1000",
                 "remaining": "500",
-                "resetTime": "2026-04-07T00:00:00.000Z"
+                "resetTime": "__RESET_TIME__"
             }
-        }"#;
-        let resp: KimiUsageResponse = serde_json::from_str(json).unwrap();
+        }"#
+        .replace("__RESET_TIME__", &reset_time);
+        let resp: KimiUsageResponse = serde_json::from_str(&json).unwrap();
         let dims = map_kimi_response(&resp);
-        assert_eq!(
-            dims[0].reset_hint.as_deref(),
-            Some("2026-04-07T00:00:00.000Z")
-        );
+        assert_eq!(dims[0].resets_at.as_deref(), Some(reset_time.as_str()));
     }
 
     #[test]

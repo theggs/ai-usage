@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   formatPromotionDetailTiming,
   formatPromotionPopoverLine,
@@ -7,6 +7,7 @@ import {
   getPlaceholderCopy,
   getPromotionPopoverLabel,
   getPromotionTriggerLabel,
+  localizeResetHint,
   localizeDimensionLabel,
   resolveCopyTree
 } from "./i18n";
@@ -183,5 +184,32 @@ describe("getPlaceholderCopy provider routing", () => {
   it("zh-CN tokenNotConfiguredTitle/Body text does NOT mention Claude Code", () => {
     expect(zhCopy.tokenNotConfiguredTitle).not.toMatch(/Claude Code/i);
     expect(zhCopy.tokenNotConfiguredBody).not.toMatch(/Claude Code/i);
+  });
+});
+
+describe("localizeResetHint", () => {
+  it("formats raw ISO reset timestamps into precise localized relative hints", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-01T12:00:00.000Z"));
+
+    const zhCopy = getCopy("zh-CN");
+    const enCopy = getCopy("en-US");
+
+    expect(localizeResetHint(zhCopy, "2026-04-01T13:08:52.858850Z")).toBe("1 小时 09 分钟后重置");
+    expect(localizeResetHint(enCopy, "2026-04-01T13:08:52.858850Z")).toBe("Resets in 1h 09m");
+    expect(localizeResetHint(enCopy, "2026-04-03T14:08:52.858850Z")).toBe("Resets in 2d 03h");
+    expect(localizeResetHint(enCopy, "2026-04-01T12:04:00.000Z")).toBe("Resets in 4m");
+
+    vi.useRealTimers();
+  });
+
+  it("keeps legacy backend reset hints and due states readable during migration", () => {
+    const enCopy = getCopy("en-US");
+
+    expect(localizeResetHint(enCopy, "Resets in 2h")).toBe("Resets in 2h");
+    expect(localizeResetHint(enCopy, "Reset due")).toBe("Reset due");
+    expect(localizeResetHint(enCopy, "Waiting for snapshot")).toBe("Waiting for snapshot");
+
+    vi.useRealTimers();
   });
 });

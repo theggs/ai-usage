@@ -21,6 +21,7 @@ export const PanelView = () => {
     providerStates,
     refreshingProviders,
     preferences,
+    displayNowMs,
     error,
     openSettings,
     savePreferences
@@ -125,6 +126,7 @@ export const PanelView = () => {
               <ServiceCard
                 key={service.serviceId}
                 copy={copy}
+                nowMs={displayNowMs}
                 service={service}
               />
             ));

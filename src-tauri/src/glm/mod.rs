@@ -108,6 +108,11 @@ fn progress_tone(pct: Option<u8>) -> String {
     }
 }
 
+fn reset_time_iso_from_unix_ms(next_reset_time_ms: Option<i64>) -> Option<String> {
+    let reset_unix = next_reset_time_ms?.checked_div(1000)?;
+    chrono::DateTime::from_timestamp(reset_unix, 0).map(|dt| dt.to_rfc3339())
+}
+
 // ---------------------------------------------------------------------------
 // Response decoding (envelope + bare fallback)
 // ---------------------------------------------------------------------------
@@ -161,11 +166,7 @@ fn map_glm_response(resp: &GlmQuotaResponse) -> Vec<QuotaDimension> {
             };
             let tone = progress_tone(remaining_pct);
 
-            // Convert millisecond timestamp to ISO 8601
-            let reset_hint = limit.next_reset_time.and_then(|ms| {
-                chrono::DateTime::from_timestamp(ms / 1000, 0)
-                    .map(|dt| dt.to_rfc3339())
-            });
+            let resets_at = reset_time_iso_from_unix_ms(limit.next_reset_time);
 
             // Compute remaining absolute from total - currentValue
             let remaining_abs = match (limit.current_value, limit.total) {
@@ -183,7 +184,8 @@ fn map_glm_response(resp: &GlmQuotaResponse) -> Vec<QuotaDimension> {
                 label: label.into(),
                 remaining_percent: remaining_pct,
                 remaining_absolute: remaining_abs,
-                reset_hint,
+                resets_at,
+                reset_hint: None,
                 status: "normal".into(),
                 progress_tone: tone,
             });
@@ -380,7 +382,7 @@ mod tests {
                 "level": "standard"
             }
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims.len(), 3);
         assert_eq!(dims[0].label, "5h Token Quota");
@@ -400,7 +402,7 @@ mod tests {
                 "total": 200000
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         // 100 - 24.5 = 75.5 -> round -> 76
         assert_eq!(dims[0].remaining_percent, Some(76));
@@ -416,7 +418,7 @@ mod tests {
                 "percentage": 0.0
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].remaining_percent, Some(100));
     }
@@ -431,7 +433,7 @@ mod tests {
                 "percentage": 100.0
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].remaining_percent, Some(0));
         assert_eq!(dims[0].progress_tone, "danger");
@@ -447,7 +449,7 @@ mod tests {
                 "percentage": 105.0
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         // clamp(0, 100) -> 100 usage -> 0 remaining
         assert_eq!(dims[0].remaining_percent, Some(0));
@@ -463,7 +465,7 @@ mod tests {
                 "percentage": -5.0
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         // clamp(0, 100) -> 0 usage -> 100 remaining
         assert_eq!(dims[0].remaining_percent, Some(100));
@@ -480,7 +482,7 @@ mod tests {
                 "total": 200
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].remaining_percent, None);
         assert_eq!(dims[0].progress_tone, "muted");
@@ -488,21 +490,25 @@ mod tests {
 
     #[test]
     fn next_reset_time_ms_converted_to_iso8601() {
-        // 1711900800000 ms = 2024-03-31T16:00:00Z
+        let next_reset_time = (chrono::Utc::now() + chrono::Duration::minutes(90)).timestamp_millis();
         let json = r#"{
             "limits": [{
                 "type": "TOKENS_LIMIT",
                 "unit": 3,
                 "number": 5,
                 "percentage": 10.0,
-                "nextResetTime": 1711900800000
+                "nextResetTime": __NEXT_RESET_TIME__
             }]
-        }"#;
-        let resp = decode_glm_response(json).unwrap();
+        }"#
+        .replace("__NEXT_RESET_TIME__", &next_reset_time.to_string());
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
-        assert!(dims[0].reset_hint.is_some());
-        let hint = dims[0].reset_hint.as_ref().unwrap();
-        assert!(hint.contains("2024-03-31"), "expected 2024-03-31 in {hint}");
+        assert_eq!(
+            dims[0].resets_at.as_deref(),
+            chrono::DateTime::from_timestamp(next_reset_time / 1000, 0)
+                .map(|dt| dt.to_rfc3339())
+                .as_deref()
+        );
     }
 
     #[test]
@@ -513,7 +519,7 @@ mod tests {
                 "percentage": 10.0
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert!(dims[0].reset_hint.is_none());
     }
@@ -530,7 +536,7 @@ mod tests {
                 }]
             }
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         assert!(resp.limits.is_some());
         assert_eq!(resp.limits.unwrap().len(), 1);
     }
@@ -545,7 +551,7 @@ mod tests {
                 "percentage": 30.0
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         assert!(resp.limits.is_some());
     }
 
@@ -559,7 +565,7 @@ mod tests {
                 "percentage": 24
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         // 100 - 24 = 76
         assert_eq!(dims[0].remaining_percent, Some(76));
@@ -575,7 +581,7 @@ mod tests {
                 "percentage": "24.5"
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].remaining_percent, Some(76));
     }
@@ -592,7 +598,7 @@ mod tests {
                 "total": 200000
             }]
         }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].remaining_absolute, "150000 / 200000");
     }
@@ -600,7 +606,7 @@ mod tests {
     #[test]
     fn tokens_limit_unit3_number5_is_5h() {
         let json = r#"{ "limits": [{ "type": "TOKENS_LIMIT", "unit": 3, "number": 5, "percentage": 0 }] }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].label, "5h Token Quota");
     }
@@ -608,7 +614,7 @@ mod tests {
     #[test]
     fn tokens_limit_unit6_number1_is_weekly() {
         let json = r#"{ "limits": [{ "type": "TOKENS_LIMIT", "unit": 6, "number": 1, "percentage": 0 }] }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].label, "Weekly Token Quota");
     }
@@ -616,7 +622,7 @@ mod tests {
     #[test]
     fn time_limit_is_mcp_usage() {
         let json = r#"{ "limits": [{ "type": "TIME_LIMIT", "percentage": 0 }] }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].label, "MCP Usage");
     }
@@ -624,7 +630,7 @@ mod tests {
     #[test]
     fn unknown_type_combo_is_generic_quota() {
         let json = r#"{ "limits": [{ "type": "UNKNOWN_TYPE", "percentage": 0 }] }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert_eq!(dims[0].label, "Quota");
     }
@@ -632,7 +638,7 @@ mod tests {
     #[test]
     fn empty_limits_array_produces_empty_dimensions() {
         let json = r#"{ "limits": [] }"#;
-        let resp = decode_glm_response(json).unwrap();
+        let resp = decode_glm_response(&json).unwrap();
         let dims = map_glm_response(&resp);
         assert!(dims.is_empty());
     }

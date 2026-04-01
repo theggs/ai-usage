@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ServiceCard } from "./ServiceCard";
 import { getCopy } from "../../app/shared/i18n";
 
@@ -97,6 +97,41 @@ describe("ServiceCard", () => {
     );
 
     expect(screen.getByText("Custom Window")).toBeInTheDocument();
+  });
+
+  it("formats raw reset timestamps in the UI without leaking ISO strings", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-01T12:00:00.000Z"));
+
+    render(
+      <ServiceCard
+        copy={getCopy("en-US")}
+        nowMs={Date.now()}
+        service={{
+          serviceId: "codex",
+          serviceName: "Codex",
+          iconKey: "codex",
+          statusLabel: "demo",
+          badgeLabel: "Live",
+          lastSuccessfulRefreshAt: "1742321579",
+          quotaDimensions: [
+            {
+              label: "Custom Window",
+              remainingPercent: 80,
+              remainingAbsolute: "80% remaining",
+              resetsAt: "2026-04-01T14:00:00.000Z",
+              status: "healthy",
+              progressTone: "success"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.getByText("Resets in 2h 00m")).toBeInTheDocument();
+    expect(screen.queryByText("2026-04-01T14:00:00.000Z")).not.toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 
   it("hides redundant live badges on healthy connected cards", () => {

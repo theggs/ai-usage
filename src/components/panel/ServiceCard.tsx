@@ -7,11 +7,13 @@ import { getServiceAlertLevel, getSeverityLabelKey } from "../../lib/tauri/summa
 export const ServiceCard = ({
   service,
   copy,
-  showLastRefreshed = true
+  showLastRefreshed = true,
+  nowMs
 }: {
   service: PanelPlaceholderItem;
   copy: CopyTree;
   showLastRefreshed?: boolean;
+  nowMs?: number;
 }) => {
   const badgeLabel = service.badgeLabel ? localizeBadgeLabel(copy, service.badgeLabel) : null;
   const shouldShowBadge =
@@ -58,7 +60,7 @@ export const ServiceCard = ({
       </div>
       <div className={`mt-3 grid gap-2 ${alertLevel !== "normal" ? "pl-2" : ""}`}>
         {service.quotaDimensions.map((dimension) => (
-          <QuotaSummary key={dimension.label} dimension={dimension} copy={copy} />
+          <QuotaSummary key={dimension.label} dimension={dimension} copy={copy} nowMs={nowMs} />
         ))}
       </div>
       {showLastRefreshed ? (

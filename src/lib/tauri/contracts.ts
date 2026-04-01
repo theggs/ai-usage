@@ -35,6 +35,7 @@ export interface QuotaDimension {
   label: string;
   remainingPercent?: number;
   remainingAbsolute: string;
+  resetsAt?: string;
   resetHint?: string;
   status: CodexLimitStatus;
   progressTone: QuotaProgressTone;

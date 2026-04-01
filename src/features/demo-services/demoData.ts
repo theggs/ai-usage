@@ -2,6 +2,7 @@ import type { ActiveCodexSession, CodexPanelState } from "../../lib/tauri/contra
 import { decorateQuotaDimension, formatTraySummary } from "../../lib/tauri/summary";
 
 const now = () => new Date().toISOString();
+const minutesFromNow = (minutes: number) => new Date(Date.now() + minutes * 60 * 1_000).toISOString();
 
 type FallbackSessionMode = "connected" | "disconnected" | "pending" | "failed";
 
@@ -34,19 +35,19 @@ const buildItems = (mode: FallbackSessionMode): CodexPanelState["items"] => {
           label: "Local Messages / 5h",
           remainingPercent: 64,
           remainingAbsolute: "64% remaining",
-          resetHint: "Resets in 2h"
+          resetsAt: minutesFromNow(120)
         },
         {
           label: "Code Reviews / week",
           remainingPercent: 82,
           remainingAbsolute: "82% remaining",
-          resetHint: "Resets in 4d"
+          resetsAt: minutesFromNow(4 * 24 * 60)
         },
         {
           label: "Bug Bash / day",
           remainingPercent: 20,
           remainingAbsolute: "20% remaining",
-          resetHint: "Resets in 12h"
+          resetsAt: minutesFromNow(12 * 60)
         },
         {
           label: "Spec Reviews / month",

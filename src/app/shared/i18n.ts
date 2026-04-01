@@ -655,15 +655,49 @@ export const localizeRemaining = (copy: CopyTree, remainingPercent?: number, bac
 };
 
 /**
- * Localize a backend-generated reset hint like "Resets in 5h" or "Reset due".
+ * Localize a raw reset timestamp or legacy backend-generated reset hint.
  */
-export const localizeResetHint = (copy: CopyTree, backendValue?: string | null): string | undefined => {
+const formatResetValuePart = (value: number | string, unit: string) => `${value}${unit}`;
+
+const formatPreciseResetValue = (copy: CopyTree, totalMinutes: number) => {
+  if (totalMinutes < 60) {
+    return formatResetValuePart(totalMinutes, copy.minuteShort);
+  }
+
+  if (totalMinutes < 1_440) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${formatResetValuePart(hours, copy.hourShort)} ${formatResetValuePart(String(minutes).padStart(2, "0"), copy.minuteShort)}`;
+  }
+
+  const totalHours = Math.ceil(totalMinutes / 60);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  return `${formatResetValuePart(days, copy.dayShort)} ${formatResetValuePart(String(hours).padStart(2, "0"), copy.hourShort)}`;
+};
+
+export const localizeResetHint = (
+  copy: CopyTree,
+  backendValue?: string | null,
+  nowMs = Date.now()
+): string | undefined => {
   if (!backendValue) return undefined;
 
   if (backendValue === "Reset due") return copy.resetDue;
 
+  const parsed = /^\d{4}-\d{2}-\d{2}T/.test(backendValue) ? Date.parse(backendValue) : Number.NaN;
+  if (!Number.isNaN(parsed)) {
+    const diffMs = parsed - nowMs;
+    if (diffMs <= 0) return copy.resetDue;
+
+    const totalMinutes = Math.max(1, Math.ceil(diffMs / 60_000));
+    return copy.resetsInFormat.replace("{value}", formatPreciseResetValue(copy, totalMinutes));
+  }
+
   const match = backendValue.match(/^Resets in (\d+)(m|h|d)$/);
-  if (!match) return backendValue;
+  if (!match) {
+    return backendValue;
+  }
 
   const [, num, unit] = match;
   const unitMap: Record<string, string> = {

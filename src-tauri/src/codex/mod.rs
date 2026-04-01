@@ -10,7 +10,6 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 const RATE_LIMIT_REQUEST_ID: u64 = 2;
 
@@ -138,6 +137,7 @@ fn parse_dimension(line: &str) -> Option<QuotaDimension> {
         label: label.to_string(),
         remaining_percent: parse_percent(&remaining_absolute),
         remaining_absolute,
+        resets_at: None,
         reset_hint,
         status: "unknown".into(),
         progress_tone: "muted".into(),
@@ -402,27 +402,9 @@ fn format_window_duration(minutes: Option<u64>, fallback: &str) -> String {
     }
 }
 
-fn format_reset_hint(resets_at: Option<i64>) -> Option<String> {
+fn reset_time_iso(resets_at: Option<i64>) -> Option<String> {
     let timestamp = resets_at?;
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .ok()
-        .map(|duration| duration.as_secs() as i64)?;
-    let diff = timestamp.saturating_sub(now);
-
-    if diff <= 0 {
-        return Some("Reset due".into());
-    }
-
-    let value = if diff < 3_600 {
-        format!("{}m", (diff + 59) / 60)
-    } else if diff < 172_800 {
-        format!("{}h", (diff + 3_599) / 3_600)
-    } else {
-        format!("{}d", (diff + 86_399) / 86_400)
-    };
-
-    Some(format!("Resets in {value}"))
+    chrono::DateTime::from_timestamp(timestamp, 0).map(|dt| dt.to_rfc3339())
 }
 
 fn to_quota_dimension(
@@ -439,7 +421,8 @@ fn to_quota_dimension(
         ),
         remaining_percent: Some(remaining as u8),
         remaining_absolute: format!("{remaining}% remaining"),
-        reset_hint: format_reset_hint(window.resets_at),
+        resets_at: reset_time_iso(window.resets_at),
+        reset_hint: None,
         status: "unknown".into(),
         progress_tone: "muted".into(),
     }

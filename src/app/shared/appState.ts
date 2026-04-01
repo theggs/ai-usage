@@ -12,6 +12,7 @@ export interface AppStateValue {
   preferences: UserPreferences | null;
   notificationResult: NotificationCheckResult | null;
   currentView: "panel" | "settings";
+  displayNowMs: number;
   isLoading: boolean;
   isE2EMode: boolean;
   error: string | null;

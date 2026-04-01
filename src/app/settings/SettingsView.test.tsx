@@ -15,6 +15,7 @@ const createState = (overrides: Partial<AppStateValue> = {}): AppStateValue => (
   },
   notificationResult: null,
   currentView: "settings",
+  displayNowMs: Date.now(),
   isLoading: false,
   isE2EMode: false,
   error: null,

@@ -17,14 +17,16 @@ const textToneClasses: Record<QuotaDimension["progressTone"], string> = {
 
 export const QuotaSummary = ({
   dimension,
-  copy
+  copy,
+  nowMs
 }: {
   dimension: QuotaDimension;
   copy: CopyTree;
+  nowMs?: number;
 }) => {
-  const { label, remainingPercent, remainingAbsolute, resetHint, progressTone } = dimension;
+  const { label, remainingPercent, remainingAbsolute, resetsAt, resetHint, progressTone } = dimension;
   const localizedRemaining = localizeRemaining(copy, remainingPercent, remainingAbsolute);
-  const localizedResetHint = localizeResetHint(copy, resetHint);
+  const localizedResetHint = localizeResetHint(copy, resetsAt ?? resetHint, nowMs);
   const displayLabel = localizeDimensionLabel(copy, label);
   const severityLabel =
     dimension.status === "exhausted"

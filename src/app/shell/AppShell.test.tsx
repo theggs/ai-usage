@@ -223,7 +223,6 @@ describe("AppShell", () => {
     render(<AppShell />);
 
     await act(async () => {
-      vi.runAllTimers();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -282,7 +281,6 @@ describe("AppShell", () => {
 
     const firstRender = render(<AppShell />);
     await act(async () => {
-      vi.runAllTimers();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -300,7 +298,6 @@ describe("AppShell", () => {
 
     render(<AppShell />);
     await act(async () => {
-      vi.runAllTimers();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -326,12 +323,54 @@ describe("AppShell", () => {
     await screen.findByRole("button", { name: "设置" });
     await userEvent.click(screen.getByRole("button", { name: "设置" }));
     expect(screen.getByRole("button", { name: "返回" })).toBeInTheDocument();
+    const viewportBeforeFocus = screen.getByTestId("app-shell-viewport");
 
     act(() => {
       window.dispatchEvent(new Event("focus"));
     });
 
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
+    expect(screen.getByTestId("app-shell-viewport")).not.toBe(viewportBeforeFocus);
+  });
+
+  it("updates countdowns only while the window is visible", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-01T12:00:00.000Z"));
+    getPreferences.mockResolvedValue(
+      makePreferences({ language: "en-US", serviceOrder: ["codex"], providerEnabled: { codex: true } })
+    );
+
+    render(<AppShell />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByText("Resets in 2h 00m")).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Resets in 1h 59m")).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("blur"));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Resets in 1h 59m")).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(screen.getByText("Resets in 1h 58m")).toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 
   it("refreshes all enabled providers when savePreferences receives a providerTokens patch", async () => {
@@ -448,7 +487,6 @@ describe("AppShell", () => {
     render(<AppShell />);
 
     await act(async () => {
-      vi.runAllTimers();
       await Promise.resolve();
       await Promise.resolve();
     });

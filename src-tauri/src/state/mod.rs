@@ -115,6 +115,9 @@ pub struct QuotaDimension {
     pub label: String,
     pub remaining_percent: Option<u8>,
     pub remaining_absolute: String,
+    #[serde(default)]
+    pub resets_at: Option<String>,
+    #[serde(default)]
     pub reset_hint: Option<String>,
     pub status: String,
     pub progress_tone: String,

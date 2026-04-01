@@ -261,35 +261,6 @@ mod hex {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Reset hint formatting — must match codex format_reset_hint output exactly
-// ---------------------------------------------------------------------------
-
-fn format_reset_hint_from_iso(resets_at: &str) -> Option<String> {
-    let dt = chrono::DateTime::parse_from_rfc3339(resets_at).ok()?;
-    let reset_unix = dt.timestamp();
-    let now_unix = now_unix();
-    let diff = reset_unix.saturating_sub(now_unix);
-
-    if diff <= 0 {
-        return Some("Reset due".into());
-    }
-
-    let value = if diff < 3_600 {
-        format!("{}m", (diff + 59) / 60)
-    } else if diff < 172_800 {
-        format!("{}h", (diff + 3_599) / 3_600)
-    } else {
-        format!("{}d", (diff + 86_399) / 86_400)
-    };
-
-    Some(format!("Resets in {value}"))
-}
-
-// ---------------------------------------------------------------------------
-// Dimension transformation
-// ---------------------------------------------------------------------------
-
 fn dimension_label(field_name: &str) -> &'static str {
     match field_name {
         "five_hour" => "Claude Code / 5h",
@@ -303,13 +274,13 @@ fn dimension_label(field_name: &str) -> &'static str {
 fn transform_dimension(field_name: &str, dim: &UsageDimension) -> QuotaDimension {
     let remaining_percent = (100.0 - dim.utilization).round().clamp(0.0, 100.0) as u8;
     let label = dimension_label(field_name).to_string();
-    let reset_hint = format_reset_hint_from_iso(&dim.resets_at);
 
     QuotaDimension {
         label,
         remaining_percent: Some(remaining_percent),
         remaining_absolute: format!("{remaining_percent}% remaining"),
-        reset_hint,
+        resets_at: Some(dim.resets_at.clone()),
+        reset_hint: None,
         status: "unknown".into(),
         progress_tone: "muted".into(),
     }
@@ -546,22 +517,30 @@ mod tests {
         assert_eq!(result.remaining_percent, Some(0));
     }
 
-    // (d) ISO 8601 resets_at 90 minutes in the future -> "Resets in 2h"
+    // (d) Usage dimensions preserve raw resets_at for UI-side formatting.
     #[test]
-    fn formats_reset_hint_hours() {
+    fn preserves_raw_resets_at_hours() {
         let future = chrono::Utc::now() + chrono::Duration::minutes(90);
         let iso = future.to_rfc3339();
-        let hint = format_reset_hint_from_iso(&iso).expect("should produce hint");
-        assert_eq!(hint, "Resets in 2h");
+        let dim = UsageDimension {
+            utilization: 40.0,
+            resets_at: iso.clone(),
+        };
+        let transformed = transform_dimension("five_hour", &dim);
+        assert_eq!(transformed.resets_at.as_deref(), Some(iso.as_str()));
     }
 
-    // (e) ISO 8601 resets_at in the past -> "Reset due"
+    // (e) Even past timestamps are preserved; UI decides how to label them.
     #[test]
-    fn formats_reset_hint_past() {
+    fn preserves_raw_resets_at_past() {
         let past = chrono::Utc::now() - chrono::Duration::minutes(5);
         let iso = past.to_rfc3339();
-        let hint = format_reset_hint_from_iso(&iso).expect("should produce hint");
-        assert_eq!(hint, "Reset due");
+        let dim = UsageDimension {
+            utilization: 40.0,
+            resets_at: iso.clone(),
+        };
+        let transformed = transform_dimension("five_hour", &dim);
+        assert_eq!(transformed.resets_at.as_deref(), Some(iso.as_str()));
     }
 
     #[test]
@@ -621,6 +600,7 @@ mod tests {
                 label: "Claude Code / 5h".into(),
                 remaining_percent: Some(42),
                 remaining_absolute: "42% remaining".into(),
+                resets_at: None,
                 reset_hint: None,
                 status: "unknown".into(),
                 progress_tone: "muted".into(),
@@ -673,6 +653,7 @@ mod tests {
                 label: "Claude Code / 5h".into(),
                 remaining_percent: Some(70),
                 remaining_absolute: "70% remaining".into(),
+                resets_at: None,
                 reset_hint: None,
                 status: "healthy".into(),
                 progress_tone: "success".into(),

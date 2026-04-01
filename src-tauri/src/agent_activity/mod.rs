@@ -523,6 +523,7 @@ mod tests {
                 label: "5h".into(),
                 remaining_percent: Some(42),
                 remaining_absolute: "42%".into(),
+                resets_at: None,
                 reset_hint: None,
                 status: "warning".into(),
                 progress_tone: "warning".into(),

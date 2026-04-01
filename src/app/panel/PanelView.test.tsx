@@ -17,6 +17,7 @@ const createState = (panelState: CodexPanelState = createDemoPanelState()): AppS
   },
   notificationResult: null,
   currentView: "panel",
+  displayNowMs: Date.now(),
   isLoading: false,
   isE2EMode: false,
   error: null,
