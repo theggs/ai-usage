@@ -28,8 +28,8 @@ Users always know whether their AI coding quota will last until reset — across
 - [x] Provider Descriptor Registry — unified abstraction for all providers (Validated in Phase 1: Provider Registry)
 - [x] Multi-Strategy Fetch Pipeline — ordered fallback chain per provider (Validated in Phase 2: Fetch Pipeline & Migration)
 - [x] Refactor Codex + Claude Code into the new Provider abstraction (Validated in Phase 2: Fetch Pipeline & Migration)
-- [ ] Kimi Code provider integration
-- [ ] GLM Coding Plan provider integration
+- [x] Kimi Code provider integration (Validated in Phase 3: New Providers)
+- [x] GLM Coding Plan provider integration (Validated in Phase 3: New Providers)
 - [ ] Time-aware warning thresholds — alerts relative to reset time, not absolute percentage
 - [ ] Burn rate / pace forecasting — consumption rate classification with depletion ETA
 - [ ] About page — license info (with dependency license audit), version, GitHub URL
@@ -89,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after Phase 2 completion*
+*Last updated: 2026-04-01 after Phase 3 completion*
