@@ -2,9 +2,11 @@ use crate::state::{
     AppState, AutoMenubarSelectionState, LastSuccessfulPopoverPlacement, PanelPlaceholderItem,
     UserPreferences,
 };
+use chrono::DateTime;
 use png::ColorType;
 use serde::Serialize;
 use std::io::Cursor;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -538,6 +540,103 @@ fn infer_window_minutes(label: &str) -> u64 {
     u64::MAX
 }
 
+fn supported_window_minutes(label: &str) -> Option<i64> {
+    let normalized = label.to_ascii_lowercase();
+    if normalized.contains("5h") {
+        return Some(300);
+    }
+    if normalized.contains("week") || normalized.contains("7d") {
+        return Some(10_080);
+    }
+    None
+}
+
+fn current_time_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64
+}
+
+fn fallback_tray_dimension_severity(remaining_percent: u8) -> &'static str {
+    if remaining_percent > 50 {
+        "normal"
+    } else if remaining_percent >= 20 {
+        "warning"
+    } else {
+        "danger"
+    }
+}
+
+fn parse_reset_ms(value: &str) -> Option<i64> {
+    DateTime::parse_from_rfc3339(value)
+        .ok()
+        .map(|timestamp| timestamp.timestamp_millis())
+}
+
+fn tray_dimension_severity(
+    dimension: &crate::state::QuotaDimension,
+    now_ms: i64,
+) -> &'static str {
+    let Some(remaining_percent) = dimension.remaining_percent else {
+        return "normal";
+    };
+    let fallback = fallback_tray_dimension_severity(remaining_percent);
+
+    if remaining_percent <= 10 {
+        return fallback;
+    }
+
+    let Some(window_minutes) = supported_window_minutes(&dimension.label) else {
+        return fallback;
+    };
+    let Some(resets_at) = dimension.resets_at.as_deref() else {
+        return fallback;
+    };
+    let Some(reset_ms) = parse_reset_ms(resets_at) else {
+        return fallback;
+    };
+    if reset_ms <= now_ms {
+        return fallback;
+    }
+
+    let time_until_reset_ms = reset_ms - now_ms;
+    let window_ms = window_minutes * 60 * 1_000;
+    if time_until_reset_ms > window_ms {
+        return fallback;
+    }
+
+    let elapsed_ms = window_ms - time_until_reset_ms;
+    if elapsed_ms <= 0 {
+        return fallback;
+    }
+
+    let used_percent = 100.0 - f64::from(remaining_percent);
+    if used_percent <= 0.0 {
+        return "normal";
+    }
+
+    let rate_per_ms = used_percent / elapsed_ms as f64;
+    let depletion_eta_ms = f64::from(remaining_percent) / rate_per_ms;
+    let coverage = depletion_eta_ms / time_until_reset_ms as f64;
+
+    if coverage >= 1.0 {
+        "normal"
+    } else if coverage >= 0.5 {
+        "warning"
+    } else {
+        "danger"
+    }
+}
+
+fn tray_severity_rank(severity: &str) -> u8 {
+    match severity {
+        "danger" => 0,
+        "warning" => 1,
+        _ => 2,
+    }
+}
+
 fn sort_by_window_duration(
     dimensions: Vec<crate::state::QuotaDimension>,
 ) -> Vec<crate::state::QuotaDimension> {
@@ -561,19 +660,12 @@ fn tray_severity(items: &[PanelPlaceholderItem]) -> &'static str {
     if dimensions.is_empty() {
         return "empty";
     }
-    if dimensions
+    let now_ms = current_time_ms();
+    dimensions
         .iter()
-        .any(|dimension| matches!(dimension.remaining_percent, Some(percent) if percent < 20))
-    {
-        return "danger";
-    }
-    if dimensions
-        .iter()
-        .any(|dimension| matches!(dimension.remaining_percent, Some(percent) if (20..=50).contains(&percent)))
-    {
-        return "warning";
-    }
-    "normal"
+        .map(|dimension| tray_dimension_severity(dimension, now_ms))
+        .min_by_key(|severity| tray_severity_rank(severity))
+        .unwrap_or("normal")
 }
 
 fn tray_tooltip(service_name: &str, summary: Option<&str>) -> String {
