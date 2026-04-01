@@ -107,15 +107,17 @@ describe("SettingsView", () => {
     expect(controlWrapper?.className).toContain("max-w-[212px]");
   });
 
-  it("keeps panel order and default proxy mode inline in the shared row layout", () => {
-    renderSettings();
+  it("keeps proxy mode inline while panel order uses its dedicated full-width block", () => {
+    renderSettings({
+      preferences: fourProviderPreferences
+    });
 
-    const orderRow = screen.getByLabelText("Claude Code").closest("label");
-    expect(orderRow?.className).toContain("grid-cols-[112px_minmax(0,1fr)]");
+    const orderRow = screen.getByRole("list", { name: "面板顺序" }).closest("label");
+    expect(orderRow?.className).not.toContain("grid-cols-[112px_minmax(0,1fr)]");
 
     const orderControl = orderRow?.lastElementChild as HTMLElement | null;
-    expect(orderControl?.className).toContain("max-w-none");
     expect(orderControl?.className).toContain("w-full");
+    expect(orderControl?.className).not.toContain("justify-self-end");
 
     const proxyRow = screen.getByRole("combobox", { name: "代理模式" }).closest("label");
     expect(proxyRow?.className).toContain("grid-cols-[112px_minmax(0,1fr)]");
@@ -175,7 +177,7 @@ describe("SettingsView", () => {
       preferences: fourProviderPreferences
     });
 
-    const serviceOrderList = screen.getByRole("list", { name: "显示顺序" });
+    const serviceOrderList = screen.getByRole("list", { name: "面板顺序" });
     const serviceOrderRow = serviceOrderList.closest("label");
     expect(serviceOrderRow?.className).not.toContain("grid-cols-[112px_minmax(0,1fr)]");
 
@@ -216,7 +218,7 @@ describe("SettingsView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(screen.getByRole("list", { name: "Display order" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Panel order" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Claude Code" })).toHaveTextContent("Claude Code");
     expect(screen.getByRole("button", { name: "Kimi Code" })).toHaveTextContent("Kimi Code");
     expect(screen.getByRole("button", { name: "GLM Coding Plan" })).toHaveTextContent("GLM Coding Plan");
@@ -232,7 +234,7 @@ describe("SettingsView", () => {
       }
     });
 
-    const serviceOrderList = screen.getByRole("list", { name: "显示顺序" });
+    const serviceOrderList = screen.getByRole("list", { name: "面板顺序" });
     const codexPill = within(serviceOrderList).getByLabelText("Codex");
     expect(codexPill).toBeInTheDocument();
     expect(codexPill.className).toContain("cursor-default");

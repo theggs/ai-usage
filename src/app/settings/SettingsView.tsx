@@ -144,8 +144,7 @@ export const SettingsView = () => {
     const provider = getProvider(serviceId);
     return {
       id: serviceId,
-      label: provider?.displayName ?? serviceId,
-      shortLabel: provider?.displayName?.split(" ")[0] ?? serviceId
+      label: provider?.displayName ?? serviceId
     };
   });
   const menubarOptions = visibleServiceScope.visibleMenubarServices.map((serviceId) => ({
@@ -313,7 +312,7 @@ export const SettingsView = () => {
 
   const beginMouseDrag = (
     event: ReactMouseEvent<HTMLButtonElement>,
-    service: { id: string; label: string; shortLabel: string }
+    service: { id: string; label: string }
   ) => {
     if (serviceOrderDisabled) return;
 
@@ -365,7 +364,8 @@ export const SettingsView = () => {
   };
 
   const renderServicePill = (
-    service: { id: string; label: string; shortLabel: string },
+    service: { id: string; label: string },
+    index: number,
     overlay = false
   ) => (
     <button
@@ -373,11 +373,17 @@ export const SettingsView = () => {
       aria-label={overlay ? undefined : service.label}
       data-testid={overlay ? "service-order-drag-overlay" : undefined}
       data-service-pill-id={overlay ? undefined : service.id}
-      className={`inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-medium text-slate-700 transition ${
+      className={`group flex min-h-12 w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
         draggedServiceId === service.id
           ? "border-slate-300 bg-slate-100 shadow-sm"
-          : "border-slate-200 bg-slate-50"
-      } ${overlay ? "cursor-grabbing border-slate-300 bg-white/95 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.45)]" : serviceOrderDisabled ? "cursor-default border-slate-200/70 bg-slate-50/70 text-slate-400" : "cursor-grab border-slate-200/70 bg-slate-50/70 hover:border-slate-300/80 hover:bg-slate-100/70"} ${
+          : "border-slate-200/80 bg-white"
+      } ${
+        overlay
+          ? "cursor-grabbing border-slate-300 bg-white/95 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.45)]"
+          : serviceOrderDisabled
+            ? "cursor-default border-slate-200/70 bg-slate-50/70 text-slate-400"
+            : "cursor-grab border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/80"
+      } ${
         draggedServiceId === service.id && !overlay ? "invisible" : ""
       }`}
       data-dragging={draggedServiceId === service.id && !overlay}
@@ -424,13 +430,38 @@ export const SettingsView = () => {
     >
       <span
         aria-hidden="true"
-        className={`text-[10px] leading-none ${
-          overlay ? "text-slate-300/90" : serviceOrderDisabled ? "text-slate-300" : "text-slate-300/90"
+        className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold ${
+          overlay
+            ? "border-slate-200/80 bg-slate-50 text-slate-400"
+            : serviceOrderDisabled
+              ? "border-slate-200/80 bg-slate-100 text-slate-300"
+              : "border-slate-200/80 bg-slate-50 text-slate-500"
         }`}
+      >
+        {index + 1}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block truncate text-[14px] font-semibold leading-5 ${
+            serviceOrderDisabled ? "text-slate-400" : "text-slate-700"
+          }`}
+        >
+          {service.label}
+        </span>
+      </span>
+      <span
+        aria-hidden="true"
+        className={`inline-flex h-8 shrink-0 items-center rounded-full border px-2.5 text-[11px] font-medium ${
+          overlay
+            ? "border-slate-200/80 bg-white text-slate-400"
+            : serviceOrderDisabled
+              ? "border-slate-200/80 bg-slate-100 text-slate-300"
+              : "border-slate-200/80 bg-slate-50 text-slate-400 group-hover:border-slate-300 group-hover:text-slate-500"
+        }`}
+        title={copy.reorderHandle}
       >
         ⋮⋮
       </span>
-      <span className="whitespace-nowrap">{service.shortLabel}</span>
     </button>
   );
 
@@ -490,16 +521,18 @@ export const SettingsView = () => {
             <PreferenceField
               label={copy.serviceOrder}
               description={serviceOrderDisabled ? copy.noData : undefined}
-              layoutClassName="grid-cols-[112px_minmax(0,1fr)] items-center gap-x-2"
-              controlClassName="w-full max-w-none"
+              multiline
+              controlClassName="w-full"
             >
-              <div className="flex flex-wrap justify-end gap-1.5">
-                {serviceOptions.map((service) => (
-                  <div key={service.id}>{renderServicePill(service)}</div>
-                ))}
+              <div className="rounded-2xl border border-slate-200/70 bg-slate-50/60 p-2.5">
+                <ul aria-label={copy.serviceOrder} className="grid gap-2.5" role="list">
+                  {serviceOptions.map((service, index) => (
+                    <li key={service.id}>{renderServicePill(service, index)}</li>
+                  ))}
+                </ul>
               </div>
               {isE2EMode ? (
-                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   {serviceOptions.slice(1).map((service) => (
                     <button
                       key={`e2e-${service.id}`}
@@ -859,7 +892,14 @@ export const SettingsView = () => {
       </div>
 
       {draggedService && dragOverlay && typeof document !== "undefined"
-        ? createPortal(renderServicePill(draggedService, true), document.body)
+        ? createPortal(
+            renderServicePill(
+              draggedService,
+              serviceOptions.findIndex((service) => service.id === draggedService.id),
+              true
+            ),
+            document.body
+          )
         : null}
 
       {isRefreshing ? <div className="text-xs text-slate-500">{copy.refreshing}</div> : null}
