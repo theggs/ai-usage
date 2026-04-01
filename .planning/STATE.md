@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Phase 03 — new-providers
+**Current focus:** Phase 04 — burn-rate-engine
 
 ## Current Position
 
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to execute
 Last activity: 2026-04-01
 
-Progress: [█░░░░░░░░░] 17%
+Progress: [████████████████████] 8/8 plans (100%)
 
 ## Performance Metrics
 
@@ -90,11 +90,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 3 (New Providers): Kimi Code and GLM Coding Plan quota API endpoints are unconfirmed. Network traffic inspection of the VS Code extensions is required before implementation begins. If only a credit balance (not a subscription quota) is available, integration must use balance as proxy and display a caveat.
 - Phase 5 (Time-Aware Thresholds): Clock skew handling policy for `resetsAt` not yet specified. Need a concrete decision (e.g., "if calculated minutes-until-reset is negative or >14 days, treat as absent") before Phase 5 planning.
 
 ## Session Continuity
 
-Last session: 2026-04-01T07:57:30.397Z
-Stopped at: Completed 03-03-PLAN.md (gap closure)
+Last session: 2026-04-01
+Stopped at: Phase 03 complete, ready to plan Phase 04
 Resume file: None
