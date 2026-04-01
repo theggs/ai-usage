@@ -40,7 +40,12 @@ Declared values (must be multiples of 4):
 | xl | 32px | Gap between hero section and key-value list |
 | 2xl | 48px | Top padding for hero section (visual breathing room) |
 
-Exceptions: none. All values align with existing Tailwind utility usage in AppShell (px-4, pb-4, pt-3, gap-3, mb-3).
+Exceptions:
+
+| Value | Tailwind | Justification |
+|-------|----------|---------------|
+| 14px | `py-3.5` | Matches existing SettingsView `rowClassName` pattern (`const rowClassName = "px-5 py-3.5"` at SettingsView.tsx:53). Used across 10+ rows in SettingsView. Key-value card rows in About must use the same padding for visual consistency between views. |
+| 2px | `py-0.5` | Inline micro-spacing for copyleft warning badge (`text-[11px]` with `rounded-full`). Standard Tailwind pattern for tight pill badges where `py-1` (4px) would make the badge disproportionately tall relative to 11px text. |
 
 Source: Existing AppShell.tsx and SettingsView.tsx spacing patterns.
 
@@ -54,6 +59,8 @@ Source: Existing AppShell.tsx and SettingsView.tsx spacing patterns.
 | Version | 13px | 400 (regular) | 1.5 | text-[13px] | Version string below app name |
 | Key Label | 13px | 600 (semibold) | 1.5 | text-[13px] font-semibold | Left column of key-value rows (License, GitHub, etc.) |
 | Value | 13px | 400 (regular) | 1.5 | text-[13px] | Right column values (Apache 2.0, URL, etc.) |
+
+Weights used: 400 (regular) and 600 (semibold). No other weights permitted in this phase.
 
 Source: Existing SettingsView uses text-[15px] font-semibold for section titles and text-[13px] for descriptions. The About page uses slightly smaller sizing since it is informational (not interactive controls).
 
@@ -111,7 +118,7 @@ Source: Existing color system from globals.css (#102a43 text, #ffffff bg) and Se
 **Key-Value Card Spec:**
 - Card container: `rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.2)]` (matches SettingsView card)
 - Rows separated by: `divide-y divide-slate-100` (matches SettingsView)
-- Row padding: `px-5 py-3.5` (matches SettingsView `rowClassName`)
+- Row padding: `px-5 py-3.5` (matches SettingsView `rowClassName` -- see Spacing Scale exceptions)
 - Row layout: `flex items-center justify-between` -- label left, value right
 - Label: text-[13px] font-semibold text-slate-700
 - Value: text-[13px] text-slate-500
@@ -140,7 +147,7 @@ Source: Existing color system from globals.css (#102a43 text, #ffffff bg) and Se
 - After the last settings card (before drag overlay portal and status messages), add a footer element
 - Footer: `mt-4 flex justify-center` container
 - Link text: i18n `copy.aboutLink` -- "About AIUsage >" (zh-CN: "About AIUsage >")
-- Link style: `text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-colors cursor-pointer`
+- Link style: `text-[13px] text-slate-400 hover:text-slate-600 transition-colors cursor-pointer`
 - onClick: call context method to navigate to About view
 
 ### 4. AppState Extension
@@ -246,7 +253,7 @@ The build script generates a JSON file at a known path that Vite imports statica
 
 When `copyleftCount > 0`:
 - The dependency value text changes from text-slate-500 to text-amber-700
-- A small inline badge appears: `rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-700`
+- A small inline badge appears: `rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-700` (see Spacing Scale exceptions for `py-0.5` justification)
 - Badge text: "{count} copyleft"
 
 When `copyleftCount === 0`:
