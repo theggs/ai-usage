@@ -119,3 +119,14 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 | 4. Burn Rate Engine | 0/? | Not started | - |
 | 5. Time-Aware Alert Thresholds | 0/? | Not started | - |
 | 6. About Page | 0/? | Not started | - |
+
+## Backlog
+
+### Phase 999.1: 用抽象模块管理优惠信息，取代现在的硬编码 (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with $gsd-review-backlog when ready)
