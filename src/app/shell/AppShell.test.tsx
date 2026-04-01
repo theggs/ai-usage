@@ -334,6 +334,110 @@ describe("AppShell", () => {
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
   });
 
+  it("refreshes all enabled providers when savePreferences receives a providerTokens patch", async () => {
+    // Setup: kimi-code enabled with a token field visible
+    const prefs = makePreferences({
+      claudeCodeUsageEnabled: true,
+      providerEnabled: { codex: true, "claude-code": true, "kimi-code": true },
+      providerTokens: {}
+    });
+    getPreferences.mockResolvedValue(prefs);
+    persistPreferences.mockResolvedValue({
+      ...prefs,
+      providerTokens: { "kimi-code": "new-token-value" }
+    });
+
+    render(<AppShell />);
+    await screen.findByRole("button", { name: "设置" });
+    await userEvent.click(screen.getByRole("button", { name: "设置" }));
+
+    // Clear calls from initial load
+    refreshProviderState.mockClear();
+
+    // The kimi-code section should be visible because providerEnabled includes kimi-code.
+    // Trigger a token save by typing into the token input and blurring.
+    // The token input has aria-label="API Token" — use getAllByLabelText and pick the first one
+    // since kimi-code section renders before glm-coding section.
+    const tokenInputs = screen.getAllByLabelText("API Token");
+    const kimiTokenInput = tokenInputs[0]!;
+    await userEvent.clear(kimiTokenInput);
+    await userEvent.type(kimiTokenInput, "new-token-value");
+    fireEvent.blur(kimiTokenInput);
+
+    // The providerTokens patch should trigger refreshProviderState for all enabled providers
+    await waitFor(() =>
+      expect(persistPreferences).toHaveBeenCalledWith(
+        expect.objectContaining({ providerTokens: expect.any(Object) })
+      )
+    );
+    await waitFor(() => expect(refreshProviderState).toHaveBeenCalled());
+
+    const refreshedProviders = refreshProviderState.mock.calls.map((c: string[]) => c[0]);
+    expect(refreshedProviders).toContain("codex");
+    expect(refreshedProviders).toContain("claude-code");
+    expect(refreshedProviders).toContain("kimi-code");
+  });
+
+  it("refreshes providers when a token is cleared (empty string)", async () => {
+    const prefs = makePreferences({
+      claudeCodeUsageEnabled: true,
+      providerEnabled: { codex: true, "claude-code": true, "kimi-code": true },
+      providerTokens: { "kimi-code": "existing-token" }
+    });
+    getPreferences.mockResolvedValue(prefs);
+    persistPreferences.mockResolvedValue({
+      ...prefs,
+      providerTokens: { "kimi-code": "" }
+    });
+
+    render(<AppShell />);
+    await screen.findByRole("button", { name: "设置" });
+    await userEvent.click(screen.getByRole("button", { name: "设置" }));
+
+    // Clear calls from initial load
+    refreshProviderState.mockClear();
+
+    // Clear the token field and blur to trigger save
+    const tokenInputs = screen.getAllByLabelText("API Token");
+    const kimiTokenInput = tokenInputs[0]!;
+    await userEvent.clear(kimiTokenInput);
+    fireEvent.blur(kimiTokenInput);
+
+    // Token removal should also trigger refresh for all enabled providers
+    await waitFor(() =>
+      expect(persistPreferences).toHaveBeenCalledWith(
+        expect.objectContaining({ providerTokens: expect.any(Object) })
+      )
+    );
+    await waitFor(() => expect(refreshProviderState).toHaveBeenCalled());
+  });
+
+  it("does not trigger extra refresh when patch has no providerTokens", async () => {
+    const prefs = makePreferences({ claudeCodeUsageEnabled: false });
+    getPreferences.mockResolvedValue(prefs);
+    persistPreferences.mockResolvedValue({ ...prefs, language: "en-US" });
+
+    render(<AppShell />);
+    await screen.findByRole("button", { name: "设置" });
+    await userEvent.click(screen.getByRole("button", { name: "设置" }));
+
+    // Clear calls from initial load
+    refreshProviderState.mockClear();
+
+    // Change language — this does not include providerTokens in the patch
+    const langSelect = screen.getByRole("combobox", { name: "语言" });
+    await userEvent.selectOptions(langSelect, "en-US");
+
+    await waitFor(() =>
+      expect(persistPreferences).toHaveBeenCalledWith(
+        expect.objectContaining({ language: "en-US" })
+      )
+    );
+
+    // No refresh should be triggered for a non-token, non-proxy, non-enable change
+    expect(refreshProviderState).not.toHaveBeenCalled();
+  });
+
   it("hides the whole main window when Escape is pressed", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
