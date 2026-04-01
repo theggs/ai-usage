@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 03-new-providers
-source: [03-04-SUMMARY.md]
+source: [03-04-SUMMARY.md, 03-05-SUMMARY.md]
 started: 2026-04-01T09:14:06Z
-updated: 2026-04-01T12:05:14Z
+updated: 2026-04-01T13:19:47Z
 ---
 
 ## Current Test
@@ -14,9 +14,8 @@ updated: 2026-04-01T12:05:14Z
 
 ### 1. Service Order Capsules Wrap Cleanly
 expected: Open Settings and find the service display order row. With all four providers visible, the capsule list should stay inside the value column instead of overflowing into the row label area. The first capsule should not overlap "Display order" / "显示顺序", and extra capsules should wrap to a new line cleanly if needed.
-result: issue
-reported: "passed. But it looks ugly. It need a redesign."
-severity: cosmetic
+result: pass
+note: "Initial UAT found this visually weak; 03-05 redesigned service order into a multiline full-width sortable list, and the user approved the final result."
 
 ### 2. Saving Valid Token Auto-Refreshes Quota Card
 expected: Enter a valid Kimi Code or GLM Coding Plan token in Settings, save, and return to the panel. Without clicking manual refresh, the provider card should automatically refresh and show live quota data instead of the previous stale state.
@@ -30,29 +29,22 @@ result: pass
 expected: Enter an invalid or expired Kimi Code or GLM Coding Plan token in Settings, save, and return to the panel. Without clicking manual refresh, the provider card should automatically refresh into an error state instead of keeping the previous stale status.
 result: pass
 
+### 5. Reset Countdown Uses UI Formatting Instead of Raw ISO
+expected: Provider cards show localized relative reset countdowns with useful precision, rather than raw ISO timestamps.
+result: pass
+note: "Final implementation keeps raw `resetsAt` in data and formats the display in the UI."
+
+### 6. Main Menu Reopens Without Frozen Surface
+expected: When the main window is shown again, the panel is immediately interactive and does not require a scroll to repaint.
+result: pass
+
 ## Summary
 
-total: 4
-passed: 3
-issues: 1
+total: 6
+passed: 6
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
-- truth: "Open Settings and find the service display order row. With all four providers visible, the capsule list should stay inside the value column instead of overflowing into the row label area. The first capsule should not overlap \"Display order\" / \"显示顺序\", and extra capsules should wrap to a new line cleanly if needed."
-  status: failed
-  reason: "User reported: passed. But it looks ugly. It need a redesign."
-  severity: cosmetic
-  test: 1
-  root_cause: "The service-order control still uses the compact two-column settings-row layout, so the draggable pills are squeezed into the narrow value column of a menubar-sized surface. `flex-wrap` prevents overlap, but with a fixed 112px label column and right-aligned wrapped pills, four providers collapse into a tall, uneven chip stack that feels visually broken rather than intentionally sortable."
-  artifacts:
-    - path: "src/app/settings/SettingsView.tsx"
-      issue: "Service order uses wrapped right-aligned pills inside the standard row grid, which is too cramped for four draggable providers."
-    - path: "src/components/settings/PreferenceField.tsx"
-      issue: "The field pattern favors compact label/control rows; service ordering needs a multiline, full-width interaction model instead of a compressed inline control."
-  missing:
-    - "Promote service order to a multiline settings block so the sortable UI gets full row width."
-    - "Replace the wrapped pill cluster with a clearer reorder presentation that reads as an intentional list on the narrow settings surface."
-    - "Add UI tests that verify the service-order control uses the redesigned multiline layout rather than the wrapped chip row."
-  debug_session: ".planning/debug/service-order-redesign.md"
