@@ -37,13 +37,12 @@ const promotionDecision: PromotionDisplayDecision = {
     {
       serviceId: "claude-code",
       serviceName: "Claude Code",
-      status: "inactive-window",
-      benefitLabel: "2x",
-      matchedCampaignId: "claude-march-2026-usage-promotion",
-      messageKey: "promotionStatusInactiveWindow",
+      status: "restricted-window",
+      matchedCampaignId: "claude-peak-hours-restriction",
+      messageKey: "promotionStatusRestrictedWindow",
       detailTiming: {
-        mode: "local-window",
-        dateRangeLabel: "2026.03.13-2026.03.28",
+        mode: "local-active-window",
+        dateRangeLabel: "2026.04.01",
         localWindowRangeLabel: "20:00-02:00",
         localTimeZoneLabel: "UTC+08:00"
       },
@@ -87,21 +86,21 @@ describe("PromotionStatusLine", () => {
       "Codexpromotion active2x"
     );
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
-      "Claude Codeoutside promotion window2x"
+      "Claude Codepeak-hours restriction active"
     );
     expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
       "promotion active"
     );
     expect(screen.getByTestId("promotion-popover-benefit-codex")).toHaveTextContent("2x");
     expect(screen.getByTestId("promotion-popover-status-claude-code")).toHaveTextContent(
-      "outside promotion window"
+      "peak-hours restriction active"
     );
-    expect(screen.getByTestId("promotion-popover-benefit-claude-code")).toHaveTextContent("2x");
+    expect(screen.queryByTestId("promotion-popover-benefit-claude-code")).toBeNull();
     expect(screen.getByTestId("promotion-popover-detail-codex")).toHaveTextContent(
       "All-day promotion"
     );
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
-      "2026.03.13-2026.03.28 · outside weekdays 20:00-02:00 (UTC+08:00)"
+      "2026.04.01 · weekdays 20:00-02:00 (UTC+08:00)"
     );
     expect(screen.getByRole("dialog", { name: "All promotion states" })).toBe(popover);
   });

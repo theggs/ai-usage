@@ -2,6 +2,7 @@ import type { CodexPanelState } from "../../lib/tauri/contracts";
 import type { VisibleServiceScope } from "../../lib/tauri/summary";
 
 export type PromotionType = "time-window" | "limited-time";
+export type PromotionCapacityEffect = "promotion" | "restriction";
 export type PromotionLifecycle = "scheduled" | "active" | "ended" | "archived";
 export type PromotionPresentationMode = "focused" | "all";
 export type PromotionOverlayState = "closed" | "preview" | "pinned";
@@ -9,6 +10,7 @@ export type PromotionEligibilityState = "eligible" | "ineligible" | "unknown";
 export type PromotionServiceStatus =
   | "active-window"
   | "active-general"
+  | "restricted-window"
   | "inactive-window"
   | "eligibility-unknown"
   | "none";
@@ -37,6 +39,7 @@ export interface PromotionCampaign {
   serviceId: string;
   title: string;
   promotionType: PromotionType;
+  capacityEffect?: PromotionCapacityEffect;
   benefitLabel?: string;
   surfaces: string[];
   startsAt: string;
@@ -58,6 +61,12 @@ export interface PromotionCatalog {
 export type PromotionDetailTiming =
   | {
       mode: "local-window";
+      dateRangeLabel: string;
+      localWindowRangeLabel: string;
+      localTimeZoneLabel: string;
+    }
+  | {
+      mode: "local-active-window";
       dateRangeLabel: string;
       localWindowRangeLabel: string;
       localTimeZoneLabel: string;

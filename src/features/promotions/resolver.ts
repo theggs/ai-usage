@@ -3,6 +3,7 @@ import { getProvider } from "../../lib/tauri/registry";
 import type { VisibleServiceScope } from "../../lib/tauri/summary";
 import { promotionCatalog } from "./catalog";
 import type {
+  PromotionCapacityEffect,
   PromotionCampaign,
   PromotionDetailTiming,
   PromotionDisplayDecision,
@@ -17,6 +18,7 @@ const LOCAL_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC
 
 const ZONED_PARTS_FORMATTERS = new Map<string, Intl.DateTimeFormat>();
 const STATUS_PRIORITY: Record<PromotionServiceStatus, number> = {
+  "restricted-window": 5,
   "active-window": 4,
   "active-general": 3,
   "inactive-window": 2,
@@ -25,10 +27,14 @@ const STATUS_PRIORITY: Record<PromotionServiceStatus, number> = {
 };
 
 const INLINE_VISIBLE_STATUSES = new Set<PromotionServiceStatus>([
+  "restricted-window",
   "active-window",
   "active-general",
   "eligibility-unknown"
 ]);
+
+const getCapacityEffect = (campaign: PromotionCampaign): PromotionCapacityEffect =>
+  campaign.capacityEffect ?? "promotion";
 
 const getZonedFormatter = (timeZone: string) => {
   const key = `${timeZone}-weekday-hour-minute`;
@@ -165,6 +171,12 @@ const formatDateLabel = (value?: string) => {
   return datePart.replace(/-/g, ".");
 };
 
+const formatDateRangeLabel = (campaign: PromotionCampaign) => {
+  const startLabel = formatDateLabel(campaign.startsAt);
+  const endLabel = formatDateLabel(campaign.endsAt);
+  return endLabel ? `${startLabel}-${endLabel}` : startLabel;
+};
+
 const parseMinutes = (value: string) => {
   const [hour, minute] = value.split(":").map((part) => Number.parseInt(part, 10));
   return hour * 60 + minute;
@@ -232,6 +244,8 @@ const getServiceName = (
 
 const getMessageKey = (status: PromotionServiceStatus) => {
   switch (status) {
+    case "restricted-window":
+      return "promotionStatusRestrictedWindow";
     case "active-window":
       return "promotionStatusActiveWindow";
     case "active-general":
@@ -246,12 +260,12 @@ const getMessageKey = (status: PromotionServiceStatus) => {
 };
 
 const getLocalWindowRangeLabel = (campaign: PromotionCampaign) => {
-  const recurringWindow = campaign.windows.find(
-    (window) => window.kind === "recurring-off-peak" && window.blockedRanges?.length
+  const recurringWindow = campaign.windows.find((window) =>
+    window.kind === "recurring-off-peak" && ((window.blockedRanges?.length ?? 0) > 0 || (window.activeRanges?.length ?? 0) > 0)
   );
-  const blockedRange = recurringWindow?.blockedRanges?.[0];
+  const windowRange = recurringWindow?.blockedRanges?.[0] ?? recurringWindow?.activeRanges?.[0];
 
-  if (!recurringWindow || !blockedRange) {
+  if (!recurringWindow || !windowRange) {
     return "";
   }
 
@@ -263,14 +277,14 @@ const getLocalWindowRangeLabel = (campaign: PromotionCampaign) => {
   const start = getInstantForZonedDateTime({
     timeZone: recurringWindow.timeZone,
     ...referenceDate,
-    hour: Number.parseInt(blockedRange.start.slice(0, 2), 10),
-    minute: Number.parseInt(blockedRange.start.slice(3, 5), 10)
+    hour: Number.parseInt(windowRange.start.slice(0, 2), 10),
+    minute: Number.parseInt(windowRange.start.slice(3, 5), 10)
   });
   const end = getInstantForZonedDateTime({
     timeZone: recurringWindow.timeZone,
     ...referenceDate,
-    hour: Number.parseInt(blockedRange.end.slice(0, 2), 10),
-    minute: Number.parseInt(blockedRange.end.slice(3, 5), 10)
+    hour: Number.parseInt(windowRange.end.slice(0, 2), 10),
+    minute: Number.parseInt(windowRange.end.slice(3, 5), 10)
   });
 
   return `${formatLocalRangeTime(start)}-${formatLocalRangeTime(end)}`;
@@ -299,8 +313,8 @@ const getDetailTiming = (
     });
 
     return {
-      mode: "local-window",
-      dateRangeLabel: `${formatDateLabel(campaign.startsAt)}-${formatDateLabel(campaign.endsAt)}`,
+      mode: getCapacityEffect(campaign) === "restriction" ? "local-active-window" : "local-window",
+      dateRangeLabel: formatDateRangeLabel(campaign),
       localWindowRangeLabel: getLocalWindowRangeLabel(campaign),
       localTimeZoneLabel: formatLocalTimeZoneLabel(localWindowReference)
     };
@@ -313,13 +327,22 @@ const pickBestDecision = (candidate: PromotionServiceDecision, next: PromotionSe
   STATUS_PRIORITY[next.status] > STATUS_PRIORITY[candidate.status] ? next : candidate;
 
 const resolveCampaignStatus = (campaign: PromotionCampaign, now: Date): PromotionServiceStatus => {
+  const capacityEffect = getCapacityEffect(campaign);
+
   if (campaign.promotionType === "limited-time" && campaign.windows.length === 0) {
-    return "active-general";
+    return capacityEffect === "restriction" ? "restricted-window" : "active-general";
   }
 
-  let best: PromotionServiceStatus = "inactive-window";
+  let best: PromotionServiceStatus = capacityEffect === "restriction" ? "none" : "inactive-window";
   for (const window of campaign.windows) {
     const next = resolveTimeWindowStatus(window, now);
+    if (capacityEffect === "restriction") {
+      if (next === "active-window") {
+        return "restricted-window";
+      }
+      continue;
+    }
+
     if (STATUS_PRIORITY[next] > STATUS_PRIORITY[best]) {
       best = next;
     }
@@ -378,7 +401,7 @@ const resolveServiceDecision = ({
       serviceId,
       serviceName,
       status: "eligibility-unknown",
-      benefitLabel: matched?.benefitLabel,
+      benefitLabel: getCapacityEffect(matched ?? activeCampaigns[0]!) === "promotion" ? matched?.benefitLabel : undefined,
       matchedCampaignId: matched?.id,
       messageKey: getMessageKey("eligibility-unknown"),
       detailTiming: getDetailTiming(matched, "eligibility-unknown"),
@@ -402,7 +425,7 @@ const resolveServiceDecision = ({
       serviceId,
       serviceName,
       status,
-      benefitLabel: campaign.benefitLabel,
+      benefitLabel: getCapacityEffect(campaign) === "promotion" ? campaign.benefitLabel : undefined,
       matchedCampaignId: campaign.id,
       messageKey: getMessageKey(status),
       detailTiming: getDetailTiming(campaign, status),

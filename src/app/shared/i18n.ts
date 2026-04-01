@@ -154,16 +154,19 @@ export type CopyTree = {
   promotionNoneKnown: string;
   promotionCompactStatusActiveWindow: string;
   promotionCompactStatusActiveGeneral: string;
+  promotionCompactStatusRestrictedWindow: string;
   promotionCompactStatusInactiveWindow: string;
   promotionCompactStatusEligibilityUnknown: string;
   promotionCompactStatusNone: string;
   promotionStatusActiveWindow: string;
   promotionStatusActiveGeneral: string;
+  promotionStatusRestrictedWindow: string;
   promotionStatusInactiveWindow: string;
   promotionStatusEligibilityUnknown: string;
   promotionStatusNone: string;
   promotionDetailContinuous: string;
   promotionDetailLocalWindowTemplate: string;
+  promotionDetailLocalActiveWindowTemplate: string;
   promotionTriggerAria: string;
   promotionPopoverLabel: string;
   kimiCodeSectionTitle: string;
@@ -332,16 +335,19 @@ const baseCopy: CopyTree = {
   promotionNoneKnown: "No promotion right now",
   promotionCompactStatusActiveWindow: "promo active",
   promotionCompactStatusActiveGeneral: "promo active",
+  promotionCompactStatusRestrictedWindow: "peak",
   promotionCompactStatusInactiveWindow: "off",
   promotionCompactStatusEligibilityUnknown: "pending",
   promotionCompactStatusNone: "none",
   promotionStatusActiveWindow: "promotion active",
   promotionStatusActiveGeneral: "promotion active",
+  promotionStatusRestrictedWindow: "peak-hours restriction active",
   promotionStatusInactiveWindow: "outside promotion window",
   promotionStatusEligibilityUnknown: "promotion eligibility pending",
   promotionStatusNone: "no promotion",
   promotionDetailContinuous: "All-day promotion",
   promotionDetailLocalWindowTemplate: "outside weekdays {range} ({timeZone})",
+  promotionDetailLocalActiveWindowTemplate: "weekdays {range} ({timeZone})",
   promotionTriggerAria: "Preview all promotion states",
   promotionPopoverLabel: "All promotion states",
   kimiCodeSectionTitle: "Kimi Code Usage",
@@ -511,16 +517,19 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     promotionNoneKnown: "当前无优惠活动",
     promotionCompactStatusActiveWindow: "优惠中",
     promotionCompactStatusActiveGeneral: "优惠中",
+    promotionCompactStatusRestrictedWindow: "高峰",
     promotionCompactStatusInactiveWindow: "未命中",
     promotionCompactStatusEligibilityUnknown: "待确认",
     promotionCompactStatusNone: "无优惠",
     promotionStatusActiveWindow: "正在优惠时段",
     promotionStatusActiveGeneral: "正在优惠时段",
+    promotionStatusRestrictedWindow: "高峰时段受限",
     promotionStatusInactiveWindow: "不在优惠时段",
     promotionStatusEligibilityUnknown: "优惠资格待确认",
     promotionStatusNone: "无优惠活动",
     promotionDetailContinuous: "全天优惠",
     promotionDetailLocalWindowTemplate: "工作日 {range} ({timeZone}) 之外",
+    promotionDetailLocalActiveWindowTemplate: "工作日 {range} ({timeZone})",
     promotionTriggerAria: "预览全部促销状态",
     promotionPopoverLabel: "全部促销状态",
     kimiCodeSectionTitle: "Kimi Code 用量",
@@ -773,6 +782,8 @@ export const getCompactServiceLabel = (copy: CopyTree, serviceId: string) => {
 
 export const getPromotionStatusLabel = (copy: CopyTree, status: PromotionServiceStatus) => {
   switch (status) {
+    case "restricted-window":
+      return copy.promotionStatusRestrictedWindow;
     case "active-window":
       return copy.promotionStatusActiveWindow;
     case "active-general":
@@ -788,6 +799,8 @@ export const getPromotionStatusLabel = (copy: CopyTree, status: PromotionService
 
 export const getPromotionCompactStatusLabel = (copy: CopyTree, status: PromotionServiceStatus) => {
   switch (status) {
+    case "restricted-window":
+      return copy.promotionCompactStatusRestrictedWindow;
     case "active-window":
       return copy.promotionCompactStatusActiveWindow;
     case "active-general":
@@ -819,6 +832,12 @@ export const formatPromotionDetailTiming = (
 
   if (detailTiming.mode === "local-window") {
     return `${detailTiming.dateRangeLabel} · ${copy.promotionDetailLocalWindowTemplate
+      .replace("{range}", detailTiming.localWindowRangeLabel)
+      .replace("{timeZone}", detailTiming.localTimeZoneLabel)}`.replace(/\s+/g, " ").trim();
+  }
+
+  if (detailTiming.mode === "local-active-window") {
+    return `${detailTiming.dateRangeLabel} · ${copy.promotionDetailLocalActiveWindowTemplate
       .replace("{range}", detailTiming.localWindowRangeLabel)
       .replace("{timeZone}", detailTiming.localTimeZoneLabel)}`.replace(/\s+/g, " ").trim();
   }

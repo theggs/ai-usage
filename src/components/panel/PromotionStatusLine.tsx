@@ -22,6 +22,7 @@ const ICON_BY_SERVICE_ID: Record<string, string> = {
 };
 
 const STATUS_TONE_CLASS: Record<PromotionServiceDecision["status"], string> = {
+  "restricted-window": "promotion-pill-restricted-window",
   "active-window": "promotion-pill-active-window",
   "active-general": "promotion-pill-active-general",
   "inactive-window": "promotion-pill-inactive-window",

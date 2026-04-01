@@ -96,13 +96,12 @@ describe("i18n fallback", () => {
           {
             serviceId: "claude-code",
             serviceName: "Claude Code",
-            status: "inactive-window",
-            benefitLabel: "2x",
-            matchedCampaignId: "claude-march-2026-usage-promotion",
-            messageKey: "promotionStatusInactiveWindow",
+            status: "restricted-window",
+            matchedCampaignId: "claude-peak-hours-restriction",
+            messageKey: "promotionStatusRestrictedWindow",
             detailTiming: {
-              mode: "local-window",
-              dateRangeLabel: "2026.03.13-2026.03.28",
+              mode: "local-active-window",
+              dateRangeLabel: "2026.04.01",
               localWindowRangeLabel: "20:00-02:00",
               localTimeZoneLabel: "UTC+08:00"
             },
@@ -112,7 +111,7 @@ describe("i18n fallback", () => {
         hiddenServiceCount: 1,
         fallbackState: null
       })
-    ).toBe("Codex promotion active 2x · Claude Code outside promotion window 2x");
+    ).toBe("Codex promotion active 2x · Claude Code peak-hours restriction active");
   });
 
   it("returns localized labels for the promotion trigger and popover", () => {
@@ -132,6 +131,15 @@ describe("i18n fallback", () => {
         localTimeZoneLabel: "UTC+08:00"
       })
     ).toBe("2026.03.13-2026.03.28 · 工作日 20:00-02:00 (UTC+08:00) 之外");
+
+    expect(
+      formatPromotionDetailTiming(getCopy("en-US"), {
+        mode: "local-active-window",
+        dateRangeLabel: "2026.04.01",
+        localWindowRangeLabel: "20:00-02:00",
+        localTimeZoneLabel: "UTC+08:00"
+      })
+    ).toBe("2026.04.01 · weekdays 20:00-02:00 (UTC+08:00)");
 
     expect(
       formatPromotionDetailTiming(getCopy("en-US"), {

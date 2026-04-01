@@ -90,7 +90,7 @@ const createDeferred = <T,>() => {
 
 const getExpectedClaudePromotionDetail = () => {
   const decision = resolvePromotionDisplayDecision({
-    now: new Date("2026-03-24T16:00:00Z"),
+    now: new Date("2026-04-01T16:00:00Z"),
     visibleServiceScope: {
       visiblePanelServiceOrder: ["codex", "claude-code"],
       visibleMenubarServices: ["codex", "claude-code"],
@@ -217,7 +217,7 @@ describe("AppShell", () => {
   it("renders promotion capsules and supports preview plus pinned popover in the same header area", async () => {
     const expectedClaudePromotionDetail = getExpectedClaudePromotionDetail();
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
+    vi.setSystemTime(new Date("2026-04-01T16:00:00Z"));
     getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
 
     render(<AppShell />);
@@ -229,6 +229,7 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
     expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
+    expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("高峰");
     expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
 
     act(() => {
@@ -238,16 +239,16 @@ describe("AppShell", () => {
       "Codex正在优惠时段2x"
     );
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
-      "Claude Code不在优惠时段2x"
+      "Claude Code高峰时段受限"
     );
     expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
       "正在优惠时段"
     );
     expect(screen.getByTestId("promotion-popover-benefit-codex")).toHaveTextContent("2x");
     expect(screen.getByTestId("promotion-popover-status-claude-code")).toHaveTextContent(
-      "不在优惠时段"
+      "高峰时段受限"
     );
-    expect(screen.getByTestId("promotion-popover-benefit-claude-code")).toHaveTextContent("2x");
+    expect(screen.queryByTestId("promotion-popover-benefit-claude-code")).toBeNull();
     expect(screen.getByTestId("promotion-popover-detail-codex")).toHaveTextContent(
       "全天优惠"
     );
@@ -276,7 +277,7 @@ describe("AppShell", () => {
   it("resets the pinned promotion popover when the panel shell is reopened", async () => {
     const expectedClaudePromotionDetail = getExpectedClaudePromotionDetail();
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
+    vi.setSystemTime(new Date("2026-04-01T16:00:00Z"));
     getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
 
     const firstRender = render(<AppShell />);
@@ -288,7 +289,7 @@ describe("AppShell", () => {
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("promotion-status-trigger"));
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
-      "Claude Code不在优惠时段2x"
+      "Claude Code高峰时段受限"
     );
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
       expectedClaudePromotionDetail
@@ -304,6 +305,7 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
     expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
+    expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("高峰");
     expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
   });
 
@@ -481,7 +483,7 @@ describe("AppShell", () => {
 
   it("hides the whole main window when Escape is pressed", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-24T16:00:00Z"));
+    vi.setSystemTime(new Date("2026-04-01T16:00:00Z"));
     getPreferences.mockResolvedValue(makePreferences({ claudeCodeUsageEnabled: true }));
 
     render(<AppShell />);
