@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 03-new-providers
-source: [03-01-SUMMARY.md, 03-02-SUMMARY.md]
+source: [03-01-SUMMARY.md, 03-02-SUMMARY.md, 03-03-SUMMARY.md]
 started: 2026-04-01T07:00:00.000Z
-updated: 2026-04-01T07:30:00.000Z
+updated: 2026-04-01T08:30:00.000Z
 ---
 
 ## Current Test
@@ -20,10 +20,12 @@ result: pass
 expected: Below Kimi Code, a "GLM Coding Plan Usage" section should appear with enable/disable toggle. When enabled, a password-type token input field and a "Region" dropdown selector with options "Global (z.ai)" and "China (bigmodel.cn)" should appear.
 result: pass
 
-### 3. New Providers in Service Order
-expected: In Settings, the service display order section should include "Kimi Code" and "GLM Coding Plan" as reorderable items alongside Codex and Claude Code.
+### 3. New Providers in Service Order (re-test)
+expected: In Settings, the service display order capsules should show provider names clearly — drag handle dots should NOT overlap the label text. Check "Claude Code" and "Kimi Code" capsules especially.
+previous_result: issue (cosmetic — capsule text overlap)
+fix: 03-03 changed gap-1→gap-1.5, px-2→px-2.5
 result: issue
-reported: "the service display order sections of kimi and glm only show when they are on (I think it is as expected). But the display is abnormal: the capsule covers the characters."
+reported: "Still failing. The first capsule 'Claude' overlaps with the row label '显示顺序'. The internal capsule spacing fix didn't address the real problem — the capsule row itself overflows into the label area."
 severity: cosmetic
 
 ### 4. Language Toggle Shows Chinese Labels
@@ -35,79 +37,63 @@ expected: Enable Kimi Code. Paste "  sk-test-token  " (with leading/trailing spa
 result: skipped
 reason: Token field is password type — can't visually verify whitespace trimming. Covered by unit tests in preferencesStore.test.ts and Rust normalizer tests.
 
-### 6. No Token Shows NoCredentials
-expected: Enable Kimi Code or GLM Coding Plan without entering a token. Switch to panel view. The provider's card should show a "no credentials" or setup message (not a crash or blank card).
+### 6. No Token Shows NoCredentials (re-test)
+expected: Enable Kimi Code or GLM without entering a token. Switch to panel view. The card should show "Token not configured" (EN) or "未配置 Token" (ZH) — NOT "请先安装 Claude Code CLI".
+previous_result: issue (major — showed Claude Code CLI message)
+fix: 03-03 added provider-aware getPlaceholderCopy routing
 result: issue
-reported: "the provider's card shows incorrect text: Kimi Code / 未连接 / 请先安装 Claude Code CLI 并登录，安装后再回到这里完成连接。 — shows Claude Code-specific message instead of a generic or Kimi-specific no credentials message"
-severity: major
+reported: "Partial pass — correct message shows after manual refresh, but when deleting token after a failed AccessDenied state, the panel shows stale 'AccessDenied' until manually refreshed. Token deletion should auto-trigger a provider refresh."
+severity: minor
 
-### 7. Kimi Code Quota Display with Valid Token
-expected: Enter a valid Kimi Code API token (from kimi.com/code/console). Switch to panel view. Quota card(s) should appear showing "Weekly" usage with a percentage bar and remaining count. If a 5h window limit exists, a second dimension should show.
+### 7. Kimi Code Quota Display with Valid Token (re-test)
+expected: Enter a valid Kimi Code API token. Switch to panel view. Quota card(s) should appear showing usage with a percentage bar and remaining count — NOT Claude Code CLI messages.
+previous_result: issue (blocker — showed Claude Code message)
+fix: 03-03 added provider-aware copy routing
 result: issue
-reported: "Even with a valid token entered, the card still shows '未连接 / 请先安装 Claude Code CLI 并登录' — same Claude Code-specific message. Token may not be reaching the fetcher, or snapshot status messages are hardcoded to Claude Code text for all providers."
-severity: blocker
+reported: "Quota data displays correctly after manual refresh, but not immediately after saving token in settings. Same auto-refresh issue as test 6 — settings changes should trigger provider refresh."
+severity: minor
 
-### 8. GLM Coding Plan Quota Display with Valid Token
-expected: Enter a valid GLM API token. Select the correct region. Switch to panel view. Quota card(s) should appear showing token and/or MCP usage dimensions with percentage bars, remaining counts, and reset time hints.
-result: issue
-reported: "Same issue as test 7 — GLM card shows Claude Code CLI message '未连接 / 请先安装 Claude Code CLI 并登录' even with valid token and correct region. Same root cause as Kimi."
-severity: blocker
+### 8. GLM Coding Plan Quota Display with Valid Token (re-test)
+expected: Enter a valid GLM API token with correct region. Switch to panel view. Quota card(s) should appear showing usage dimensions — NOT Claude Code CLI messages.
+previous_result: issue (blocker — showed Claude Code message)
+fix: 03-03 added provider-aware copy routing
+result: skipped
+reason: No GLM Coding Plan subscription available. Will test when ready.
 
-### 9. Invalid Token Error Handling
-expected: Enter an invalid/expired token for either provider. Switch to panel view and trigger refresh. The provider card should show an "access denied" or error message — not a crash, blank panel, or infinite loading state.
+### 9. Invalid Token Error Handling (re-test)
+expected: Enter an invalid/expired token for either provider. Trigger refresh. The card should show "access denied" or error message — NOT Claude Code CLI install prompt.
+previous_result: issue (blocker — showed Claude Code message)
+fix: 03-03 added provider-aware copy routing
 result: issue
-reported: "Same root cause — GLM card shows Claude Code '未连接 / 请先安装 Claude Code CLI' message for invalid token. All snapshot status messages are mapped to Claude Code-specific text regardless of provider."
-severity: blocker
+reported: "Error message is correct (GLM shows '暂时无法连接' not Claude Code text). But same auto-refresh issue — panel doesn't refresh after returning from settings until manual refresh."
+severity: minor
 
 ## Summary
 
 total: 9
 passed: 3
-issues: 5
+issues: 4
 pending: 0
-skipped: 1
-blocked: 0
-skipped: 0
+skipped: 2
 blocked: 0
 
 ## Gaps
 
-- truth: "Service order capsules should display provider names clearly without overlap"
+- truth: "Service order capsules should display provider names clearly without overlapping the row label"
   status: failed
-  reason: "User reported: the capsule covers the characters in the service display order row — drag handle dots overlap text, especially visible on 'Claude' capsule"
+  reason: "User reported: first capsule 'Claude' still overlaps with row label '显示顺序'. Root cause: flex-nowrap container overflows into the 112px label column when 4+ capsules are rendered. The 03-03 internal spacing fix (gap-1.5/px-2.5) did not address container overflow."
   severity: cosmetic
   test: 3
-  artifacts: []
+  artifacts:
+    - src/app/settings/SettingsView.tsx:496
   missing: []
 
-- truth: "NoCredentials status for Kimi Code/GLM should show a provider-appropriate message, not Claude Code's CLI installation message"
+- truth: "Saving or deleting a provider token in Settings should immediately refresh that provider's panel state"
   status: failed
-  reason: "User reported: Kimi Code card shows '请先安装 Claude Code CLI 并登录' (Claude Code CLI install prompt) instead of a token-based no credentials message"
-  severity: major
-  test: 6
-  artifacts: []
-  missing: []
-
-- truth: "Kimi Code quota data displays in the panel when a valid token is configured"
-  status: failed
-  reason: "User reported: even with valid token, card still shows Claude Code '未连接' message. Token may not reach fetcher or snapshot status messages hardcoded to Claude Code text."
-  severity: blocker
-  test: 7
-  artifacts: []
-  missing: []
-
-- truth: "GLM Coding Plan quota data displays in the panel when a valid token is configured"
-  status: failed
-  reason: "User reported: same as Kimi — GLM card shows Claude Code '未连接' message with valid token. Same root cause."
-  severity: blocker
-  test: 8
-  artifacts: []
-  missing: []
-
-- truth: "Invalid/expired token for new providers should show access denied or error message, not Claude Code CLI install prompt"
-  status: failed
-  reason: "User reported: same root cause — all snapshot status messages mapped to Claude Code text regardless of provider"
-  severity: blocker
-  test: 9
-  artifacts: []
+  reason: "User reported across tests 6, 7, 9: after changing token in settings and returning to panel, stale snapshot status persists until manual refresh. Token save/delete should auto-trigger a provider refresh so the panel immediately reflects the new credential state."
+  severity: minor
+  test: 6, 7, 9
+  artifacts:
+    - src/app/settings/SettingsView.tsx
+    - src/app/shell/AppShell.tsx
   missing: []
