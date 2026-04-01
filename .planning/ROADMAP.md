@@ -62,7 +62,7 @@ Plans:
   4. New providers use the same SnapshotStatus visual treatment (colors, progress bars, error states) as Codex and Claude Code
 **Plans:** 2 plans
 Plans:
-- [ ] 03-01-PLAN.md — Infrastructure, contracts, and UI (registry, shared proxy, preferences, pipeline stubs, i18n, Settings)
+- [x] 03-01-PLAN.md — Infrastructure, contracts, and UI (registry, shared proxy, preferences, pipeline stubs, i18n, Settings)
 - [ ] 03-02-PLAN.md — Kimi Code and GLM Coding Plan provider HTTP fetch implementations
 
 ### Phase 4: Burn Rate Engine

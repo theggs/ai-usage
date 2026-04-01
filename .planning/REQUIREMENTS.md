@@ -22,9 +22,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [ ] **NPROV-01**: Kimi Code provider displays quota/usage data in the panel (pending API research confirmation)
 - [ ] **NPROV-02**: GLM Coding Plan provider displays quota/usage data in the panel (pending API research confirmation)
-- [ ] **NPROV-03**: New providers appear in the service order configuration and can be reordered
-- [ ] **NPROV-04**: New providers use the same SnapshotStatus enum and visual treatment as existing providers
-- [ ] **NPROV-05**: If a provider's API is unreachable or undocumented, the UI shows a clear "not available" state (not a blank panel)
+- [x] **NPROV-03**: New providers appear in the service order configuration and can be reordered
+- [x] **NPROV-04**: New providers use the same SnapshotStatus enum and visual treatment as existing providers
+- [x] **NPROV-05**: If a provider's API is unreachable or undocumented, the UI shows a clear "not available" state (not a blank panel)
 
 ### Smart Alerts
 
@@ -101,9 +101,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROV-05 | Phase 2 | Complete |
 | NPROV-01 | Phase 3 | Pending |
 | NPROV-02 | Phase 3 | Pending |
-| NPROV-03 | Phase 3 | Pending |
-| NPROV-04 | Phase 3 | Pending |
-| NPROV-05 | Phase 3 | Pending |
+| NPROV-03 | Phase 3 | Complete |
+| NPROV-04 | Phase 3 | Complete |
+| NPROV-05 | Phase 3 | Complete |
 | ALERT-01 | Phase 4 | Pending |
 | ALERT-02 | Phase 4 | Pending |
 | ALERT-03 | Phase 5 | Pending |
