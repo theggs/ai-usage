@@ -7,7 +7,7 @@ use crate::state::{QuotaDimension, UserPreferences};
 use serde::Deserialize;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // ---------------------------------------------------------------------------
 // API Response structures (from opencode-bar KimiProvider.swift verification)
@@ -165,7 +165,7 @@ fn dirs_fallback() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-fn resolve_token_from_toml(config_dir: &PathBuf) -> Option<String> {
+fn resolve_token_from_toml(config_dir: &Path) -> Option<String> {
     let toml_path = config_dir.join("config.toml");
     let content = fs::read_to_string(toml_path).ok()?;
     let table: toml::Table = content.parse().ok()?;
@@ -180,7 +180,7 @@ fn resolve_token_from_toml(config_dir: &PathBuf) -> Option<String> {
     }
 }
 
-fn resolve_token_from_json(config_dir: &PathBuf) -> Option<String> {
+fn resolve_token_from_json(config_dir: &Path) -> Option<String> {
     let json_path = config_dir.join("config.json");
     let content = fs::read_to_string(json_path).ok()?;
     let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
