@@ -76,6 +76,11 @@ export type CopyTree = {
   quotaStatusLive: string;
   noPercent: string;
   remainingFormat: string;
+  burnRateOnTrack: string;
+  burnRateBehind: string;
+  burnRateFarBehind: string;
+  burnRateWillLastUntilReset: string;
+  burnRateRunsOutInFormat: string;
   resetsInFormat: string;
   resetDue: string;
   minuteShort: string;
@@ -255,6 +260,11 @@ const baseCopy: CopyTree = {
   quotaStatusLive: "Live",
   noPercent: "--",
   remainingFormat: "{percent}% remaining",
+  burnRateOnTrack: "On track",
+  burnRateBehind: "Behind",
+  burnRateFarBehind: "Far behind",
+  burnRateWillLastUntilReset: "Will last until reset",
+  burnRateRunsOutInFormat: "Runs out in ~{value}",
   resetsInFormat: "Resets in {value}",
   resetDue: "Reset due",
   minuteShort: "m",
@@ -437,6 +447,11 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     quotaStatusLive: "实时",
     noPercent: "--",
     remainingFormat: "剩余 {percent}%",
+    burnRateOnTrack: "进度正常",
+    burnRateBehind: "消耗偏快",
+    burnRateFarBehind: "消耗过快",
+    burnRateWillLastUntilReset: "可撑到重置",
+    burnRateRunsOutInFormat: "约 {value} 后用尽",
     resetsInFormat: "{value}后重置",
     resetDue: "即将重置",
     minuteShort: " 分钟",
@@ -685,6 +700,23 @@ const formatPreciseResetValue = (copy: CopyTree, totalMinutes: number) => {
   return `${formatResetValuePart(days, copy.dayShort)} ${formatResetValuePart(String(hours).padStart(2, "0"), copy.hourShort)}`;
 };
 
+const formatCompactDurationValue = (copy: CopyTree, totalMinutes: number) => {
+  if (totalMinutes < 60) {
+    return formatResetValuePart(totalMinutes, copy.minuteShort);
+  }
+
+  if (totalMinutes < 1_440) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${formatResetValuePart(hours, copy.hourShort)} ${formatResetValuePart(String(minutes).padStart(2, "0"), copy.minuteShort)}`;
+  }
+
+  const totalHours = Math.ceil(totalMinutes / 60);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  return `${formatResetValuePart(days, copy.dayShort)} ${formatResetValuePart(String(hours).padStart(2, "0"), copy.hourShort)}`;
+};
+
 export const localizeResetHint = (
   copy: CopyTree,
   backendValue?: string | null,
@@ -715,6 +747,35 @@ export const localizeResetHint = (
     d: copy.dayShort,
   };
   return copy.resetsInFormat.replace("{value}", `${num}${unitMap[unit] ?? unit}`);
+};
+
+export const localizeBurnRatePace = (
+  copy: CopyTree,
+  pace: "on-track" | "behind" | "far-behind"
+) => {
+  switch (pace) {
+    case "on-track":
+      return copy.burnRateOnTrack;
+    case "behind":
+      return copy.burnRateBehind;
+    case "far-behind":
+      return copy.burnRateFarBehind;
+  }
+};
+
+export const localizeBurnRateSecondaryLine = (
+  copy: CopyTree,
+  burnRate: { willLastUntilReset: boolean; depletionEtaMs: number | null }
+) => {
+  if (burnRate.willLastUntilReset) {
+    return copy.burnRateWillLastUntilReset;
+  }
+
+  const totalMinutes = Math.max(1, Math.ceil((burnRate.depletionEtaMs ?? 0) / 60_000));
+  return copy.burnRateRunsOutInFormat.replace(
+    "{value}",
+    formatCompactDurationValue(copy, totalMinutes)
+  );
 };
 
 /**

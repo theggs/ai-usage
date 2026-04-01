@@ -7,6 +7,8 @@ import {
   getPlaceholderCopy,
   getPromotionPopoverLabel,
   getPromotionTriggerLabel,
+  localizeBurnRatePace,
+  localizeBurnRateSecondaryLine,
   localizeResetHint,
   localizeDimensionLabel,
   resolveCopyTree
@@ -219,5 +221,68 @@ describe("localizeResetHint", () => {
     expect(localizeResetHint(enCopy, "Waiting for snapshot")).toBe("Waiting for snapshot");
 
     vi.useRealTimers();
+  });
+});
+
+describe("burn-rate copy", () => {
+  it("localizes pace labels in en-US and zh-CN", () => {
+    const en = getCopy("en-US");
+    const zh = getCopy("zh-CN");
+
+    expect(localizeBurnRatePace(en, "on-track")).toBe("On track");
+    expect(localizeBurnRatePace(en, "behind")).toBe("Behind");
+    expect(localizeBurnRatePace(en, "far-behind")).toBe("Far behind");
+    expect(localizeBurnRatePace(zh, "on-track")).toBe("进度正常");
+    expect(localizeBurnRatePace(zh, "behind")).toBe("消耗偏快");
+    expect(localizeBurnRatePace(zh, "far-behind")).toBe("消耗过快");
+  });
+
+  it("returns positive confirmation text when the quota will last until reset", () => {
+    expect(
+      localizeBurnRateSecondaryLine(getCopy("en-US"), {
+        willLastUntilReset: true,
+        depletionEtaMs: null
+      })
+    ).toBe("Will last until reset");
+    expect(
+      localizeBurnRateSecondaryLine(getCopy("zh-CN"), {
+        willLastUntilReset: true,
+        depletionEtaMs: null
+      })
+    ).toBe("可撑到重置");
+  });
+
+  it("formats compact burn-rate ETAs for minute, hour, and day ranges", () => {
+    const en = getCopy("en-US");
+    const zh = getCopy("zh-CN");
+
+    expect(
+      localizeBurnRateSecondaryLine(en, {
+        willLastUntilReset: false,
+        depletionEtaMs: 45 * 60 * 1000
+      })
+    ).toBe("Runs out in ~45m");
+    expect(
+      localizeBurnRateSecondaryLine(en, {
+        willLastUntilReset: false,
+        depletionEtaMs: (3 * 60 + 5) * 60 * 1000
+      })
+    ).toBe("Runs out in ~3h 05m");
+    expect(
+      localizeBurnRateSecondaryLine(zh, {
+        willLastUntilReset: false,
+        depletionEtaMs: (2 * 24 * 60 + 3 * 60) * 60 * 1000
+      })
+    ).toBe("约 2 天 03 小时 后用尽");
+  });
+
+  it("keeps burn-rate strings compact with no expanded prose", () => {
+    const en = getCopy("en-US");
+    const zh = getCopy("zh-CN");
+
+    expect(en.burnRateWillLastUntilReset).toBe("Will last until reset");
+    expect(en.burnRateRunsOutInFormat).toBe("Runs out in ~{value}");
+    expect(zh.burnRateWillLastUntilReset).toBe("可撑到重置");
+    expect(zh.burnRateRunsOutInFormat).toBe("约 {value} 后用尽");
   });
 });
