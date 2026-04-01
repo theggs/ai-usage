@@ -18,10 +18,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-31)
+See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Phase 03 — new-providers
+**Current focus:** Phase 4 — Burn Rate Engine
 
 ## Current Position
 
@@ -93,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T05:26:30.275Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-04-01T06:55:00.000Z
+Stopped at: Phase 03 complete, ready to discuss Phase 4
 Resume file: None
