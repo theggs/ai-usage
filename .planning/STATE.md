@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-04-01T20:05:54.006Z"
-last_activity: 2026-04-01
+status: executing
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-04-01T20:40:21.936Z"
+last_activity: 2026-04-02 -- Phase 05 completed; Phase 06 ready to execute
 progress:
   total_phases: 8
   completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_plans: 20
+  completed_plans: 16
+  percent: 80
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Phase 05 — time-aware-alert-thresholds
+**Current focus:** Phase 06 — about-page
 
 ## Current Position
 
-Phase: 05 (time-aware-alert-thresholds) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-04-01
+Phase: 06 (about-page) — READY
+Plan: 1 of 4
+Status: Ready to execute
+Last activity: 2026-04-02 -- Phase 05 completed; Phase 06 ready to execute
 
-Progress: [██████████] 15/15 plans (100%)
+Progress: [████████░░] 16/20 plans (80%)
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [██████████] 15/15 plans (100%)
 | Phase 05 P01 | 180 | 2 tasks | 2 files |
 | Phase 05 P03 | 6 min | 2 tasks | 2 files |
 | Phase 05 P02 | 10 min | 3 tasks | 9 files |
+| Phase 05 P04 | 191 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Rust tray regressions run through a fixed-time helper so pace classification remains deterministic in tests.
 - [Phase 05]: Pace-warning and pace-danger rows stay compact by moving ETA disclosure into badge metadata instead of a permanent body line.
 - [Phase 05]: 05-02's live hover checkpoint was auto-approved after automated verification, so the remaining evidence gap is documented explicitly.
+- [Phase 05]: Phase 05 claims only ALERT-03 and ALERT-04; ALERT-05 remains mapped to Phase 4's visible burn-rate UI contract
+- [Phase 05]: The shipped risk-only UI remains authoritative, so the fix is documentation and history repair rather than UI rework
 
 ### Pending Todos
 
@@ -112,6 +115,6 @@ None currently. Phase 05 plan 01 resolved the `resetsAt` fallback policy by reus
 
 ## Session Continuity
 
-Last session: 2026-04-01T20:05:54.003Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-about-page/06-UI-SPEC.md
+Last session: 2026-04-01T20:40:21.933Z
+Stopped at: Completed 05-04-PLAN.md
+Resume file: None
