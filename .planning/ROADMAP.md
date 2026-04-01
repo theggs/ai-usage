@@ -65,7 +65,7 @@ Plans:
 - [x] 03-01-PLAN.md — Infrastructure, contracts, and UI (registry, shared proxy, preferences, pipeline stubs, i18n, Settings)
 - [x] 03-02-PLAN.md — Kimi Code and GLM Coding Plan provider HTTP fetch implementations
 - [x] 03-03-PLAN.md — Fix provider-specific i18n messages and capsule spacing (gap closure)
-- [ ] 03-04-PLAN.md — Fix capsule overflow and token-change auto-refresh (gap closure)
+- [x] 03-04-PLAN.md — Fix capsule overflow and token-change auto-refresh (gap closure)
 
 ### Phase 4: Burn Rate Engine
 **Goal**: The app calculates and displays how fast each provider's quota is being consumed relative to the reset window, including a human-readable depletion ETA
@@ -115,7 +115,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 |-------|----------------|--------|-----------|
 | 1. Provider Registry | 3/3 | Complete | - |
 | 2. Fetch Pipeline & Migration | 2/2 | Complete | - |
-| 3. New Providers | 3/4 | Gap closure planned | - |
+| 3. New Providers | 4/4 | Complete | 2026-04-01 |
 | 4. Burn Rate Engine | 0/? | Not started | - |
 | 5. Time-Aware Alert Thresholds | 0/? | Not started | - |
 | 6. About Page | 0/? | Not started | - |
