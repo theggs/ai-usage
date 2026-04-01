@@ -147,12 +147,16 @@ export const PanelView = () => {
                 key={`${serviceId}-refreshing`}
                 className="rounded-2xl border border-slate-200 bg-slate-50/80 p-6 text-left text-sm text-slate-500"
               >
-                <div className="font-semibold text-slate-900">{copy.claudeCodeUsageRefreshingTitle}</div>
-                <p className="mt-2">{copy.claudeCodeUsageRefreshingBody}</p>
+                <div className="font-semibold text-slate-900">
+                  {serviceId === "claude-code" ? copy.claudeCodeUsageRefreshingTitle : copy.refreshingGenericTitle}
+                </div>
+                <p className="mt-2">
+                  {serviceId === "claude-code" ? copy.claudeCodeUsageRefreshingBody : copy.refreshingGenericBody}
+                </p>
               </div>
             );
           }
-          const placeholder = getPlaceholderCopy(copy, state.status);
+          const placeholder = getPlaceholderCopy(copy, state.status, serviceId);
           const serviceName = SERVICE_DISPLAY_NAMES[serviceId] ?? serviceId;
           return (
             <div
