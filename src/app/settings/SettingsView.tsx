@@ -373,7 +373,7 @@ export const SettingsView = () => {
       aria-label={overlay ? undefined : service.label}
       data-testid={overlay ? "service-order-drag-overlay" : undefined}
       data-service-pill-id={overlay ? undefined : service.id}
-      className={`inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[13px] font-medium text-slate-700 transition ${
+      className={`inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-medium text-slate-700 transition ${
         draggedServiceId === service.id
           ? "border-slate-300 bg-slate-100 shadow-sm"
           : "border-slate-200 bg-slate-50"
