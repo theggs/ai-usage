@@ -76,8 +76,11 @@ Plans:
   2. When quota is projected to run out before the reset, the panel shows a human-readable ETA (e.g., "runs out in ~3h")
   3. When quota is projected to last until reset, the panel shows a positive confirmation (e.g., "will last until reset")
   4. On first launch or when historical data is insufficient, the burn rate display degrades gracefully (no NaN, no crash, no misleading value)
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
+Plans:
+- [ ] 04-01-PLAN.md — Persist per-dimension sample history and add the pure burn-rate projection helper
+- [ ] 04-02-PLAN.md — Add localized quota-row burn-rate UI plus manual readability verification
 
 ### Phase 5: Time-Aware Alert Thresholds
 **Goal**: Warning colors and notification triggers reflect actual quota health relative to the time remaining in the reset window — not just an absolute percentage
@@ -116,7 +119,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 | 1. Provider Registry | 3/3 | Complete | - |
 | 2. Fetch Pipeline & Migration | 2/2 | Complete | - |
 | 3. New Providers | 4/4 | Complete | 2026-04-01 |
-| 4. Burn Rate Engine | 0/? | Not started | - |
+| 4. Burn Rate Engine | 0/2 | Planned | - |
 | 5. Time-Aware Alert Thresholds | 0/? | Not started | - |
 | 6. About Page | 0/? | Not started | - |
 
