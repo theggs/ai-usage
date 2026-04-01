@@ -55,6 +55,10 @@ export interface QuotaHealthCandidate {
   health: QuotaHealthSignal;
 }
 
+const assertNever = (value: never): never => {
+  throw new Error(`Unhandled value: ${JSON.stringify(value)}`);
+};
+
 const MENUBAR_AUTO_SERVICE = "auto";
 
 export const getVisibleServiceScope = (
@@ -434,9 +438,14 @@ const statusToConnectionState = (status?: SnapshotStatus): ServiceStatusCard["co
     case "Fresh": return "connected";
     case "CliNotFound": case "NoCredentials": return "empty";
     case "NotLoggedIn": case "SessionRecovery": return "stale";
+    case "RateLimited": return "disconnected";
     case "AccessDenied": case "ProxyInvalid": return "failed";
-    default: return "disconnected";
+    case "TemporarilyUnavailable": return "disconnected";
+    case "NoData": return "disconnected";
+    case "Disabled": return "disconnected";
   }
+
+  return assertNever(status);
 };
 
 const statusToPrimaryMessage = (status?: SnapshotStatus): string => {
@@ -453,8 +462,9 @@ const statusToPrimaryMessage = (status?: SnapshotStatus): string => {
     case "TemporarilyUnavailable": return `Temporarily unavailable: ${status.detail}`;
     case "NoData": return "No data yet";
     case "Disabled": return "Disabled";
-    default: return "Not connected";
   }
+
+  return assertNever(status);
 };
 
 export const getServiceStatusCard = (

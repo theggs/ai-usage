@@ -481,6 +481,125 @@ describe("AppShell", () => {
     expect(refreshProviderState).not.toHaveBeenCalled();
   });
 
+  it("uses pace-danger wording in the panel summary when the worst row is far behind", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-02T12:00:00Z"));
+    const copy = getCopy("en-US");
+    getPreferences.mockResolvedValue(
+      makePreferences({ language: "en-US", serviceOrder: ["codex"], providerEnabled: { codex: true } })
+    );
+    loadProviderState.mockResolvedValue({
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "codex",
+          serviceName: "Codex",
+          quotaDimensions: [
+            {
+              label: "codex / 5h",
+              remainingPercent: 50,
+              remainingAbsolute: "50% remaining",
+              resetsAt: "2026-04-02T16:00:00Z",
+              status: "warning",
+              progressTone: "warning"
+            }
+          ]
+        }
+      ]
+    });
+
+    render(<AppShell />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const expectedSummary = copy.panelPaceDangerSummary
+      .replace("{service}", "Codex")
+      .replace("{dimension}", " 5h limits")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    expect(
+      screen.getByText((_, element) => element?.textContent?.replace(/\s+/g, " ").trim() === expectedSummary)
+    ).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("keeps fallback-warning wording in the panel summary when pace data is unavailable", async () => {
+    const copy = getCopy("en-US");
+    getPreferences.mockResolvedValue(
+      makePreferences({ language: "en-US", serviceOrder: ["codex"], providerEnabled: { codex: true } })
+    );
+    loadProviderState.mockResolvedValue({
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "codex",
+          serviceName: "Codex",
+          quotaDimensions: [
+            {
+              label: "codex / 5h",
+              remainingPercent: 45,
+              remainingAbsolute: "45% remaining",
+              status: "warning",
+              progressTone: "warning"
+            }
+          ]
+        }
+      ]
+    });
+
+    render(<AppShell />);
+
+    const expectedSummary = copy.panelWarningSummary
+      .replace("{service}", "Codex")
+      .replace("{dimension}", " 5h limits")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    expect(
+      await screen.findByText(
+        (_, element) => element?.textContent?.replace(/\s+/g, " ").trim() === expectedSummary
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the healthy panel summary when the worst visible row is on track", async () => {
+    const copy = getCopy("en-US");
+    getPreferences.mockResolvedValue(
+      makePreferences({ language: "en-US", serviceOrder: ["codex"], providerEnabled: { codex: true } })
+    );
+    loadProviderState.mockResolvedValue({
+      ...createDemoPanelState(),
+      items: [
+        {
+          ...createDemoPanelState().items[0]!,
+          serviceId: "codex",
+          serviceName: "Codex",
+          quotaDimensions: [
+            {
+              label: "codex / 5h",
+              remainingPercent: 60,
+              remainingAbsolute: "60% remaining",
+              resetsAt: "2026-04-02T15:00:00Z",
+              status: "warning",
+              progressTone: "warning"
+            }
+          ]
+        }
+      ]
+    });
+
+    render(<AppShell />);
+
+    expect(await screen.findByText(copy.allServicesHealthy)).toBeInTheDocument();
+  });
+
   it("hides the whole main window when Escape is pressed", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-01T16:00:00Z"));

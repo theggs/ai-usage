@@ -595,6 +595,10 @@ const normalizeSnapshotState = (value?: string | null): CodexSnapshotState | und
   }
 };
 
+const assertNever = (value: never): never => {
+  throw new Error(`Unhandled value: ${JSON.stringify(value)}`);
+};
+
 export const getSnapshotTag = (copy: CopyTree, snapshotState?: string | null) => {
   switch (normalizeSnapshotState(snapshotState)) {
     case "fresh":
@@ -667,9 +671,10 @@ export const getPlaceholderCopy = (
     case "Disabled":
       return { title: copy.statusNoDataTitle, body: copy.statusNoDataBody };
     case "Fresh":
-    default:
       return { title: copy.serviceDisconnectedTitle, body: copy.serviceDisconnectedBody };
   }
+
+  return assertNever(status);
 };
 
 /**

@@ -452,7 +452,7 @@ export const AppShell = () => {
       }),
     [mergedProviderStates, serviceOrder]
   );
-  const panelSummary = getPanelHealthSummary(visibleItems);
+  const panelSummary = getPanelHealthSummary(visibleItems, displayNowMs);
   const promotionDecision = useMemo(
     () =>
       resolvePromotionDisplayDecision({
@@ -474,15 +474,20 @@ export const AppShell = () => {
       ? copy.noServicesConnected
       : panelSummary.tone === "healthy"
         ? copy.allServicesHealthy
-        : panelSummary.tone === "danger"
-          ? copy.panelDangerSummary
+        : (
+            panelSummary.source === "pace" && panelSummary.pace === "far-behind"
+              ? copy.panelPaceDangerSummary
+              : panelSummary.source === "pace" && panelSummary.pace === "behind"
+                ? copy.panelPaceWarningSummary
+                : panelSummary.tone === "danger"
+                  ? copy.panelDangerSummary
+                  : copy.panelWarningSummary
+          )
               .replace("{service}", panelSummary.serviceName ?? "")
-              .replace("{dimension}", ` ${localizeDimensionLabel(copy, panelSummary.dimensionLabel ?? "")}`)
-              .replace(/\s+/g, " ")
-              .trim()
-          : copy.panelWarningSummary
-              .replace("{service}", panelSummary.serviceName ?? "")
-              .replace("{dimension}", ` ${localizeDimensionLabel(copy, panelSummary.dimensionLabel ?? "")}`)
+              .replace(
+                "{dimension}",
+                ` ${localizeDimensionLabel(copy, panelSummary.dimensionLabel ?? "")}`
+              )
               .replace(/\s+/g, " ")
               .trim();
   const settingsHeaderText =
