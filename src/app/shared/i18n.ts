@@ -126,6 +126,10 @@ export type CopyTree = {
   serviceNotInstalledBody: string;
   claudeCodeNotConnectedTitle: string;
   claudeCodeNotConnectedBody: string;
+  tokenNotConfiguredTitle: string;
+  tokenNotConfiguredBody: string;
+  refreshingGenericTitle: string;
+  refreshingGenericBody: string;
   serviceSignedOutTitle: string;
   serviceSignedOutBody: string;
   serviceDisconnectedTitle: string;
@@ -300,6 +304,10 @@ const baseCopy: CopyTree = {
   serviceNotInstalledBody: "Install the CLI first, then come back here to connect it.",
   claudeCodeNotConnectedTitle: "Not connected",
   claudeCodeNotConnectedBody: "Install Claude Code CLI and log in, then come back here to connect it.",
+  tokenNotConfiguredTitle: "Token not configured",
+  tokenNotConfiguredBody: "Enter your API token in Settings to connect this service.",
+  refreshingGenericTitle: "Refreshing quota",
+  refreshingGenericBody: "Checking your usage status...",
   serviceSignedOutTitle: "Sign in required",
   serviceSignedOutBody: "The CLI is installed, but there is no readable signed-in session yet.",
   serviceDisconnectedTitle: "Connection unavailable",
@@ -475,6 +483,10 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     serviceNotInstalledBody: "请先安装对应 CLI，安装后再回到这里完成连接。",
     claudeCodeNotConnectedTitle: "未连接",
     claudeCodeNotConnectedBody: "请先安装 Claude Code CLI 并登录，安装后再回到这里完成连接。",
+    tokenNotConfiguredTitle: "未配置 Token",
+    tokenNotConfiguredBody: "请在设置中输入 API Token 以连接此服务。",
+    refreshingGenericTitle: "正在刷新额度",
+    refreshingGenericBody: "正在检查用量状态...",
     serviceSignedOutTitle: "需要先登录",
     serviceSignedOutBody: "CLI 已安装，但当前没有可读取的登录会话。",
     serviceDisconnectedTitle: "暂时无法连接",
@@ -599,15 +611,20 @@ export const getCopy = (language: UserPreferences["language"]) =>
 
 export const getPlaceholderCopy = (
   copy: CopyTree,
-  status: SnapshotStatus
+  status: SnapshotStatus,
+  serviceId?: string
 ) => {
   switch (status.kind) {
     case "CliNotFound":
       return { title: copy.serviceNotInstalledTitle, body: copy.serviceNotInstalledBody };
     case "NotLoggedIn":
       return { title: copy.serviceSignedOutTitle, body: copy.serviceSignedOutBody };
-    case "NoCredentials":
+    case "NoCredentials": {
+      if (serviceId === "kimi-code" || serviceId === "glm-coding") {
+        return { title: copy.tokenNotConfiguredTitle, body: copy.tokenNotConfiguredBody };
+      }
       return { title: copy.claudeCodeNotConnectedTitle, body: copy.claudeCodeNotConnectedBody };
+    }
     case "SessionRecovery":
       return { title: copy.statusSessionRecoveryTitle, body: copy.statusSessionRecoveryBody };
     case "RateLimited":
