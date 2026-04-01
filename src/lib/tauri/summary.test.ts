@@ -149,7 +149,7 @@ describe("getBurnRateDisplay", () => {
     expect(
       getBurnRateDisplay({
         remainingPercent: 60,
-        resetsAt: "2026-04-02T16:00:00Z",
+        resetsAt: "2026-04-02T15:00:00Z",
         samples,
         nowMs
       })
@@ -162,7 +162,7 @@ describe("getBurnRateDisplay", () => {
   it("returns behind when coverage stays between half and full reset coverage", () => {
     const result = getBurnRateDisplay({
       remainingPercent: 60,
-      resetsAt: "2026-04-02T15:00:00Z",
+      resetsAt: "2026-04-02T16:00:00Z",
       samples,
       nowMs
     });

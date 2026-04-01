@@ -9,7 +9,10 @@ import type {
   SummaryMode,
   UserPreferences
 } from "./contracts";
+import { getBurnRateDisplay as getComputedBurnRateDisplay } from "./burnRate";
 import { getProvider, providerIds } from "./registry";
+
+export { getBurnRateDisplay } from "./burnRate";
 
 export type ServiceAlertLevel = "normal" | "warning" | "danger";
 
@@ -108,6 +111,17 @@ export const decorateQuotaDimension = (
   status: getQuotaStatus(dimension.remainingPercent),
   progressTone: getQuotaProgressTone(dimension.remainingPercent)
 });
+
+export const getQuotaBurnRateDisplay = (
+  dimension: QuotaDimension,
+  nowMs?: number
+) =>
+  getComputedBurnRateDisplay({
+    remainingPercent: dimension.remainingPercent,
+    resetsAt: dimension.resetsAt,
+    samples: dimension.burnRateHistory,
+    nowMs
+  });
 
 const allDimensions = (items: PanelPlaceholderItem[]) => items.flatMap((item) => item.quotaDimensions);
 
