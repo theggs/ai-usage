@@ -1067,8 +1067,7 @@ mod tests {
         anchored_placement, fallback_tray_icon_image, format_summary, items_for_menubar_service,
         placement_from_last_success, resolve_display_service_id, resolve_popover_placement,
         safe_default_placement, service_base_icon, should_hide_on_focus_change, tinted_icon,
-        tray_anchor_from_rect, tray_severity, tray_tooltip, PlacementSource, TrayAnchor,
-        WorkArea,
+        tray_anchor_from_rect, tray_severity, tray_tooltip, PlacementSource, TrayAnchor, WorkArea,
     };
     use crate::state::{LastSuccessfulPopoverPlacement, PanelPlaceholderItem, QuotaDimension};
     use tauri::image::Image;
@@ -1106,6 +1105,33 @@ mod tests {
                 remaining_percent: Some(percent),
                 remaining_absolute: format!("{percent}%"),
                 resets_at: None,
+                reset_hint: None,
+                status: "healthy".into(),
+                progress_tone: "success".into(),
+            }],
+            status_label: "refreshing".into(),
+            badge_label: Some("Live".into()),
+            last_successful_refresh_at: "0".into(),
+        }
+    }
+
+    fn item_with_reset(
+        label: &str,
+        remaining_percent: Option<u8>,
+        resets_at: Option<&str>,
+    ) -> PanelPlaceholderItem {
+        PanelPlaceholderItem {
+            service_id: "service".into(),
+            service_name: "Service".into(),
+            account_label: None,
+            icon_key: "icon".into(),
+            quota_dimensions: vec![QuotaDimension {
+                label: label.into(),
+                remaining_percent,
+                remaining_absolute: remaining_percent
+                    .map(|percent| format!("{percent}%"))
+                    .unwrap_or_else(|| "unknown".into()),
+                resets_at: resets_at.map(|value| value.into()),
                 reset_hint: None,
                 status: "healthy".into(),
                 progress_tone: "success".into(),
@@ -1301,11 +1327,50 @@ mod tests {
     }
 
     #[test]
-    fn derives_tray_severity_from_lowest_percent() {
-        assert_eq!(tray_severity(&[item(64)]), "normal");
-        assert_eq!(tray_severity(&[item(45)]), "warning");
-        assert_eq!(tray_severity(&[item(18)]), "danger");
-        assert_eq!(tray_severity(&[]), "empty");
+    fn derives_tray_severity_from_time_aware_rules_and_fallbacks() {
+        let now_ms = 1_743_595_200_000;
+
+        assert_eq!(
+            tray_severity_at(
+                &[item_with_reset(
+                    "codex / 5h",
+                    Some(50),
+                    Some("2025-03-29T12:05:00Z")
+                )],
+                now_ms
+            ),
+            "danger"
+        );
+        assert_eq!(
+            tray_severity_at(
+                &[item_with_reset(
+                    "codex / week",
+                    Some(20),
+                    Some("2025-03-29T18:00:00Z")
+                )],
+                now_ms
+            ),
+            "normal"
+        );
+        assert_eq!(
+            tray_severity_at(
+                &[item_with_reset("codex / 5h", Some(45), None)],
+                now_ms
+            ),
+            "warning"
+        );
+        assert_eq!(
+            tray_severity_at(
+                &[item_with_reset(
+                    "codex / 5h",
+                    Some(80),
+                    Some("2025-03-29T18:30:00Z")
+                )],
+                now_ms
+            ),
+            "normal"
+        );
+        assert_eq!(tray_severity_at(&[], now_ms), "empty");
     }
 
     #[test]

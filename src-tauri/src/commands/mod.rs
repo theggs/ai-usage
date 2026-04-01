@@ -957,6 +957,67 @@ mod tests {
     }
 
     #[test]
+    fn build_tray_items_preserves_reset_metadata_for_time_aware_tray_severity() {
+        let _guard = env_lock().lock().unwrap();
+        let tmp = env::temp_dir().join(format!("ai-usage-test-tray-reset-meta-{}", now_iso()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        env::set_var(
+            "AI_USAGE_SNAPSHOT_CACHE_FILE",
+            tmp.join("snapshot-cache.json"),
+        );
+
+        let refreshed_at = now_iso();
+        let state = CodexPanelState {
+            desktop_surface: DesktopSurfaceState {
+                platform: "macos".into(),
+                icon_state: "idle".into(),
+                summary_mode: "lowest-remaining".into(),
+                summary_text: None,
+                panel_visible: false,
+                last_opened_at: None,
+            },
+            items: vec![PanelPlaceholderItem {
+                service_id: "codex".into(),
+                service_name: "Codex".into(),
+                account_label: None,
+                icon_key: "codex".into(),
+                quota_dimensions: vec![crate::state::QuotaDimension {
+                    label: "codex / 5h".into(),
+                    remaining_percent: Some(45),
+                    remaining_absolute: "45%".into(),
+                    resets_at: Some("2025-03-29T14:00:00Z".into()),
+                    reset_hint: Some("resets in 2h".into()),
+                    status: "warning".into(),
+                    progress_tone: "warning".into(),
+                }],
+                status_label: "refreshing".into(),
+                badge_label: Some("Live".into()),
+                last_successful_refresh_at: refreshed_at.clone(),
+            }],
+            configured_account_count: 0,
+            enabled_account_count: 0,
+            status: SnapshotStatus::Fresh,
+            active_session: None,
+            last_successful_refresh_at: refreshed_at.clone(),
+        };
+        save_to_snapshot_cache("codex", &state);
+
+        let preferences = crate::state::default_preferences();
+        let items = build_tray_items(&preferences, &[], &refreshed_at);
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].quota_dimensions[0].label, "codex / 5h");
+        assert_eq!(items[0].quota_dimensions[0].remaining_percent, Some(45));
+        assert_eq!(
+            items[0].quota_dimensions[0].resets_at.as_deref(),
+            Some("2025-03-29T14:00:00Z")
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");
+    }
+
+    #[test]
     fn build_cached_tray_items_reads_snapshot_cache_without_live_refresh() {
         let _guard = env_lock().lock().unwrap();
         let tmp = env::temp_dir().join(format!("ai-usage-test-tray-cached-{}", now_iso()));
