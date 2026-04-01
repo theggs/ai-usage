@@ -655,17 +655,20 @@ fn to_summary_value(dimension: &crate::state::QuotaDimension) -> String {
         .unwrap_or_else(|| dimension.remaining_absolute.clone())
 }
 
-fn tray_severity(items: &[PanelPlaceholderItem]) -> &'static str {
+fn tray_severity_at(items: &[PanelPlaceholderItem], now_ms: i64) -> &'static str {
     let dimensions = all_dimensions(items);
     if dimensions.is_empty() {
         return "empty";
     }
-    let now_ms = current_time_ms();
     dimensions
         .iter()
         .map(|dimension| tray_dimension_severity(dimension, now_ms))
         .min_by_key(|severity| tray_severity_rank(severity))
         .unwrap_or("normal")
+}
+
+fn tray_severity(items: &[PanelPlaceholderItem]) -> &'static str {
+    tray_severity_at(items, current_time_ms())
 }
 
 fn tray_tooltip(service_name: &str, summary: Option<&str>) -> String {
@@ -1067,7 +1070,8 @@ mod tests {
         anchored_placement, fallback_tray_icon_image, format_summary, items_for_menubar_service,
         placement_from_last_success, resolve_display_service_id, resolve_popover_placement,
         safe_default_placement, service_base_icon, should_hide_on_focus_change, tinted_icon,
-        tray_anchor_from_rect, tray_severity, tray_tooltip, PlacementSource, TrayAnchor, WorkArea,
+        tray_anchor_from_rect, tray_severity_at, tray_tooltip, PlacementSource, TrayAnchor,
+        WorkArea,
     };
     use crate::state::{LastSuccessfulPopoverPlacement, PanelPlaceholderItem, QuotaDimension};
     use tauri::image::Image;
@@ -1328,14 +1332,14 @@ mod tests {
 
     #[test]
     fn derives_tray_severity_from_time_aware_rules_and_fallbacks() {
-        let now_ms = 1_743_595_200_000;
+        let now_ms = 1_743_249_600_000;
 
         assert_eq!(
             tray_severity_at(
                 &[item_with_reset(
                     "codex / 5h",
                     Some(50),
-                    Some("2025-03-29T12:05:00Z")
+                    Some("2025-03-29T16:00:00Z")
                 )],
                 now_ms
             ),
