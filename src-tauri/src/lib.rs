@@ -3,6 +3,8 @@ pub mod agent_activity;
 pub mod claude_code;
 pub mod codex;
 pub mod commands;
+pub mod glm;
+pub mod kimi;
 pub mod notifications;
 pub mod pipeline;
 pub mod proxy;
