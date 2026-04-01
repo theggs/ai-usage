@@ -5,7 +5,7 @@
 
 **Date:** 2026-04-01
 **Phase:** 04-burn-rate-engine
-**Areas discussed:** Burn-rate history, panel presentation, graceful degradation, pace scale and wording
+**Areas discussed:** Burn-rate history, panel presentation, graceful degradation, pace scale and wording, projection math, reset validity, history identity, row copy
 
 ---
 
@@ -133,10 +133,93 @@
 
 ## the agent's Discretion
 
-- Exact math for burn-rate smoothing and threshold cutoffs inside the chosen 3-level model
 - Exact English phrasing for the second-line ETA/positive confirmation text
 - Exact cache payload shape for rolling history, as long as it stays additive and lightweight
-- Exact invalid-timestamp heuristics, as long as they fail safe
+- Exact threshold cutoffs inside the chosen 3-level model, as long as output stays deterministic and explainable
+
+---
+
+## Context Refresh Decisions
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| CodexBar-style even-budget pace | Compare usage against elapsed-window budget like CodexBar | |
+| Sample-based ETA-vs-reset projection | Estimate depletion from successful refresh samples and compare to `resetsAt` | ✓ |
+| Sample-based math with CodexBar-style early-window hiding | Keep sample-based math but borrow extra gating | |
+
+**User's choice:** Sample-based ETA-vs-reset projection
+**Notes:** User explicitly asked to research CodexBar first, then chose not to mirror its even-budget window-progress model for Phase 4.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Minimal fail-safe | Hide burn-rate when `resetsAt` is unparseable or not in the future | ✓ |
+| Stricter fail-safe | Also hide burn-rate for implausibly distant reset times | |
+| You decide | Leave exact reset-validity behavior to implementation | |
+
+**User's choice:** Minimal fail-safe
+**Notes:** User wanted Phase 4 to avoid pulling in extra reset-policy decisions that belong more naturally in later work.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| `providerId + raw quota label` | Low-churn per-dimension key using existing raw identity | ✓ |
+| Explicit dimension key contract | Add a new stable identifier field now | |
+| You decide | Leave history identity to implementation | |
+
+**User's choice:** `providerId + raw quota label`
+**Notes:** Keeps weekly and 5h windows separate without extra contract churn in this phase.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Keep current terse two-line copy | Reuse UI-spec wording for pace label + ETA/confirmation | ✓ |
+| More explicit English wording | Keep structure but expand English copy slightly | |
+| You decide | Leave English wording to implementation | |
+
+**User's choice:** Keep current terse two-line copy
+**Notes:** User kept the existing compact UI-spec wording to fit the current `QuotaSummary` footprint.
+
+---
+
+## Late Execution Decisions
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Keep burn-rate visible on every row | Adds symmetry but increases card height substantially | |
+| Show burn-rate only for risky rows | Preserves two-provider default view and spends height where action may be needed | ✓ |
+
+**User's choice:** Show burn-rate only for risky rows
+**Notes:** Healthy rows should not expand the card; risky rows keep the extra pace detail.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Use different math for `5h` and weekly | Could optimize each window separately but creates trust and explainability problems | |
+| Use one shared algorithm for `5h` and weekly | Same mental model everywhere | ✓ |
+
+**User's choice:** Use one shared algorithm for `5h` and weekly
+**Notes:** User explicitly rejected mixed algorithms because identical labels would mean different things.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Keep sample-based ETA/projection | More reactive, but weekly results looked noisy and hard to trust | |
+| Switch to whole-window average-so-far pace/ETA | Simpler, more stable, same across windows | ✓ |
+
+**User's choice:** Whole-window average-so-far pace/ETA
+**Notes:** Final formula uses current remaining percent plus inferred window length from `resetsAt` and the quota label.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Show pace at all remaining levels | Maximal visibility but noisy when quota is already clearly low | |
+| Hide pace when remaining percentage is 10% or lower | Lets the remaining percentage dominate near exhaustion | ✓ |
+
+**User's choice:** Hide pace when remaining percentage is 10% or lower
+**Notes:** Low remaining percentage is already the clearest signal at that point.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Keep persisted burn-rate samples in the cache | Useful only if the display math still needs them | |
+| Remove sample persistence from the final phase | Final whole-window model does not depend on retained samples | ✓ |
+
+**User's choice:** Remove sample persistence from the final phase
+**Notes:** The earlier sample-based foundation was intentionally simplified away before final approval.
 
 ## Deferred Ideas
 

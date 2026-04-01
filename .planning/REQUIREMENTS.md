@@ -29,10 +29,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Smart Alerts
 
 - [x] **ALERT-01**: Burn rate is calculated from `remainingPercent` + `resetsAt` + snapshot timestamp, showing consumption pace relative to window progress
-- [ ] **ALERT-02**: Depletion ETA is displayed in human-readable form (e.g., "runs out in ~3h" or "will last until reset")
+- [x] **ALERT-02**: Depletion ETA is displayed in human-readable form (e.g., "runs out in ~3h" or "will last until reset")
 - [ ] **ALERT-03**: Warning thresholds are time-aware — "80% remaining with 4h left" is healthy; "10% remaining with 4h left" is danger
 - [ ] **ALERT-04**: When `resetsAt` is unavailable, warning falls back to existing static percentage thresholds (>50% / 20-50% / <20%)
-- [ ] **ALERT-05**: Pace classification uses at least 3 levels (on track / behind / far behind) visible in the UI
+- [x] **ALERT-05**: Pace classification uses at least 3 levels (on track / behind / far behind) visible in the UI
 
 ### About Page
 
@@ -105,10 +105,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NPROV-04 | Phase 3 | Complete |
 | NPROV-05 | Phase 3 | Complete |
 | ALERT-01 | Phase 4 | Complete |
-| ALERT-02 | Phase 4 | Pending |
+| ALERT-02 | Phase 4 | Complete |
 | ALERT-03 | Phase 5 | Pending |
 | ALERT-04 | Phase 5 | Pending |
-| ALERT-05 | Phase 5 | Pending |
+| ALERT-05 | Phase 4 | Complete |
 | ABOUT-01 | Phase 6 | Pending |
 | ABOUT-02 | Phase 6 | Pending |
 | ABOUT-03 | Phase 6 | Pending |
@@ -123,4 +123,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after roadmap creation*
+*Last updated: 2026-04-02 after Phase 4 completion*

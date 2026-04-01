@@ -94,7 +94,7 @@ _Note: Task 2 followed TDD with a test commit before the helper implementation._
 
 ## Deviations from Plan
 
-None - plan executed as written.
+- This infrastructure direction was later simplified during `04-02`. The final Phase 04 outcome removed persisted burn-rate sample history and switched to a whole-window pace model; see `04-02-SUMMARY.md`.
 
 ## Issues Encountered
 

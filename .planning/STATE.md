@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-04-01T16:45:13.269Z"
-last_activity: 2026-04-01
+status: ready
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-04-02T18:00:00.000Z"
+last_activity: 2026-04-02
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Phase 04 — burn-rate-engine
+**Current focus:** Phase 05 — time-aware alert thresholds
 
 ## Current Position
 
-Phase: 04 (burn-rate-engine) — EXECUTING
+Phase: 04 (burn-rate-engine) — COMPLETE
 Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-04-01
+Status: Approved and closed
+Last activity: 2026-04-02
 
 Progress: [████████████████████] 10/10 plans (100%)
 
@@ -58,6 +58,7 @@ Progress: [████████████████████] 10/10 p
 | Phase 03 P03 | 219 | 2 tasks | 4 files |
 | Phase 03 P04 | 589s | 2 tasks | 4 files |
 | Phase 04 P01 | 3min | 2 tasks | 6 files |
+| Phase 04 P02 | 1 session | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -77,8 +78,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Stub fetchers return NoCredentials as transient artifact; Plan 02 replaces with real HTTP fetch
 - [Phase 03]: Direct serviceId check for NoCredentials routing in getPlaceholderCopy instead of registry lookup -- simpler, avoids circular dependency
 - [Phase 03]: Token change detection uses broad "providerTokens in patch" check -- refreshes all enabled providers since replace-all patch semantics make per-provider diff impractical
-- [Phase 04]: Burn-rate history is isolated by provider ID plus raw quota label and pruned to the newest three successful samples — Prevents weekly and short-window quotas from sharing history while keeping cache growth bounded.
-- [Phase 04]: Only fresh successful refreshes record samples; stale states and visible-window ticks reuse prior history without synthesizing new points — Keeps burn-rate math grounded in real fetches and avoids fake consumption caused by UI-only time updates or error states.
+- [Phase 04]: Pace uses one whole-window algorithm for both `5h` and weekly rows — avoids contradictory labels and keeps the feature explainable.
+- [Phase 04]: Burn-rate UI is risk-only; healthy rows stay silent and pace is hidden when remaining percentage is 10% or lower.
 
 ### Pending Todos
 
@@ -101,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T16:45:13.266Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-04-02T18:00:00.000Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

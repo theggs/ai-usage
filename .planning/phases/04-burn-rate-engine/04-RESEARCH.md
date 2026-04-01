@@ -323,27 +323,29 @@ useEffect(() => {
 |----------|-------|
 | Framework | Vitest 3.2.4 + React Testing Library + Rust unit tests |
 | Config file | `vitest.config.ts` |
-| Quick run command | `npx vitest run src/lib/tauri/summary.test.ts src/app/shared/i18n.test.ts src/components/panel/ServiceCard.test.tsx` |
-| Full suite command | `npm test && cargo test --manifest-path src-tauri/Cargo.toml` |
+| Quick run command | `npx vitest run src/lib/tauri/summary.test.ts src/app/shared/i18n.test.ts src/components/panel/ServiceCard.test.tsx src/app/panel/PanelView.test.tsx` |
+| Full suite command | `npx vitest run src/lib/tauri/summary.test.ts src/app/shared/i18n.test.ts src/components/panel/ServiceCard.test.tsx src/app/panel/PanelView.test.tsx src/app/shell/AppShell.test.tsx && cargo test snapshot_cache --manifest-path src-tauri/Cargo.toml` |
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| ALERT-01 | Classifies each quota dimension as on-track / behind / far-behind from sample history plus `resetsAt` | unit | `npx vitest run src/lib/tauri/burnRate.test.ts` | ❌ Wave 0 |
-| ALERT-01 | Hides burn-rate output when history is insufficient or `resetsAt` invalid/missing | unit | `npx vitest run src/lib/tauri/burnRate.test.ts src/components/panel/QuotaSummary.test.tsx` | ❌ Wave 0 |
-| ALERT-02 | Shows compact depletion ETA when projected to run out before reset | component | `npx vitest run src/components/panel/QuotaSummary.test.tsx src/app/shared/i18n.test.ts` | ❌ Wave 0 |
-| ALERT-02 | Shows positive confirmation when projection lasts through reset | component | `npx vitest run src/components/panel/QuotaSummary.test.tsx` | ❌ Wave 0 |
+| ALERT-01 | Classifies each quota dimension as on-track / behind / far-behind from sample history plus `resetsAt` | unit | `npx vitest run src/lib/tauri/summary.test.ts` | ✅ extend existing suite |
+| ALERT-01 | Hides burn-rate output when history is insufficient or `resetsAt` invalid/missing | component | `npx vitest run src/components/panel/ServiceCard.test.tsx src/app/panel/PanelView.test.tsx` | ✅ extend existing suites |
+| ALERT-02 | Shows compact depletion ETA when projected to run out before reset | unit + component | `npx vitest run src/app/shared/i18n.test.ts src/components/panel/ServiceCard.test.tsx src/app/panel/PanelView.test.tsx` | ✅ extend existing suites |
+| ALERT-02 | Shows positive confirmation when projection lasts through reset | component | `npx vitest run src/components/panel/ServiceCard.test.tsx src/app/panel/PanelView.test.tsx` | ✅ extend existing suites |
 | ALERT-01 / ALERT-02 | Persists additive rolling history without breaking cache reads | rust unit | `cargo test snapshot_cache --manifest-path src-tauri/Cargo.toml` | ✅ |
 
 ### Sampling Rate
-- **Per task commit:** `npx vitest run src/lib/tauri/burnRate.test.ts src/components/panel/QuotaSummary.test.tsx src/app/shared/i18n.test.ts`
-- **Per wave merge:** `npm test && cargo test --manifest-path src-tauri/Cargo.toml`
+- **Per task commit:** Run the task-specific `<automated>` command from the final Phase 04 plan set (`04-01-PLAN.md`, `04-02-PLAN.md`)
+- **Per wave merge:** `npx vitest run src/lib/tauri/summary.test.ts src/app/shared/i18n.test.ts src/components/panel/ServiceCard.test.tsx src/app/panel/PanelView.test.tsx src/app/shell/AppShell.test.tsx && cargo test snapshot_cache --manifest-path src-tauri/Cargo.toml`
 - **Phase gate:** Full suite green before `/gsd:verify-work`
 
 ### Wave 0 Gaps
-- [ ] `src/lib/tauri/burnRate.test.ts` — core math and graceful-degradation matrix for ALERT-01
-- [ ] `src/components/panel/QuotaSummary.test.tsx` — pace label + ETA/confirmation rendering for ALERT-02
-- [ ] Rust cache-history round-trip test coverage — extend existing `snapshot_cache_*` tests to include additive `burn_rate_history`
+None. Phase 04 intentionally extends existing suites instead of creating standalone Wave 0 test files:
+- `src/lib/tauri/summary.test.ts` for burn-rate math and graceful degradation
+- `src/app/shared/i18n.test.ts` for compact pace/ETA copy
+- `src/components/panel/ServiceCard.test.tsx` and `src/app/panel/PanelView.test.tsx` for visible and hidden quota-row rendering
+- existing Rust `snapshot_cache_*` coverage for additive `burn_rate_history` persistence
 
 ## Sources
 

@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Provider Registry** - Establish single ProviderDescriptor registry replacing five hardcoded service-ID lists
 - [ ] **Phase 2: Fetch Pipeline & Migration** - Generalize credential fetch pipeline; migrate Codex and Claude Code into it
 - [ ] **Phase 3: New Providers** - Add Kimi Code and GLM Coding Plan via the validated registry and pipeline
-- [ ] **Phase 4: Burn Rate Engine** - Pure frontend burn rate calculation with depletion ETA display
+- [x] **Phase 4: Burn Rate Engine** - Pure frontend burn rate calculation with depletion ETA display
 - [ ] **Phase 5: Time-Aware Alert Thresholds** - Replace static percentage thresholds with time-relative quota health classification
 - [ ] **Phase 6: About Page** - Standalone About page with version, license, and dependency audit info
 
@@ -79,8 +79,8 @@ Plans:
 **Plans**: 2 plans
 **UI hint**: yes
 Plans:
-- [x] 04-01-PLAN.md — Persist per-dimension sample history and add the pure burn-rate projection helper
-- [ ] 04-02-PLAN.md — Add localized quota-row burn-rate UI plus manual readability verification
+- [x] 04-01-PLAN.md — Initial burn-rate helper foundation (later simplified during execution)
+- [x] 04-02-PLAN.md — Add localized quota-row burn-rate UI plus manual readability verification
 
 ### Phase 5: Time-Aware Alert Thresholds
 **Goal**: Warning colors and notification triggers reflect actual quota health relative to the time remaining in the reset window — not just an absolute percentage
@@ -119,7 +119,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 | 1. Provider Registry | 3/3 | Complete | - |
 | 2. Fetch Pipeline & Migration | 2/2 | Complete | - |
 | 3. New Providers | 4/4 | Complete | 2026-04-01 |
-| 4. Burn Rate Engine | 0/2 | Planned | - |
+| 4. Burn Rate Engine | 2/2 | Complete | 2026-04-02 |
 | 5. Time-Aware Alert Thresholds | 0/? | Not started | - |
 | 6. About Page | 0/? | Not started | - |
 
