@@ -1,5 +1,3 @@
-import type { BurnRateSample } from "./contracts";
-
 export type BurnRatePace = "on-track" | "behind" | "far-behind";
 
 export interface BurnRateDisplay {
@@ -8,37 +6,38 @@ export interface BurnRateDisplay {
   willLastUntilReset: boolean;
 }
 
-const WEEKLY_MIN_HISTORY_MS = 24 * 60 * 60 * 1000;
-const WEEKLY_MIN_SAMPLE_COUNT = 4;
+const HIDE_PACE_REMAINING_PERCENT = 10;
+const FIVE_HOUR_WINDOW_MS = 5 * 60 * 60 * 1000;
+const WEEKLY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-const parseSampleTimestamp = (capturedAt: string): number | undefined => {
-  const timestamp = /^\d+$/.test(capturedAt)
-    ? Number(capturedAt) * 1000
-    : Date.parse(capturedAt);
-
-  return Number.isFinite(timestamp) ? timestamp : undefined;
-};
-
-const isWeeklyLabel = (label?: string) => {
-  if (!label) return false;
+const inferWindowDurationMs = (label?: string) => {
+  if (!label) return undefined;
   const normalized = label.toLowerCase();
-  return normalized.includes("week") || normalized.includes("7d");
+  if (normalized.includes("5h")) {
+    return FIVE_HOUR_WINDOW_MS;
+  }
+  if (normalized.includes("week") || normalized.includes("7d")) {
+    return WEEKLY_WINDOW_MS;
+  }
+  return undefined;
 };
 
 export const getBurnRateDisplay = ({
   label,
   remainingPercent,
   resetsAt,
-  samples,
   nowMs = Date.now()
 }: {
   label?: string;
   remainingPercent?: number;
   resetsAt?: string;
-  samples?: readonly BurnRateSample[];
   nowMs?: number;
 }): BurnRateDisplay | undefined => {
   if (!Number.isFinite(remainingPercent)) {
+    return undefined;
+  }
+
+  if (remainingPercent <= HIDE_PACE_REMAINING_PERCENT) {
     return undefined;
   }
 
@@ -51,43 +50,23 @@ export const getBurnRateDisplay = ({
     return undefined;
   }
 
-  const validSamples = (samples ?? [])
-    .map((sample) => ({
-      timestampMs: parseSampleTimestamp(sample.capturedAt),
-      remainingPercent: sample.remainingPercent
-    }))
-    .filter(
-      (sample): sample is { timestampMs: number; remainingPercent: number } =>
-        sample.timestampMs !== undefined
-    )
-    .sort((left, right) => left.timestampMs - right.timestampMs);
-
-  if (validSamples.length < 2) {
+  const windowDurationMs = inferWindowDurationMs(label);
+  if (!windowDurationMs) {
     return undefined;
   }
 
-  const first = validSamples[0];
-  const last = validSamples[validSamples.length - 1];
-  if (!first || !last) {
+  const timeUntilResetMs = resetMs - nowMs;
+  if (timeUntilResetMs <= 0 || timeUntilResetMs > windowDurationMs) {
     return undefined;
   }
 
-  const consumed = first.remainingPercent - last.remainingPercent;
-  const elapsedMs = last.timestampMs - first.timestampMs;
+  const elapsedMs = windowDurationMs - timeUntilResetMs;
   if (elapsedMs <= 0) {
     return undefined;
   }
 
-  if (isWeeklyLabel(label)) {
-    if (validSamples.length < WEEKLY_MIN_SAMPLE_COUNT) {
-      return undefined;
-    }
-    if (elapsedMs < WEEKLY_MIN_HISTORY_MS) {
-      return undefined;
-    }
-  }
-
-  if (consumed <= 0) {
+  const usedPercent = 100 - remainingPercent;
+  if (usedPercent <= 0) {
     return {
       pace: "on-track",
       depletionEtaMs: null,
@@ -95,9 +74,8 @@ export const getBurnRateDisplay = ({
     };
   }
 
-  const ratePerMs = consumed / elapsedMs;
+  const ratePerMs = usedPercent / elapsedMs;
   const depletionEtaMs = remainingPercent / ratePerMs;
-  const timeUntilResetMs = resetMs - nowMs;
   const coverage = depletionEtaMs / timeUntilResetMs;
 
   return {

@@ -525,7 +525,6 @@ mod tests {
                 remaining_absolute: "42%".into(),
                 resets_at: None,
                 reset_hint: None,
-                burn_rate_history: Vec::new(),
                 status: "warning".into(),
                 progress_tone: "warning".into(),
             }],

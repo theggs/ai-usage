@@ -186,7 +186,6 @@ fn map_glm_response(resp: &GlmQuotaResponse) -> Vec<QuotaDimension> {
                 remaining_absolute: remaining_abs,
                 resets_at,
                 reset_hint: None,
-                burn_rate_history: Vec::new(),
                 status: "normal".into(),
                 progress_tone: tone,
             });

@@ -281,7 +281,6 @@ fn transform_dimension(field_name: &str, dim: &UsageDimension) -> QuotaDimension
         remaining_absolute: format!("{remaining_percent}% remaining"),
         resets_at: Some(dim.resets_at.clone()),
         reset_hint: None,
-        burn_rate_history: Vec::new(),
         status: "unknown".into(),
         progress_tone: "muted".into(),
     }
@@ -603,7 +602,6 @@ mod tests {
                 remaining_absolute: "42% remaining".into(),
                 resets_at: None,
                 reset_hint: None,
-                burn_rate_history: Vec::new(),
                 status: "unknown".into(),
                 progress_tone: "muted".into(),
             }]);
@@ -657,7 +655,6 @@ mod tests {
                 remaining_absolute: "70% remaining".into(),
                 resets_at: None,
                 reset_hint: None,
-                burn_rate_history: Vec::new(),
                 status: "healthy".into(),
                 progress_tone: "success".into(),
             }]);

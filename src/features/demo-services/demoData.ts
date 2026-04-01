@@ -3,7 +3,6 @@ import { decorateQuotaDimension, formatTraySummary } from "../../lib/tauri/summa
 
 const now = () => new Date().toISOString();
 const minutesFromNow = (minutes: number) => new Date(Date.now() + minutes * 60 * 1_000).toISOString();
-const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60 * 1_000).toISOString();
 
 type FallbackSessionMode = "connected" | "disconnected" | "pending" | "failed";
 
@@ -36,23 +35,13 @@ const buildItems = (mode: FallbackSessionMode): CodexPanelState["items"] => {
           label: "Local Messages / 5h",
           remainingPercent: 64,
           remainingAbsolute: "64% remaining",
-          resetsAt: minutesFromNow(120),
-          burnRateHistory: [
-            { capturedAt: minutesAgo(120), remainingPercent: 80 },
-            { capturedAt: minutesAgo(60), remainingPercent: 72 }
-          ]
+          resetsAt: minutesFromNow(120)
         },
         {
           label: "Code Reviews / week",
-          remainingPercent: 63,
-          remainingAbsolute: "63% remaining",
-          resetsAt: minutesFromNow(4 * 24 * 60),
-          burnRateHistory: [
-            { capturedAt: minutesAgo(48 * 60), remainingPercent: 100 },
-            { capturedAt: minutesAgo(36 * 60), remainingPercent: 84 },
-            { capturedAt: minutesAgo(24 * 60), remainingPercent: 72 },
-            { capturedAt: minutesAgo(60), remainingPercent: 63 }
-          ]
+          remainingPercent: 50,
+          remainingAbsolute: "50% remaining",
+          resetsAt: minutesFromNow(4 * 24 * 60)
         },
         {
           label: "Bug Bash / day",

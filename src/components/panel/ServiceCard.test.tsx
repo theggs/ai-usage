@@ -338,7 +338,7 @@ describe("ServiceCard", () => {
     ]);
   });
 
-  it("renders risk-only burn-rate copy with ETA and reset hint sharing the secondary line", () => {
+  it("renders risk-only burn-rate copy from whole-window math with reset hint on the secondary line", () => {
     const nowMs = Date.parse("2026-04-02T12:00:00Z");
 
     render(
@@ -358,10 +358,6 @@ describe("ServiceCard", () => {
               remainingPercent: 60,
               remainingAbsolute: "60% remaining",
               resetsAt: "2026-04-02T16:00:00Z",
-              burnRateHistory: [
-                { capturedAt: "2026-04-02T10:00:00Z", remainingPercent: 80 },
-                { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 60 }
-              ],
               status: "warning",
               progressTone: "warning"
             },
@@ -378,10 +374,6 @@ describe("ServiceCard", () => {
               remainingPercent: 50,
               remainingAbsolute: "50% remaining",
               resetsAt: "invalid",
-              burnRateHistory: [
-                { capturedAt: "2026-04-02T10:00:00Z", remainingPercent: 70 },
-                { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 50 }
-              ],
               status: "warning",
               progressTone: "warning"
             }
@@ -390,23 +382,23 @@ describe("ServiceCard", () => {
       />
     );
 
-    expect(screen.getByText("Behind")).toBeInTheDocument();
-    expect(screen.getByText("Runs out in ~3h 00m")).toBeInTheDocument();
+    expect(screen.getByText("Far behind")).toBeInTheDocument();
+    expect(screen.getByText("Runs out in ~1h 30m")).toBeInTheDocument();
 
     const visibleBurnRateBlock = screen.getByTestId("progress-track-codex / 5h").parentElement;
-    expect(visibleBurnRateBlock?.textContent).toContain("Behind");
-    expect(visibleBurnRateBlock?.textContent).toContain("Runs out in ~3h 00m");
+    expect(visibleBurnRateBlock?.textContent).toContain("Far behind");
+    expect(visibleBurnRateBlock?.textContent).toContain("Runs out in ~1h 30m");
     expect(visibleBurnRateBlock?.textContent).toContain("Resets in 4h 00m");
-    expect(visibleBurnRateBlock?.textContent?.indexOf("Runs out in ~3h 00m")).toBeLessThan(
+    expect(visibleBurnRateBlock?.textContent?.indexOf("Runs out in ~1h 30m")).toBeLessThan(
       visibleBurnRateBlock?.textContent?.indexOf("Resets in 4h 00m") ?? 0
     );
 
-    const missingHistoryBlock = screen.getByTestId("progress-track-codex / week").parentElement;
-    expect(missingHistoryBlock?.textContent).not.toContain("On track");
-    expect(missingHistoryBlock?.textContent).not.toContain("Runs out in ~");
+    const onTrackBlock = screen.getByTestId("progress-track-codex / week").parentElement;
+    expect(onTrackBlock?.textContent).not.toContain("On track");
+    expect(onTrackBlock?.textContent).not.toContain("Runs out in ~");
 
     const invalidResetBlock = screen.getByTestId("progress-track-codex / day").parentElement;
-    expect(invalidResetBlock?.textContent).not.toContain("Behind");
+    expect(invalidResetBlock?.textContent).not.toContain("Far behind");
     expect(invalidResetBlock?.textContent).not.toContain("Runs out in ~");
   });
 });

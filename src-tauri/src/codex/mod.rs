@@ -139,7 +139,6 @@ fn parse_dimension(line: &str) -> Option<QuotaDimension> {
         remaining_absolute,
         resets_at: None,
         reset_hint,
-        burn_rate_history: Vec::new(),
         status: "unknown".into(),
         progress_tone: "muted".into(),
     })
@@ -424,7 +423,6 @@ fn to_quota_dimension(
         remaining_absolute: format!("{remaining}% remaining"),
         resets_at: reset_time_iso(window.resets_at),
         reset_hint: None,
-        burn_rate_history: Vec::new(),
         status: "unknown".into(),
         progress_tone: "muted".into(),
     }

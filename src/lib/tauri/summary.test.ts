@@ -140,18 +140,12 @@ describe("getBurnRateDisplay", () => {
   const nowMs = Date.parse("2026-04-02T12:00:00Z");
   const oneHourMs = 60 * 60 * 1000;
 
-  const samples = [
-    { capturedAt: "2026-04-02T10:00:00Z", remainingPercent: 80 },
-    { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 60 }
-  ] as const;
-
   it("returns on-track when projected depletion lasts until reset", () => {
     expect(
       getBurnRateDisplay({
         label: "codex / 5h",
         remainingPercent: 60,
         resetsAt: "2026-04-02T15:00:00Z",
-        samples,
         nowMs
       })
     ).toMatchObject({
@@ -164,8 +158,7 @@ describe("getBurnRateDisplay", () => {
     const result = getBurnRateDisplay({
       label: "codex / 5h",
       remainingPercent: 60,
-      resetsAt: "2026-04-02T16:00:00Z",
-      samples,
+      resetsAt: "2026-04-02T15:30:00Z",
       nowMs
     });
 
@@ -173,15 +166,14 @@ describe("getBurnRateDisplay", () => {
       pace: "behind",
       willLastUntilReset: false
     });
-    expect(result?.depletionEtaMs).toBe(3 * oneHourMs);
+    expect(result?.depletionEtaMs).toBeCloseTo(2.25 * oneHourMs);
   });
 
   it("returns far-behind when coverage drops below half the remaining reset time", () => {
     const result = getBurnRateDisplay({
       label: "codex / 5h",
-      remainingPercent: 20,
-      resetsAt: "2026-04-02T20:00:00Z",
-      samples,
+      remainingPercent: 50,
+      resetsAt: "2026-04-02T16:00:00Z",
       nowMs
     });
 
@@ -189,19 +181,15 @@ describe("getBurnRateDisplay", () => {
       pace: "far-behind",
       willLastUntilReset: false
     });
-    expect(result?.depletionEtaMs).toBe(oneHourMs);
+    expect(result?.depletionEtaMs).toBeCloseTo(oneHourMs);
   });
 
-  it("treats zero or negative consumption as on-track with no depletion eta", () => {
+  it("treats zero usage so far as on-track with no depletion eta", () => {
     expect(
       getBurnRateDisplay({
         label: "codex / 5h",
-        remainingPercent: 70,
+        remainingPercent: 100,
         resetsAt: "2026-04-02T16:00:00Z",
-        samples: [
-          { capturedAt: "2026-04-02T10:00:00Z", remainingPercent: 60 },
-          { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 60 }
-        ],
         nowMs
       })
     ).toEqual({
@@ -216,7 +204,6 @@ describe("getBurnRateDisplay", () => {
       getBurnRateDisplay({
         label: "codex / 5h",
         resetsAt: "2026-04-02T16:00:00Z",
-        samples,
         nowMs
       })
     ).toBeUndefined();
@@ -225,19 +212,17 @@ describe("getBurnRateDisplay", () => {
         label: "codex / 5h",
         remainingPercent: Number.NaN,
         resetsAt: "2026-04-02T16:00:00Z",
-        samples,
         nowMs
       })
     ).toBeUndefined();
   });
 
-  it("returns undefined with fewer than two valid samples", () => {
+  it("returns undefined when the label does not identify a supported window", () => {
     expect(
       getBurnRateDisplay({
-        label: "codex / 5h",
+        label: "codex / month",
         remainingPercent: 60,
         resetsAt: "2026-04-02T16:00:00Z",
-        samples: [{ capturedAt: "2026-04-02T10:00:00Z", remainingPercent: 80 }],
         nowMs
       })
     ).toBeUndefined();
@@ -249,7 +234,6 @@ describe("getBurnRateDisplay", () => {
         label: "codex / 5h",
         remainingPercent: 60,
         resetsAt: "not-a-date",
-        samples,
         nowMs
       })
     ).toBeUndefined();
@@ -258,22 +242,28 @@ describe("getBurnRateDisplay", () => {
         label: "codex / 5h",
         remainingPercent: 60,
         resetsAt: "2026-04-02T11:00:00Z",
-        samples,
         nowMs
       })
     ).toBeUndefined();
   });
 
-  it("ignores invalid sample timestamps and returns undefined when too few valid samples remain", () => {
+  it("returns undefined when remainingPercent is too low to show pace", () => {
+    expect(
+      getBurnRateDisplay({
+        label: "codex / 5h",
+        remainingPercent: 10,
+        resetsAt: "2026-04-02T16:00:00Z",
+        nowMs
+      })
+    ).toBeUndefined();
+  });
+
+  it("returns undefined when resetsAt exceeds the inferred window length", () => {
     expect(
       getBurnRateDisplay({
         label: "codex / 5h",
         remainingPercent: 60,
-        resetsAt: "2026-04-02T16:00:00Z",
-        samples: [
-          { capturedAt: "invalid", remainingPercent: 80 },
-          { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 60 }
-        ],
+        resetsAt: "2026-04-02T18:30:00Z",
         nowMs
       })
     ).toBeUndefined();
@@ -284,65 +274,25 @@ describe("getBurnRateDisplay", () => {
       label: "codex / 5h",
       remainingPercent: 30,
       remainingAbsolute: "30% remaining",
-      resetsAt: "2026-04-02T15:00:00Z",
-      burnRateHistory: [...samples]
+      resetsAt: "2026-04-02T15:00:00Z"
     });
 
     expect(dimension.status).toBe("warning");
     expect(dimension.progressTone).toBe("warning");
     expect(getQuotaBurnRateDisplay(dimension, nowMs)).toMatchObject({
-      pace: "behind"
+      pace: "far-behind"
     });
   });
 
-  it("suppresses weekly burn-rate output until at least a day of history exists", () => {
+  it("uses the same full-window math for weekly windows", () => {
     expect(
       getBurnRateDisplay({
         label: "codex / week",
-        remainingPercent: 97,
+        remainingPercent: 63,
         resetsAt: "2026-04-07T12:00:00Z",
-        samples: [
-          { capturedAt: "2026-04-02T08:00:00Z", remainingPercent: 100 },
-          { capturedAt: "2026-04-02T09:00:00Z", remainingPercent: 99 },
-          { capturedAt: "2026-04-02T10:00:00Z", remainingPercent: 98 },
-          { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 97 }
-        ],
         nowMs
       })
-    ).toBeUndefined();
-  });
-
-  it("suppresses weekly burn-rate output until enough weekly samples exist", () => {
-    expect(
-      getBurnRateDisplay({
-        label: "codex / week",
-        remainingPercent: 90,
-        resetsAt: "2026-04-07T12:00:00Z",
-        samples: [
-          { capturedAt: "2026-03-31T12:00:00Z", remainingPercent: 100 },
-          { capturedAt: "2026-04-01T12:00:00Z", remainingPercent: 95 },
-          { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 90 }
-        ],
-        nowMs
-      })
-    ).toBeUndefined();
-  });
-
-  it("allows weekly burn-rate output after enough samples span at least a day", () => {
-    const result = getBurnRateDisplay({
-      label: "codex / week",
-      remainingPercent: 63,
-      resetsAt: "2026-04-07T12:00:00Z",
-      samples: [
-        { capturedAt: "2026-03-31T12:00:00Z", remainingPercent: 100 },
-        { capturedAt: "2026-04-01T00:00:00Z", remainingPercent: 90 },
-        { capturedAt: "2026-04-01T12:00:00Z", remainingPercent: 76 },
-        { capturedAt: "2026-04-02T11:00:00Z", remainingPercent: 63 }
-      ],
-      nowMs
-    });
-
-    expect(result).toMatchObject({
+    ).toMatchObject({
       pace: "behind",
       willLastUntilReset: false
     });
