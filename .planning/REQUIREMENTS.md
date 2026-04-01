@@ -28,7 +28,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Smart Alerts
 
-- [ ] **ALERT-01**: Burn rate is calculated from `remainingPercent` + `resetsAt` + snapshot timestamp, showing consumption pace relative to window progress
+- [x] **ALERT-01**: Burn rate is calculated from `remainingPercent` + `resetsAt` + snapshot timestamp, showing consumption pace relative to window progress
 - [ ] **ALERT-02**: Depletion ETA is displayed in human-readable form (e.g., "runs out in ~3h" or "will last until reset")
 - [ ] **ALERT-03**: Warning thresholds are time-aware — "80% remaining with 4h left" is healthy; "10% remaining with 4h left" is danger
 - [ ] **ALERT-04**: When `resetsAt` is unavailable, warning falls back to existing static percentage thresholds (>50% / 20-50% / <20%)
@@ -104,7 +104,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NPROV-03 | Phase 3 | Complete |
 | NPROV-04 | Phase 3 | Complete |
 | NPROV-05 | Phase 3 | Complete |
-| ALERT-01 | Phase 4 | Pending |
+| ALERT-01 | Phase 4 | Complete |
 | ALERT-02 | Phase 4 | Pending |
 | ALERT-03 | Phase 5 | Pending |
 | ALERT-04 | Phase 5 | Pending |

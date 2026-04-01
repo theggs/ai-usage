@@ -79,7 +79,7 @@ Plans:
 **Plans**: 2 plans
 **UI hint**: yes
 Plans:
-- [ ] 04-01-PLAN.md — Persist per-dimension sample history and add the pure burn-rate projection helper
+- [x] 04-01-PLAN.md — Persist per-dimension sample history and add the pure burn-rate projection helper
 - [ ] 04-02-PLAN.md — Add localized quota-row burn-rate UI plus manual readability verification
 
 ### Phase 5: Time-Aware Alert Thresholds

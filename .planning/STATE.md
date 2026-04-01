@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-04-01T15:21:49.121Z"
-last_activity: 2026-04-01 -- Phase 03 approved complete
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-04-01T16:45:13.269Z"
+last_activity: 2026-04-01
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 12
+  completed_plans: 11
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Awaiting next instruction after Phase 03 completion
+**Current focus:** Phase 04 — burn-rate-engine
 
 ## Current Position
 
-Phase: 03 (new-providers) — COMPLETED
-Plan: none
-Status: Phase 03 complete; user requested no automatic transition to Phase 04
-Last activity: 2026-04-01 -- Phase 03 approved complete
+Phase: 04 (burn-rate-engine) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-01
 
 Progress: [████████████████████] 10/10 plans (100%)
 
@@ -57,6 +57,7 @@ Progress: [████████████████████] 10/10 p
 | Phase 03 P01 | 6832s | 2 tasks | 22 files |
 | Phase 03 P03 | 219 | 2 tasks | 4 files |
 | Phase 03 P04 | 589s | 2 tasks | 4 files |
+| Phase 04 P01 | 3min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Stub fetchers return NoCredentials as transient artifact; Plan 02 replaces with real HTTP fetch
 - [Phase 03]: Direct serviceId check for NoCredentials routing in getPlaceholderCopy instead of registry lookup -- simpler, avoids circular dependency
 - [Phase 03]: Token change detection uses broad "providerTokens in patch" check -- refreshes all enabled providers since replace-all patch semantics make per-provider diff impractical
+- [Phase 04]: Burn-rate history is isolated by provider ID plus raw quota label and pruned to the newest three successful samples — Prevents weekly and short-window quotas from sharing history while keeping cache growth bounded.
+- [Phase 04]: Only fresh successful refreshes record samples; stale states and visible-window ticks reuse prior history without synthesizing new points — Keeps burn-rate math grounded in real fetches and avoids fake consumption caused by UI-only time updates or error states.
 
 ### Pending Todos
 
@@ -98,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T15:21:49.115Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: .planning/phases/04-burn-rate-engine/04-UI-SPEC.md
+Last session: 2026-04-01T16:45:13.266Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
