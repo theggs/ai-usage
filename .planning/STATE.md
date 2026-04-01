@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready
-stopped_at: Phase 5 context gathered
-last_updated: "2026-04-02T19:00:00.000Z"
-last_activity: 2026-04-02
+status: executing
+stopped_at: Phase 6 context gathered
+last_updated: "2026-04-01T19:53:54.916Z"
+last_activity: 2026-04-01
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_plans: 15
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
-**Current focus:** Phase 05 — time-aware alert thresholds
+**Current focus:** Phase 05 — time-aware-alert-thresholds
 
 ## Current Position
 
-Phase: 05 (time-aware-alert-thresholds) — DISCUSS COMPLETE
-Plan: 0 of ?
-Status: Context gathered, ready for planning
-Last activity: 2026-04-02
+Phase: 05 (time-aware-alert-thresholds) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-01
 
-Progress: [████████████████████] 10/10 plans (100%)
+Progress: [█████████░] 13/15 plans (87%)
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [████████████████████] 10/10 p
 | Phase 03 P04 | 589s | 2 tasks | 4 files |
 | Phase 04 P01 | 3min | 2 tasks | 6 files |
 | Phase 04 P02 | 1 session | 3 tasks | 14 files |
+| Phase 05 P01 | 180 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Token change detection uses broad "providerTokens in patch" check -- refreshes all enabled providers since replace-all patch semantics make per-provider diff impractical
 - [Phase 04]: Pace uses one whole-window algorithm for both `5h` and weekly rows — avoids contradictory labels and keeps the feature explainable.
 - [Phase 04]: Burn-rate UI is risk-only; healthy rows stay silent and pace is hidden when remaining percentage is 10% or lower.
+- [Phase 05]: Quota health now comes from one summary-layer classifier that prefers Phase 4 pace and falls back to static thresholds
+- [Phase 05]: Service, panel, and selected-service tray severity now share one worst-row selector ordered by severity, source, window length, and appearance
+- [Phase 05]: The Phase 05 far-behind regression fixture was corrected to match the validated Phase 4 burn-rate contract
 
 ### Pending Todos
 
@@ -98,10 +102,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 5 (Time-Aware Thresholds): Clock skew handling policy for `resetsAt` not yet specified. Need a concrete decision (e.g., "if calculated minutes-until-reset is negative or >14 days, treat as absent") before Phase 5 planning.
+None currently. Phase 05 plan 01 resolved the `resetsAt` fallback policy by reusing the validated Phase 4 burn-rate availability rules.
 
 ## Session Continuity
 
-Last session: 2026-04-02T19:00:00.000Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-time-aware-alert-thresholds/05-CONTEXT.md
+Last session: 2026-04-01T19:53:54.912Z
+Stopped at: Phase 6 context gathered
+Resume file: .planning/phases/06-about-page/06-CONTEXT.md
