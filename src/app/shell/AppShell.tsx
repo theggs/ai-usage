@@ -466,6 +466,7 @@ export const AppShell = () => {
       }),
     [mergedProviderStates, visibleServiceScope]
   );
+  const shouldShowPromotionLine = promotionDecision.inlineServices.length > 0 || promotionDecision.fallbackState !== "none";
   const summaryToneClass =
     panelSummary.tone === "danger"
       ? "text-rose-700"
@@ -554,19 +555,21 @@ export const AppShell = () => {
               <>
                 <div className="min-w-0 pr-3">
                   <div className={`truncate text-sm font-semibold leading-tight ${summaryToneClass}`}>{summaryText}</div>
-                  <PromotionStatusLine
-                    copy={copy}
-                    onPin={() => setPromotionOverlayState("pinned")}
-                    onPreviewEnd={() =>
-                      setPromotionOverlayState((current) => (current === "pinned" ? current : "closed"))
-                    }
-                    onPreviewStart={() =>
-                      setPromotionOverlayState((current) => (current === "pinned" ? current : "preview"))
-                    }
-                    overlayState={promotionOverlayState}
-                    promotionDecision={promotionDecision}
-                    rootRef={promotionInteractionRef}
-                  />
+                  {shouldShowPromotionLine && (
+                    <PromotionStatusLine
+                      copy={copy}
+                      onPin={() => setPromotionOverlayState("pinned")}
+                      onPreviewEnd={() =>
+                        setPromotionOverlayState((current) => (current === "pinned" ? current : "closed"))
+                      }
+                      onPreviewStart={() =>
+                        setPromotionOverlayState((current) => (current === "pinned" ? current : "preview"))
+                      }
+                      overlayState={promotionOverlayState}
+                      promotionDecision={promotionDecision}
+                      rootRef={promotionInteractionRef}
+                    />
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   {isE2EMode ? (

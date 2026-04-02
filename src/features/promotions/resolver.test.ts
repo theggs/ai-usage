@@ -10,33 +10,20 @@ const visibleServiceScope = (services: string[]): VisibleServiceScope => ({
 });
 
 describe("promotions resolver", () => {
-  it("does not surface the expired Claude March 2026 2x promotion on 2026-04-01", () => {
+  it("treats Claude Code as active-window outside the blocked ET workday window", () => {
     const decision = resolvePromotionDisplayDecision({
-      now: new Date("2026-04-01T01:00:00Z"),
+      now: new Date("2026-03-24T01:00:00Z"),
       visibleServiceScope: visibleServiceScope(["claude-code"]),
       eligibilityByServiceId: { "claude-code": "eligible" }
     });
 
-    expect(decision.inlineServices).toEqual([]);
-    expect(decision.allServices[0]?.status).toBe("none");
-    expect(decision.allServices[0]?.benefitLabel).toBeUndefined();
-    expect(decision.fallbackState).toBe("none");
-  });
-
-  it("treats Claude Code as restricted-window inside the weekday PT peak-hours window", () => {
-    const decision = resolvePromotionDisplayDecision({
-      now: new Date("2026-04-01T16:00:00Z"),
-      visibleServiceScope: visibleServiceScope(["claude-code"]),
-      eligibilityByServiceId: { "claude-code": "eligible" }
-    });
-
-    expect(decision.inlineServices[0]?.status).toBe("restricted-window");
-    expect(decision.inlineServices[0]?.benefitLabel).toBeUndefined();
-    expect(decision.allServices[0]?.status).toBe("restricted-window");
-    expect(decision.allServices[0]?.matchedCampaignId).toBe("claude-peak-hours-restriction");
+    expect(decision.inlineServices[0]?.status).toBe("active-window");
+    expect(decision.inlineServices[0]?.benefitLabel).toBe("2x");
+    expect(decision.allServices[0]?.status).toBe("active-window");
+    expect(decision.allServices[0]?.benefitLabel).toBe("2x");
     expect(decision.allServices[0]?.detailTiming).toMatchObject({
-      mode: "local-active-window",
-      dateRangeLabel: ""
+      mode: "local-window",
+      dateRangeLabel: "2026.03.13-2026.03.28"
     });
     expect(decision.allServices[0]?.detailTiming).toEqual(
       expect.objectContaining({
@@ -47,30 +34,41 @@ describe("promotions resolver", () => {
     expect(decision.fallbackState).toBeNull();
   });
 
-  it("falls back to none outside the Claude restriction window when no positive campaign is active", () => {
+  it("treats Claude Code as inactive-window inside the blocked ET workday window", () => {
     const decision = resolvePromotionDisplayDecision({
-      now: new Date("2026-04-01T02:00:00Z"),
+      now: new Date("2026-03-24T16:00:00Z"),
       visibleServiceScope: visibleServiceScope(["claude-code"]),
       eligibilityByServiceId: { "claude-code": "eligible" }
     });
 
     expect(decision.inlineServices).toEqual([]);
-    expect(decision.allServices[0]?.status).toBe("none");
+    expect(decision.allServices[0]?.status).toBe("inactive-window");
+    expect(decision.allServices[0]?.benefitLabel).toBe("2x");
+    expect(decision.allServices[0]?.detailTiming).toMatchObject({
+      mode: "local-window",
+      dateRangeLabel: "2026.03.13-2026.03.28"
+    });
+    expect(decision.allServices[0]?.detailTiming).toEqual(
+      expect.objectContaining({
+        localWindowRangeLabel: expect.stringMatching(/^\d{2}:\d{2}-\d{2}:\d{2}$/),
+        localTimeZoneLabel: expect.stringMatching(/^UTC[+-]\d{2}:\d{2}$/)
+      })
+    );
     expect(decision.fallbackState).toBe("none");
   });
 
-  it("keeps the current Codex promotion as a continuous active window", () => {
+  it("treats the ended Codex promotion as status none", () => {
     const decision = resolvePromotionDisplayDecision({
-      now: new Date("2026-04-01T16:00:00Z"),
+      now: new Date("2026-04-02T16:00:00Z"),
       visibleServiceScope: visibleServiceScope(["codex"])
     });
 
-    expect(decision.inlineServices[0]?.status).toBe("active-window");
-    expect(decision.inlineServices[0]?.benefitLabel).toBe("2x");
-    expect(decision.allServices[0]?.status).toBe("active-window");
+    expect(decision.inlineServices).toEqual([]);
+    expect(decision.allServices[0]?.status).toBe("none");
     expect(decision.allServices[0]?.detailTiming).toEqual({
-      mode: "continuous"
+      mode: "none"
     });
+    expect(decision.fallbackState).toBe("none");
   });
 
   it("filters historical campaigns out of current UI decisions", () => {
@@ -79,7 +77,7 @@ describe("promotions resolver", () => {
       campaigns: promotionCatalog.campaigns.filter((campaign) => campaign.lifecycle !== "active")
     };
     const decision = resolvePromotionDisplayDecision({
-      now: new Date("2026-04-01T16:00:00Z"),
+      now: new Date("2026-03-24T16:00:00Z"),
       visibleServiceScope: visibleServiceScope(["codex", "claude-code"]),
       catalog: onlyHistory
     });
@@ -93,7 +91,7 @@ describe("promotions resolver", () => {
 
   it("keeps hidden services out of inline pills but exposes them in all-services data", () => {
     const decision = resolvePromotionDisplayDecision({
-      now: new Date("2026-04-01T16:00:00Z"),
+      now: new Date("2026-03-24T01:00:00Z"),
       visibleServiceScope: visibleServiceScope(["codex", "claude-code"]),
       eligibilityByServiceId: {
         codex: "eligible",
@@ -101,15 +99,12 @@ describe("promotions resolver", () => {
       }
     });
 
-    expect(decision.inlineServices.map((service) => service.serviceId)).toEqual([
-      "codex",
-      "claude-code"
-    ]);
+    expect(decision.inlineServices.map((service) => service.serviceId)).toEqual(["claude-code"]);
     expect(decision.allServices.map((service) => service.serviceId)).toEqual([
       "codex",
       "claude-code"
     ]);
-    expect(decision.hiddenServiceCount).toBe(0);
+    expect(decision.hiddenServiceCount).toBe(1);
   });
 
   it("returns the default service eligibility model for the current product surfaces", () => {

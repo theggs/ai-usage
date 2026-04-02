@@ -9,42 +9,44 @@ import { PromotionStatusLine } from "./PromotionStatusLine";
 const promotionDecision: PromotionDisplayDecision = {
   inlineServices: [
     {
-      serviceId: "codex",
-      serviceName: "Codex",
-      status: "active-window",
+      serviceId: "claude-code",
+      serviceName: "Claude Code",
+      status: "inactive-window",
       benefitLabel: "2x",
-      matchedCampaignId: "codex-limited-time-promotion",
-      messageKey: "promotionStatusActiveWindow",
+      matchedCampaignId: "claude-march-2026-usage-promotion",
+      messageKey: "promotionStatusInactiveWindow",
       detailTiming: {
-        mode: "continuous"
+        mode: "local-window",
+        dateRangeLabel: "2026.03.13-2026.03.28",
+        localWindowRangeLabel: "20:00-02:00",
+        localTimeZoneLabel: "UTC+08:00"
       },
       isInlineVisible: true
     }
   ],
   allServices: [
     {
-      serviceId: "codex",
-      serviceName: "Codex",
-      status: "active-window",
+      serviceId: "claude-code",
+      serviceName: "Claude Code",
+      status: "inactive-window",
       benefitLabel: "2x",
-      matchedCampaignId: "codex-limited-time-promotion",
-      messageKey: "promotionStatusActiveWindow",
+      matchedCampaignId: "claude-march-2026-usage-promotion",
+      messageKey: "promotionStatusInactiveWindow",
       detailTiming: {
-        mode: "continuous"
+        mode: "local-window",
+        dateRangeLabel: "2026.03.13-2026.03.28",
+        localWindowRangeLabel: "20:00-02:00",
+        localTimeZoneLabel: "UTC+08:00"
       },
       isInlineVisible: true
     },
     {
-      serviceId: "claude-code",
-      serviceName: "Claude Code",
-      status: "restricted-window",
-      matchedCampaignId: "claude-peak-hours-restriction",
-      messageKey: "promotionStatusRestrictedWindow",
+      serviceId: "codex",
+      serviceName: "Codex",
+      status: "none",
+      messageKey: "promotionStatusNone",
       detailTiming: {
-        mode: "local-active-window",
-        dateRangeLabel: "",
-        localWindowRangeLabel: "20:00-02:00",
-        localTimeZoneLabel: "UTC+08:00"
+        mode: "none"
       },
       isInlineVisible: false
     }
@@ -65,9 +67,9 @@ describe("PromotionStatusLine", () => {
     );
 
     expect(screen.getByTestId("promotion-pill-row")).toBeInTheDocument();
-    expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
-    expect(screen.getByTestId("promotion-pill-icon-codex")).toBeInTheDocument();
-    expect(screen.getByTestId("promotion-pill-icon-codex")).toHaveClass("promotion-pill-icon-codex");
+    expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("未命中");
+    expect(screen.getByTestId("promotion-pill-icon-claude-code")).toBeInTheDocument();
+    expect(screen.getByTestId("promotion-pill-icon-claude-code")).toHaveClass("promotion-pill-icon-claude-code");
     expect(screen.queryByText("...")).not.toBeInTheDocument();
   });
 
@@ -82,25 +84,21 @@ describe("PromotionStatusLine", () => {
     );
 
     const popover = screen.getByTestId("promotion-status-popover");
-    expect(screen.getByTestId("promotion-popover-item-codex")).toHaveTextContent(
-      "Codexpromotion active2x"
-    );
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
-      "Claude Codelower quota during peak hours"
+      "Claude Codeoutside promotion window2x"
     );
-    expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
-      "promotion active"
+    expect(screen.getByTestId("promotion-popover-item-codex")).toHaveTextContent(
+      "Codexno promotion"
     );
-    expect(screen.getByTestId("promotion-popover-benefit-codex")).toHaveTextContent("2x");
     expect(screen.getByTestId("promotion-popover-status-claude-code")).toHaveTextContent(
-      "lower quota during peak hours"
+      "outside promotion window"
     );
-    expect(screen.queryByTestId("promotion-popover-benefit-claude-code")).toBeNull();
-    expect(screen.getByTestId("promotion-popover-detail-codex")).toHaveTextContent(
-      "All-day promotion"
+    expect(screen.getByTestId("promotion-popover-benefit-claude-code")).toHaveTextContent("2x");
+    expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
+      "no promotion"
     );
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
-      "weekdays 20:00-02:00 (UTC+08:00)"
+      "2026.03.13-2026.03.28 · outside weekdays 20:00-02:00 (UTC+08:00)"
     );
     expect(screen.getByRole("dialog", { name: "All promotion states" })).toBe(popover);
   });
