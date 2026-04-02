@@ -8,22 +8,24 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build:audit": "node scripts/audit-licenses.js",
+    "build": "npm run build:audit && tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:tauri": "AIUSAGE_E2E=1 node tests/e2e/tray-panel.spec.mjs",
     "test:e2e:screenshots": "AIUSAGE_E2E=1 node tests/e2e/screenshot-review.mjs",
-    "test:e2e:build": "npx vite build && cd src-tauri && cargo build",
+    "test:e2e:build": "npm run build:audit && npx vite build && cd src-tauri && cargo build",
     "lint": "tsc --noEmit",
     "verify:build-stability": "node scripts/ci/verify-build-stability.mjs",
     "tauri:dev": "tauri dev",
     "tauri:dev:onboarding": "node scripts/dev/run-onboarding-scenario.mjs",
-    "tauri:build": "tauri build"
+    "tauri:build": "npm run build:audit && tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.3.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
