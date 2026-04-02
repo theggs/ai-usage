@@ -76,7 +76,7 @@ export const AppShell = () => {
   const [refreshingProviders, setRefreshingProviders] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [notificationResult, setNotificationResult] = useState<NotificationCheckResult | null>(null);
-  const [currentView, setCurrentView] = useState<"panel" | "settings">("panel");
+  const [currentView, setCurrentView] = useState<"panel" | "settings" | "about">("panel");
   const [promotionOverlayState, setPromotionOverlayState] = useState<PromotionOverlayState>("closed");
   const [displayNowMs, setDisplayNowMs] = useState(() => Date.now());
   const [isLoading, setIsLoading] = useState(true);
@@ -92,6 +92,7 @@ export const AppShell = () => {
   const lastStableProviderStates = useRef<Record<string, CodexPanelState | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const settingsScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const aboutScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const settingsHeaderTimerRef = useRef<number | null>(null);
   const promotionInteractionRef = useRef<HTMLDivElement | null>(null);
 
@@ -370,6 +371,9 @@ export const AppShell = () => {
     if (settingsScrollContainerRef.current) {
       settingsScrollContainerRef.current.scrollTop = 0;
     }
+    if (aboutScrollContainerRef.current) {
+      aboutScrollContainerRef.current.scrollTop = 0;
+    }
   };
 
   useEffect(() => {
@@ -498,6 +502,22 @@ export const AppShell = () => {
         : settingsHeaderStatus === "error"
           ? copy.failed
           : "";
+  const openSettings = () => {
+    setCurrentView("settings");
+    setIsScrolled(false);
+  };
+  const closeSettings = () => {
+    setCurrentView("panel");
+    setIsScrolled(false);
+  };
+  const openAbout = () => {
+    setCurrentView("about");
+    setIsScrolled(false);
+  };
+  const closeAbout = () => {
+    setCurrentView("settings");
+    setIsScrolled(false);
+  };
 
   return (
     <AppStateContext.Provider
@@ -515,8 +535,10 @@ export const AppShell = () => {
         savePreferences,
         sendTestNotification,
         setAutostart,
-        openSettings: () => { setCurrentView("settings"); setIsScrolled(false); },
-        closeSettings: () => { setCurrentView("panel"); setIsScrolled(false); }
+        openSettings,
+        closeSettings,
+        openAbout,
+        closeAbout
       }}
     >
       <main className="h-screen overflow-hidden bg-white text-slate-900">
@@ -575,7 +597,7 @@ export const AppShell = () => {
                   <button
                     aria-label={copy.settings}
                     className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
-                    onClick={() => { setCurrentView("settings"); setIsScrolled(false); }}
+                    onClick={openSettings}
                     title={copy.settings}
                     type="button"
                   >
@@ -583,7 +605,7 @@ export const AppShell = () => {
                   </button>
                 </div>
               </>
-            ) : (
+            ) : currentView === "settings" ? (
               <>
                 <div>
                   {settingsHeaderText ? <div className="text-sm font-semibold leading-tight text-slate-600">{settingsHeaderText}</div> : null}
@@ -591,7 +613,21 @@ export const AppShell = () => {
                 <button
                   aria-label={copy.back}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
-                  onClick={() => { setCurrentView("panel"); setIsScrolled(false); }}
+                  onClick={closeSettings}
+                  type="button"
+                >
+                  <BackIcon />
+                </button>
+              </>
+            ) : (
+              <>
+                <div>
+                  <div className="text-sm font-semibold leading-tight text-slate-900">{copy.aboutTitle}</div>
+                </div>
+                <button
+                  aria-label={copy.back}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
+                  onClick={closeAbout}
                   type="button"
                 >
                   <BackIcon />
@@ -609,18 +645,29 @@ export const AppShell = () => {
                 data-testid="app-shell-viewport"
                 data-reopen-cycle={reopenCycle}
                 key={reopenCycle}
-                className={`flex h-full w-[200%] gap-4 transition-transform duration-300 ease-out ${currentView === "panel" ? "translate-x-0" : "-translate-x-[calc(50%+1rem)]"}`}
+                className={`flex h-full w-[300%] gap-4 transition-transform duration-300 ease-out ${currentView === "panel" ? "translate-x-0" : currentView === "settings" ? "-translate-x-[calc(33.333%+0.667rem)]" : "-translate-x-[calc(66.667%+1.333rem)]"}`}
               >
                 <div
                   ref={scrollContainerRef}
-                  className="w-1/2 shrink-0 overflow-y-auto overflow-x-hidden pr-2"
+                  className="w-1/3 shrink-0 overflow-y-auto overflow-x-hidden pr-2"
                   onScroll={(event) => setIsScrolled(event.currentTarget.scrollTop > 4)}
                 >{<PanelView />}</div>
                 <div
                   ref={settingsScrollContainerRef}
-                  className="w-1/2 shrink-0 overflow-y-auto overflow-x-hidden pr-2"
+                  className="w-1/3 shrink-0 overflow-y-auto overflow-x-hidden pr-2"
                   onScroll={(event) => setIsScrolled(event.currentTarget.scrollTop > 4)}
                 >{preferences ? <SettingsView /> : null}</div>
+                <div
+                  ref={aboutScrollContainerRef}
+                  className="w-1/3 shrink-0 overflow-y-auto overflow-x-hidden pr-2"
+                  onScroll={(event) => setIsScrolled(event.currentTarget.scrollTop > 4)}
+                >
+                  {currentView === "about" ? (
+                    <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-6 text-sm text-slate-500">
+                      About page placeholder
+                    </section>
+                  ) : null}
+                </div>
               </div>
             )}
           </div>
