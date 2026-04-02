@@ -901,10 +901,13 @@ export const SettingsView = () => {
       <div className="mt-4 flex justify-center">
         <button
           onClick={openAbout}
-          className="text-[13px] text-slate-400 transition-colors hover:text-slate-600 cursor-pointer"
+          className="inline-flex cursor-pointer items-center gap-1 text-[13px] text-slate-400 transition-colors hover:text-slate-600"
           type="button"
         >
-          {copy.aboutLink}
+          <span>{copy.aboutLink}</span>
+          <span aria-hidden="true" className="text-[11px]">
+            &gt;
+          </span>
         </button>
       </div>
 

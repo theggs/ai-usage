@@ -530,6 +530,21 @@ describe("SettingsView", () => {
     expect(screen.queryByText("Local Codex CLI")).not.toBeInTheDocument();
   });
 
+  it("renders the about footer with a localized label and separate chevron chrome", async () => {
+    const openAbout = vi.fn();
+    renderSettings({ openAbout });
+
+    const footerButton = screen.getByRole("button", { name: "关于" });
+    expect(footerButton).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "关于 AIUsage >" })).not.toBeInTheDocument();
+
+    const chevron = within(footerButton).getByText(">");
+    expect(chevron).toHaveAttribute("aria-hidden", "true");
+
+    await userEvent.click(footerButton);
+    expect(openAbout).toHaveBeenCalledTimes(1);
+  });
+
   it("renders an icon-only back button and header save status in the shell", async () => {
     vi.resetModules();
 
