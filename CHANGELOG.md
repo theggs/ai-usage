@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [v1.1.0] - 2026-04-02
+
 ### Added
 
 - **Provider architecture** — Unified ProviderDescriptor registry in Rust and TypeScript with dynamic provider map
@@ -61,5 +63,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Promotion test timezone safety
 - Claude Code shared-state test serialization
 
-[Unreleased]: https://github.com/anthropics/ai-usage/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/anthropics/ai-usage/compare/v1.1.0...HEAD
+[v1.1.0]: https://github.com/anthropics/ai-usage/compare/nightly-c6a486b...v1.1.0
 [v1.0.0]: https://github.com/anthropics/ai-usage/releases/tag/v1.0.0

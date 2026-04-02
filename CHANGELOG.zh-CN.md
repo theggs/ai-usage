@@ -8,6 +8,8 @@
 
 ## [未发布]
 
+## [v1.1.0] - 2026-04-02
+
 ### 新增
 
 - **Provider 架构** —— 统一的 ProviderDescriptor 注册表，覆盖 Rust 和 TypeScript 端，支持动态 Provider 映射
@@ -61,5 +63,6 @@
 - 推广测试时区安全性
 - Claude Code 共享状态测试序列化
 
-[未发布]: https://github.com/anthropics/ai-usage/compare/v1.0.0...HEAD
+[未发布]: https://github.com/anthropics/ai-usage/compare/v1.1.0...HEAD
+[v1.1.0]: https://github.com/anthropics/ai-usage/compare/nightly-c6a486b...v1.1.0
 [v1.0.0]: https://github.com/anthropics/ai-usage/releases/tag/v1.0.0
