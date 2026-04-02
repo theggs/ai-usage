@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ServiceCard } from "./ServiceCard";
 import { getCopy } from "../../app/shared/i18n";
@@ -413,6 +414,41 @@ describe("ServiceCard", () => {
     const invalidResetBlock = screen.getByTestId("progress-track-codex / day").parentElement;
     expect(invalidResetBlock?.textContent).not.toContain("Far behind");
     expect(invalidResetBlock?.textContent).not.toContain("Runs out in ~");
+  });
+
+  it("shows ETA disclosure in a rendered tooltip when hovering a pace badge", async () => {
+    const user = userEvent.setup();
+    const nowMs = Date.parse("2026-04-02T12:00:00Z");
+
+    render(
+      <ServiceCard
+        copy={getCopy("en-US")}
+        nowMs={nowMs}
+        service={createService([
+          {
+            label: "codex / 5h",
+            remainingPercent: 60,
+            remainingAbsolute: "60% remaining",
+            resetsAt: "2026-04-02T16:00:00Z",
+            status: "warning",
+            progressTone: "warning"
+          }
+        ])}
+      />
+    );
+
+    const rowBadge = screen.getAllByText("Far behind", { selector: "span" }).at(-1);
+    expect(rowBadge).toBeDefined();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+    await user.hover(rowBadge!);
+
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Runs out in ~1h 30m");
+    expect(rowBadge).toHaveAttribute("aria-label", "Far behind. Runs out in ~1h 30m");
+
+    await user.unhover(rowBadge!);
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
   it("makes a pace-danger row drive the card accent and header badge", () => {

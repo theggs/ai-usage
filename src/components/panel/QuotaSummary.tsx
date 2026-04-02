@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { QuotaDimension } from "../../lib/tauri/contracts";
 import type { CopyTree } from "../../app/shared/i18n";
 import {
@@ -38,6 +39,7 @@ export const QuotaSummary = ({
   const displayLabel = localizeDimensionLabel(copy, label);
   const burnRate = getQuotaBurnRateDisplay(dimension, nowMs);
   const health = getQuotaHealthSignal(dimension, nowMs);
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const burnRateSecondaryLine = burnRate ? localizeBurnRateSecondaryLine(copy, burnRate) : undefined;
   const severityLabel =
     health.source === "pace" && (health.pace === "behind" || health.pace === "far-behind")
@@ -56,12 +58,27 @@ export const QuotaSummary = ({
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{displayLabel}</span>
           {severityLabel ? (
-            <span
-              aria-label={severityBadgeAriaLabel}
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${health.progressTone === "danger" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}
-              title={severityBadgeTitle}
-            >
-              {severityLabel}
+            <span className="group relative inline-flex">
+              <span
+                aria-label={severityBadgeAriaLabel}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold outline-none ${health.progressTone === "danger" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}
+                onBlur={() => setIsTooltipOpen(false)}
+                onFocus={() => setIsTooltipOpen(true)}
+                onMouseEnter={() => setIsTooltipOpen(true)}
+                onMouseLeave={() => setIsTooltipOpen(false)}
+                tabIndex={severityBadgeTitle ? 0 : undefined}
+                title={severityBadgeTitle}
+              >
+                {severityLabel}
+              </span>
+              {severityBadgeTitle && isTooltipOpen ? (
+                <span
+                  className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-max max-w-52 -translate-x-1/2 rounded-xl border border-slate-200 bg-white/95 px-2.5 py-1.5 text-[10px] font-medium leading-[1.35] text-slate-600 shadow-lg shadow-slate-900/8 backdrop-blur"
+                  role="tooltip"
+                >
+                  {severityBadgeTitle}
+                </span>
+              ) : null}
             </span>
           ) : null}
         </div>
