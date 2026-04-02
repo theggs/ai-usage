@@ -5,47 +5,43 @@ This document describes how to publish a new version of AIUsage.
 ## Quick Reference
 
 ```bash
-# In Claude Code, say:
-"Prepare release v2.0.0"
+# In Claude Code:
+/release v2.0.0
 
-# Claude Code will:
-#   1. Read commits since last tag
-#   2. Generate bilingual changelog entries
+# The skill will:
+#   1. Collect commits since last tag
+#   2. Generate bilingual changelog entries (EN + zh-CN)
 #   3. Write them to [Unreleased] in both CHANGELOG files
-#   4. Ask you to review
-
-# After you approve the changelog, run:
-./scripts/release.sh v2.0.0
-
-# The script will:
-#   1. Bump version in package.json + tauri.conf.json
-#   2. Move [Unreleased] → [v2.0.0] with today's date
-#   3. Commit and tag
-#   4. Ask to push — GitHub Actions builds and publishes the release
+#   4. Show you a draft for review
+#   5. After you approve, run scripts/release.sh which:
+#      - Bumps version in package.json + tauri.conf.json
+#      - Moves [Unreleased] → [v2.0.0] with today's date
+#      - Commits and tags
+#      - Asks to push — GitHub Actions builds and publishes the release
 ```
 
 ## Detailed Steps
 
-### 1. Generate Changelog (AI-assisted)
+### 1. Run the Release Skill
 
-In a Claude Code session on the master branch, ask:
+In a Claude Code session on the master branch:
 
-> Prepare release v2.0.0
+```
+/release v2.0.0
+```
 
-Claude Code will:
+The `/release` skill (defined in `.claude/commands/release.md`) will:
+- Validate you're on master with a clean working tree
 - Run `git log <last-tag>..HEAD` to collect all commits
-- Classify them into Added / Changed / Fixed categories
-- Write user-facing descriptions (not commit messages) in both English and Chinese
-- Insert entries into the `[Unreleased]` / `[未发布]` section of both changelog files
+- Generate user-facing changelog entries in Added / Changed / Fixed categories
+- Write entries to both `CHANGELOG.md` (English) and `CHANGELOG.zh-CN.md` (Chinese)
 - Show you the draft for review
 
-Review the entries. Ask Claude Code to adjust wording if needed.
+Review the entries. Ask to adjust wording if needed.
 
-### 2. Run the Release Script
+After you approve, the skill runs `scripts/release.sh` automatically.
 
-```bash
-./scripts/release.sh v2.0.0
-```
+### 2. What the Release Script Does
 
 The script performs pre-flight checks, then:
 
@@ -89,7 +85,7 @@ The release script enforces:
 ## Troubleshooting
 
 **Script says "[Unreleased] section is empty"**
-Run the changelog generation step first in Claude Code.
+Run `/release <version>` in Claude Code to generate changelog entries first.
 
 **Tag already exists**
 Delete it with `git tag -d v2.0.0` (local) and `git push origin :refs/tags/v2.0.0` (remote) if the release was never published.

@@ -6,7 +6,7 @@ playwright-report/
 test-results/
 target/
 debug/
-release/
+/release/
 *.rs.bk
 *.rlib
 *.prof*
