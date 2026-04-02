@@ -1,6 +1,4 @@
-use crate::agent_activity::{
-    collect_service_activity_snapshots, resolve_auto_menubar_selection,
-};
+use crate::agent_activity::{collect_service_activity_snapshots, resolve_auto_menubar_selection};
 use crate::autostart::set_autostart_status;
 use crate::claude_code::clear_access_pause as clear_claude_code_access_pause;
 use crate::codex::{save_accounts, save_preferences as persist_preferences_file};
@@ -241,7 +239,10 @@ fn is_provider_enabled(preferences: &UserPreferences, provider_id: &str) -> bool
     if provider_id == "claude-code" {
         return is_claude_code_usage_enabled(preferences);
     }
-    *preferences.provider_enabled.get(provider_id).unwrap_or(&false)
+    *preferences
+        .provider_enabled
+        .get(provider_id)
+        .unwrap_or(&false)
 }
 
 fn provider_refresh_cooldown_hit(provider_id: &str) -> bool {
@@ -286,13 +287,15 @@ fn build_provider_panel_state(
 ) -> CodexPanelState {
     let descriptor = crate::registry::get_provider(provider_id);
     let display_name = descriptor.map(|d| d.display_name).unwrap_or(provider_id);
-    let snapshot = pipeline::fetch_provider(provider_id, preferences, refresh_kind)
-        .unwrap_or_else(|| crate::snapshot::ServiceSnapshot {
-            status: SnapshotStatus::TemporarilyUnavailable {
-                detail: format!("No fetcher for provider: {}", provider_id),
-            },
-            dimensions: Vec::new(),
-            source: provider_id.into(),
+    let snapshot =
+        pipeline::fetch_provider(provider_id, preferences, refresh_kind).unwrap_or_else(|| {
+            crate::snapshot::ServiceSnapshot {
+                status: SnapshotStatus::TemporarilyUnavailable {
+                    detail: format!("No fetcher for provider: {}", provider_id),
+                },
+                dimensions: Vec::new(),
+                source: provider_id.into(),
+            }
         });
     let effective_refreshed_at =
         effective_refresh_timestamp(provider_id, &snapshot.status, refreshed_at);
@@ -346,9 +349,7 @@ pub fn build_tray_items(
         if !is_provider_enabled(preferences, pid) {
             continue;
         }
-        if let Some(cached) =
-            load_from_snapshot_cache(pid, preferences.refresh_interval_minutes)
-        {
+        if let Some(cached) = load_from_snapshot_cache(pid, preferences.refresh_interval_minutes) {
             if let Some(fetcher) = pipeline::get_fetcher(pid) {
                 let dims: Vec<_> = cached
                     .items
@@ -371,7 +372,6 @@ pub fn build_tray_items(
     }
     items
 }
-
 
 fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> UserPreferences {
     if let Some(language) = patch.language {
@@ -421,11 +421,11 @@ fn merge_preferences(patch: PreferencePatch, mut current: UserPreferences) -> Us
     }
     if let Some(claude_code_usage_enabled) = patch.claude_code_usage_enabled {
         current.claude_code_usage_enabled = claude_code_usage_enabled;
-        current.provider_enabled.insert("claude-code".into(), claude_code_usage_enabled);
+        current
+            .provider_enabled
+            .insert("claude-code".into(), claude_code_usage_enabled);
     }
-    if let Some(claude_code_disclosure_dismissed_at) =
-        patch.claude_code_disclosure_dismissed_at
-    {
+    if let Some(claude_code_disclosure_dismissed_at) = patch.claude_code_disclosure_dismissed_at {
         current.claude_code_disclosure_dismissed_at =
             if claude_code_disclosure_dismissed_at.trim().is_empty() {
                 None
@@ -880,7 +880,9 @@ mod tests {
         assert_eq!(
             effective_refresh_timestamp(
                 "claude-code",
-                &SnapshotStatus::TemporarilyUnavailable { detail: "test".into() },
+                &SnapshotStatus::TemporarilyUnavailable {
+                    detail: "test".into()
+                },
                 "200"
             ),
             "100"
@@ -919,7 +921,9 @@ mod tests {
 
         let mut preferences = crate::state::default_preferences();
         preferences.claude_code_usage_enabled = true;
-        preferences.provider_enabled.insert("claude-code".into(), true);
+        preferences
+            .provider_enabled
+            .insert("claude-code".into(), true);
         let items = build_tray_items(&preferences, &[], &refreshed_at);
 
         assert_eq!(items.len(), 2);
@@ -942,11 +946,16 @@ mod tests {
 
         let refreshed_at = now_iso();
         save_to_snapshot_cache("codex", &make_panel_state("codex", &refreshed_at));
-        save_to_snapshot_cache("claude-code", &make_panel_state("claude-code", &refreshed_at));
+        save_to_snapshot_cache(
+            "claude-code",
+            &make_panel_state("claude-code", &refreshed_at),
+        );
 
         let mut preferences = crate::state::default_preferences();
         preferences.claude_code_usage_enabled = false;
-        preferences.provider_enabled.insert("claude-code".into(), false);
+        preferences
+            .provider_enabled
+            .insert("claude-code".into(), false);
         let items = build_tray_items(&preferences, &[], &refreshed_at);
 
         assert_eq!(items.len(), 1);
@@ -1029,12 +1038,17 @@ mod tests {
 
         let refreshed_at = now_iso();
         save_to_snapshot_cache("codex", &make_panel_state("codex", &refreshed_at));
-        save_to_snapshot_cache("claude-code", &make_panel_state("claude-code", &refreshed_at));
+        save_to_snapshot_cache(
+            "claude-code",
+            &make_panel_state("claude-code", &refreshed_at),
+        );
 
         let mut preferences = crate::state::default_preferences();
         preferences.menubar_service = "auto".into();
         preferences.claude_code_usage_enabled = true;
-        preferences.provider_enabled.insert("claude-code".into(), true);
+        preferences
+            .provider_enabled
+            .insert("claude-code".into(), true);
 
         let items = build_cached_tray_items(&preferences);
 
@@ -1156,7 +1170,10 @@ mod tests {
         .unwrap();
 
         let loaded = load_from_snapshot_cache("codex", 15).unwrap();
-        assert_eq!(loaded.items[0].quota_dimensions[0].remaining_percent, Some(75));
+        assert_eq!(
+            loaded.items[0].quota_dimensions[0].remaining_percent,
+            Some(75)
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
         env::remove_var("AI_USAGE_SNAPSHOT_CACHE_FILE");

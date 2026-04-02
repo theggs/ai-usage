@@ -1,6 +1,6 @@
+use super::{ProviderFetcher, RefreshKind};
 use crate::snapshot::ServiceSnapshot;
 use crate::state::UserPreferences;
-use super::{ProviderFetcher, RefreshKind};
 
 /// Fetcher implementation for the Codex provider.
 ///

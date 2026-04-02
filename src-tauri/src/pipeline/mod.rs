@@ -113,14 +113,20 @@ mod tests {
     #[test]
     fn get_fetcher_claude_code_returns_some() {
         let fetcher = get_fetcher("claude-code");
-        assert!(fetcher.is_some(), "get_fetcher('claude-code') should return Some");
+        assert!(
+            fetcher.is_some(),
+            "get_fetcher('claude-code') should return Some"
+        );
         assert_eq!(fetcher.unwrap().provider_id(), "claude-code");
     }
 
     #[test]
     fn get_fetcher_unknown_returns_none() {
         let fetcher = get_fetcher("unknown");
-        assert!(fetcher.is_none(), "get_fetcher('unknown') should return None");
+        assert!(
+            fetcher.is_none(),
+            "get_fetcher('unknown') should return None"
+        );
     }
 
     #[test]

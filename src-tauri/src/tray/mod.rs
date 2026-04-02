@@ -233,14 +233,19 @@ fn work_area_from_monitor(monitor: &Monitor) -> WorkArea {
 fn to_physical_position(position: &Position) -> PhysicalPosition<i32> {
     match position {
         Position::Physical(position) => *position,
-        Position::Logical(position) => PhysicalPosition::new(position.x.round() as i32, position.y.round() as i32),
+        Position::Logical(position) => {
+            PhysicalPosition::new(position.x.round() as i32, position.y.round() as i32)
+        }
     }
 }
 
 fn to_physical_size(size: &Size) -> PhysicalSize<u32> {
     match size {
         Size::Physical(size) => *size,
-        Size::Logical(size) => PhysicalSize::new(size.width.max(0.0).round() as u32, size.height.max(0.0).round() as u32),
+        Size::Logical(size) => PhysicalSize::new(
+            size.width.max(0.0).round() as u32,
+            size.height.max(0.0).round() as u32,
+        ),
     }
 }
 
@@ -321,7 +326,11 @@ fn safe_default_placement(work_area: &WorkArea, size: PhysicalSize<u32>) -> Popo
     let height = size.height.max(DEFAULT_POPOVER_HEIGHT);
     let centered_x = work_area.x + ((work_area.width as i32 - width as i32) / 2);
     let x = clamp_i32(centered_x, work_area.x, work_area.max_x() - width as i32);
-    let y = clamp_i32(work_area.y + SAFE_DEFAULT_TOP_OFFSET, work_area.y, work_area.max_y() - height as i32);
+    let y = clamp_i32(
+        work_area.y + SAFE_DEFAULT_TOP_OFFSET,
+        work_area.y,
+        work_area.max_y() - height as i32,
+    );
 
     PopoverPlacement {
         x,
@@ -342,13 +351,17 @@ fn resolve_popover_placement(
 ) -> Option<PopoverPlacement> {
     if let Some(rect) = tray_rect {
         let anchor = tray_anchor_from_rect(rect);
-        if let Some(work_area) = select_work_area_for_point(anchor.center_x(), anchor.center_y(), work_areas) {
+        if let Some(work_area) =
+            select_work_area_for_point(anchor.center_x(), anchor.center_y(), work_areas)
+        {
             return Some(anchored_placement(&anchor, &work_area, current_size));
         }
     }
 
     if let Some(last_successful) = last_successful {
-        if let Some(placement) = placement_from_last_success(last_successful, work_areas, current_size) {
+        if let Some(placement) =
+            placement_from_last_success(last_successful, work_areas, current_size)
+        {
             return Some(placement);
         }
     }
@@ -385,10 +398,27 @@ fn fallback_work_area(
     work_areas: &[WorkArea],
 ) -> Option<WorkArea> {
     event_position
-        .and_then(|position| window.monitor_from_point(position.x, position.y).ok().flatten())
+        .and_then(|position| {
+            window
+                .monitor_from_point(position.x, position.y)
+                .ok()
+                .flatten()
+        })
         .map(|monitor| work_area_from_monitor(&monitor))
-        .or_else(|| window.current_monitor().ok().flatten().map(|monitor| work_area_from_monitor(&monitor)))
-        .or_else(|| window.primary_monitor().ok().flatten().map(|monitor| work_area_from_monitor(&monitor)))
+        .or_else(|| {
+            window
+                .current_monitor()
+                .ok()
+                .flatten()
+                .map(|monitor| work_area_from_monitor(&monitor))
+        })
+        .or_else(|| {
+            window
+                .primary_monitor()
+                .ok()
+                .flatten()
+                .map(|monitor| work_area_from_monitor(&monitor))
+        })
         .or_else(|| work_areas.first().cloned())
 }
 
@@ -406,7 +436,11 @@ fn apply_popover_placement(
         .collect::<Vec<_>>();
     let fallback_work_area = fallback_work_area(window, event_position, &work_areas);
     let app_state = app.state::<AppState>();
-    let last_successful = app_state.last_successful_popover_placement.lock().unwrap().clone();
+    let last_successful = app_state
+        .last_successful_popover_placement
+        .lock()
+        .unwrap()
+        .clone();
     let current_size = current_window_size(window);
 
     if let Some(placement) = resolve_popover_placement(
@@ -416,7 +450,10 @@ fn apply_popover_placement(
         current_size,
         fallback_work_area.as_ref(),
     ) {
-        let _ = window.set_position(Position::Physical(PhysicalPosition::new(placement.x, placement.y)));
+        let _ = window.set_position(Position::Physical(PhysicalPosition::new(
+            placement.x,
+            placement.y,
+        )));
         persist_last_successful_placement(app, &placement);
         write_e2e_window_placement(Some(&placement), true);
     }
@@ -428,7 +465,10 @@ fn resolve_display_service_id(
 ) -> Option<String> {
     if preferences.menubar_service == "auto" {
         selection.and_then(|current| current.current_service_id.clone())
-    } else if !*preferences.provider_enabled.get("claude-code").unwrap_or(&preferences.claude_code_usage_enabled)
+    } else if !*preferences
+        .provider_enabled
+        .get("claude-code")
+        .unwrap_or(&preferences.claude_code_usage_enabled)
         && preferences.menubar_service == "claude-code"
     {
         Some("codex".into())
@@ -574,10 +614,7 @@ fn parse_reset_ms(value: &str) -> Option<i64> {
         .map(|timestamp| timestamp.timestamp_millis())
 }
 
-fn tray_dimension_severity(
-    dimension: &crate::state::QuotaDimension,
-    now_ms: i64,
-) -> &'static str {
+fn tray_dimension_severity(dimension: &crate::state::QuotaDimension, now_ms: i64) -> &'static str {
     let Some(remaining_percent) = dimension.remaining_percent else {
         return "normal";
     };
@@ -853,9 +890,15 @@ fn tinted_icon(base_icon: Image<'_>, tint: (u8, u8, u8), mix: f32) -> Image<'sta
 
         let lift = local_mix * 0.24;
 
-        pixel[0] = (r + (screen_r - r) * local_mix + (255.0 - r) * lift).min(255.0).round() as u8;
-        pixel[1] = (g + (screen_g - g) * local_mix + (255.0 - g) * lift).min(255.0).round() as u8;
-        pixel[2] = (b + (screen_b - b) * local_mix + (255.0 - b) * lift).min(255.0).round() as u8;
+        pixel[0] = (r + (screen_r - r) * local_mix + (255.0 - r) * lift)
+            .min(255.0)
+            .round() as u8;
+        pixel[1] = (g + (screen_g - g) * local_mix + (255.0 - g) * lift)
+            .min(255.0)
+            .round() as u8;
+        pixel[2] = (b + (screen_b - b) * local_mix + (255.0 - b) * lift)
+            .min(255.0)
+            .round() as u8;
     }
     Image::new_owned(rgba, base_icon.width(), base_icon.height())
 }
@@ -1014,7 +1057,11 @@ pub fn initialize_tray(
     let display_service_id = resolve_display_service_id(preferences, Some(&selection));
     let summary = format_summary(&preferences.tray_summary_mode, &filtered);
     let severity = tray_severity(&filtered);
-    builder = builder.icon(tray_icon_image(app, display_service_id.as_deref(), severity));
+    builder = builder.icon(tray_icon_image(
+        app,
+        display_service_id.as_deref(),
+        severity,
+    ));
     if let Some(text) = summary.clone() {
         builder = builder.title(text);
     }
@@ -1357,10 +1404,7 @@ mod tests {
             "normal"
         );
         assert_eq!(
-            tray_severity_at(
-                &[item_with_reset("codex / 5h", Some(45), None)],
-                now_ms
-            ),
+            tray_severity_at(&[item_with_reset("codex / 5h", Some(45), None)], now_ms),
             "warning"
         );
         assert_eq!(
@@ -1523,7 +1567,8 @@ mod tests {
 
     #[test]
     fn safe_default_centers_the_panel_near_the_top_of_the_work_area() {
-        let placement = safe_default_placement(&work_area(100, 40, 700, 900), PhysicalSize::new(360, 620));
+        let placement =
+            safe_default_placement(&work_area(100, 40, 700, 900), PhysicalSize::new(360, 620));
 
         assert_eq!(placement.x, 270);
         assert_eq!(placement.y, 52);
@@ -1585,6 +1630,9 @@ mod tests {
         .expect("history placement should resolve");
 
         assert_eq!(anchor_first.source, PlacementSource::TrayAnchor);
-        assert_eq!(history_second.source, PlacementSource::LastSuccessfulPosition);
+        assert_eq!(
+            history_second.source,
+            PlacementSource::LastSuccessfulPosition
+        );
     }
 }

@@ -61,20 +61,11 @@ struct GlmQuotaResponse {
 struct GlmLimit {
     #[serde(rename = "type")]
     limit_type: Option<String>,
-    #[serde(
-        deserialize_with = "deserialize_flexible_i64",
-        default
-    )]
+    #[serde(deserialize_with = "deserialize_flexible_i64", default)]
     unit: Option<i64>,
-    #[serde(
-        deserialize_with = "deserialize_flexible_i64",
-        default
-    )]
+    #[serde(deserialize_with = "deserialize_flexible_i64", default)]
     number: Option<i64>,
-    #[serde(
-        deserialize_with = "deserialize_flexible_f64",
-        default
-    )]
+    #[serde(deserialize_with = "deserialize_flexible_f64", default)]
     percentage: Option<f64>,
     #[serde(
         rename = "currentValue",
@@ -82,10 +73,7 @@ struct GlmLimit {
         default
     )]
     current_value: Option<i64>,
-    #[serde(
-        deserialize_with = "deserialize_flexible_i64",
-        default
-    )]
+    #[serde(deserialize_with = "deserialize_flexible_i64", default)]
     total: Option<i64>,
     #[serde(
         rename = "nextResetTime",
@@ -150,11 +138,7 @@ fn map_glm_response(resp: &GlmQuotaResponse) -> Vec<QuotaDimension> {
 
     if let Some(limits) = &resp.limits {
         for limit in limits {
-            let label = limit_label(
-                limit.limit_type.as_deref(),
-                limit.unit,
-                limit.number,
-            );
+            let label = limit_label(limit.limit_type.as_deref(), limit.unit, limit.number);
 
             // CRITICAL: Clamp usage_pct BEFORE inversion (review concern #4)
             let remaining_pct = match limit.percentage {
@@ -490,7 +474,8 @@ mod tests {
 
     #[test]
     fn next_reset_time_ms_converted_to_iso8601() {
-        let next_reset_time = (chrono::Utc::now() + chrono::Duration::minutes(90)).timestamp_millis();
+        let next_reset_time =
+            (chrono::Utc::now() + chrono::Duration::minutes(90)).timestamp_millis();
         let json = r#"{
             "limits": [{
                 "type": "TOKENS_LIMIT",
@@ -795,8 +780,14 @@ mod tests {
 
     #[test]
     fn limit_label_mapping() {
-        assert_eq!(limit_label(Some("TOKENS_LIMIT"), Some(3), Some(5)), "5h Token Quota");
-        assert_eq!(limit_label(Some("TOKENS_LIMIT"), Some(6), Some(1)), "Weekly Token Quota");
+        assert_eq!(
+            limit_label(Some("TOKENS_LIMIT"), Some(3), Some(5)),
+            "5h Token Quota"
+        );
+        assert_eq!(
+            limit_label(Some("TOKENS_LIMIT"), Some(6), Some(1)),
+            "Weekly Token Quota"
+        );
         assert_eq!(limit_label(Some("TIME_LIMIT"), None, None), "MCP Usage");
         assert_eq!(limit_label(Some("OTHER"), Some(1), Some(1)), "Quota");
         assert_eq!(limit_label(None, None, None), "Quota");

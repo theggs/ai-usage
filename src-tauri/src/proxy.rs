@@ -267,7 +267,9 @@ pub fn resolve_proxy(preferences: &UserPreferences) -> Result<ProxyDecision, Pro
 }
 
 /// Build an HTTP agent with proxy settings from user preferences.
-pub fn build_agent(preferences: &UserPreferences) -> Result<(ureq::Agent, ProxyDecision), ProxyError> {
+pub fn build_agent(
+    preferences: &UserPreferences,
+) -> Result<(ureq::Agent, ProxyDecision), ProxyError> {
     let mut builder = ureq::AgentBuilder::new();
     let proxy = resolve_proxy(preferences).map_err(ProxyError::Resolution)?;
     if let Some(proxy_url) = proxy.url.as_ref() {

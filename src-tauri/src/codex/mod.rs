@@ -780,7 +780,10 @@ mod tests {
 
         let snapshot = load_snapshot();
 
-        assert!(matches!(snapshot.status, SnapshotStatus::TemporarilyUnavailable { .. }));
+        assert!(matches!(
+            snapshot.status,
+            SnapshotStatus::TemporarilyUnavailable { .. }
+        ));
         if let SnapshotStatus::TemporarilyUnavailable { detail } = &snapshot.status {
             assert!(detail.contains("Failed to read Codex status snapshot file"));
         }
@@ -852,7 +855,10 @@ mod tests {
 
         let snapshot = load_snapshot();
 
-        assert!(matches!(snapshot.status, SnapshotStatus::TemporarilyUnavailable { .. }));
+        assert!(matches!(
+            snapshot.status,
+            SnapshotStatus::TemporarilyUnavailable { .. }
+        ));
 
         let _ = fs::remove_file(script);
         clear_snapshot_env();

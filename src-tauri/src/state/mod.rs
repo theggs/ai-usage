@@ -449,7 +449,10 @@ mod tests {
         });
 
         assert_eq!(prefs.menubar_service, "codex");
-        assert_eq!(prefs.service_order, vec!["claude-code", "codex", "kimi-code", "glm-coding"]);
+        assert_eq!(
+            prefs.service_order,
+            vec!["claude-code", "codex", "kimi-code", "glm-coding"]
+        );
         assert_eq!(prefs.refresh_interval_minutes, 5);
         // provider_enabled should reflect claude-code disabled (from legacy field)
         assert_eq!(prefs.provider_enabled.get("claude-code"), Some(&false));

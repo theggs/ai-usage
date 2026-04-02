@@ -63,7 +63,10 @@ fn claude_activity_dir() -> PathBuf {
 }
 
 fn system_time_to_secs(value: SystemTime) -> Option<u64> {
-    value.duration_since(UNIX_EPOCH).ok().map(|duration| duration.as_secs())
+    value
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .map(|duration| duration.as_secs())
 }
 
 fn metadata_mtime(path: &Path) -> Option<u64> {
@@ -105,19 +108,21 @@ fn parse_json_line_timestamp(path: &Path, key: &str) -> Option<u64> {
     contents
         .lines()
         .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-        .filter_map(|value| value.get(key).and_then(|field| match field {
-            Value::String(text) => parse_timestamp_value(text),
-            Value::Number(number) => number.as_i64().and_then(|raw| {
-                if raw > 1_000_000_000_000 {
-                    Some((raw / 1_000) as u64)
-                } else if raw >= 0 {
-                    Some(raw as u64)
-                } else {
-                    None
-                }
-            }),
-            _ => None,
-        }))
+        .filter_map(|value| {
+            value.get(key).and_then(|field| match field {
+                Value::String(text) => parse_timestamp_value(text),
+                Value::Number(number) => number.as_i64().and_then(|raw| {
+                    if raw > 1_000_000_000_000 {
+                        Some((raw / 1_000) as u64)
+                    } else if raw >= 0 {
+                        Some(raw as u64)
+                    } else {
+                        None
+                    }
+                }),
+                _ => None,
+            })
+        })
         .max()
 }
 
@@ -356,17 +361,17 @@ pub fn collect_service_activity_snapshots(
             last_activity_at: claude.last_activity_at,
             signal_source: claude.signal_source,
             confidence: claude.confidence,
-            is_eligible_for_auto: *preferences.provider_enabled.get("claude-code").unwrap_or(&preferences.claude_code_usage_enabled)
+            is_eligible_for_auto: *preferences
+                .provider_enabled
+                .get("claude-code")
+                .unwrap_or(&preferences.claude_code_usage_enabled)
                 && has_displayable_items(items, "claude-code"),
             last_error: claude.last_error,
         },
     ]
 }
 
-fn eligible_recent_services(
-    snapshots: &[ServiceActivitySnapshot],
-    now_secs: u64,
-) -> Vec<String> {
+fn eligible_recent_services(snapshots: &[ServiceActivitySnapshot], now_secs: u64) -> Vec<String> {
     let mut recent = snapshots
         .iter()
         .filter(|snapshot| snapshot.is_eligible_for_auto)
@@ -437,7 +442,9 @@ pub fn resolve_auto_menubar_selection(
     let same_rotation_set = previous.rotation_service_ids == eligible;
     let interval_hit = previous
         .last_rotated_at
-        .map(|last_rotated_at| now_secs.saturating_sub(last_rotated_at) >= AUTO_ROTATION_INTERVAL_SECS)
+        .map(|last_rotated_at| {
+            now_secs.saturating_sub(last_rotated_at) >= AUTO_ROTATION_INTERVAL_SECS
+        })
         .unwrap_or(false);
 
     let current_service_id = if same_rotation_set && !interval_hit {
@@ -559,7 +566,10 @@ mod tests {
             .expect("insert");
 
         let reading = read_codex_signal(&dir);
-        assert_eq!(reading.signal_source, ActivitySignalSource::CodexStateSqlite);
+        assert_eq!(
+            reading.signal_source,
+            ActivitySignalSource::CodexStateSqlite
+        );
         assert_eq!(reading.confidence, ActivityConfidence::High);
         assert_eq!(reading.last_activity_at, Some(1_774_605_600));
     }
@@ -573,7 +583,10 @@ mod tests {
         );
 
         let reading = read_codex_signal(&dir);
-        assert_eq!(reading.signal_source, ActivitySignalSource::CodexSessionIndex);
+        assert_eq!(
+            reading.signal_source,
+            ActivitySignalSource::CodexSessionIndex
+        );
         assert_eq!(reading.confidence, ActivityConfidence::Medium);
         assert_eq!(reading.last_activity_at, Some(1_774_609_200));
     }
@@ -584,7 +597,10 @@ mod tests {
         write_file(&dir.join("projects/demo/session.jsonl"), "{}");
 
         let reading = read_claude_signal(&dir);
-        assert_eq!(reading.signal_source, ActivitySignalSource::ClaudeProjectFile);
+        assert_eq!(
+            reading.signal_source,
+            ActivitySignalSource::ClaudeProjectFile
+        );
         assert_eq!(reading.confidence, ActivityConfidence::High);
         assert!(reading.last_activity_at.is_some());
     }
@@ -611,10 +627,15 @@ mod tests {
         );
 
         assert_eq!(snapshots.len(), 2);
-        assert!(snapshots.iter().any(|snapshot| snapshot.service_id == "codex" && snapshot.is_eligible_for_auto));
         assert!(snapshots
             .iter()
-            .any(|snapshot| snapshot.service_id == "claude-code" && !snapshot.is_eligible_for_auto));
+            .any(|snapshot| snapshot.service_id == "codex" && snapshot.is_eligible_for_auto));
+        assert!(
+            snapshots
+                .iter()
+                .any(|snapshot| snapshot.service_id == "claude-code"
+                    && !snapshot.is_eligible_for_auto)
+        );
     }
 
     #[test]

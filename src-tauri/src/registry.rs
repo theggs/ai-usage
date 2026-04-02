@@ -98,11 +98,17 @@ mod tests {
 
     #[test]
     fn provider_ids_returns_all() {
-        assert_eq!(provider_ids(), vec!["codex", "claude-code", "kimi-code", "glm-coding"]);
+        assert_eq!(
+            provider_ids(),
+            vec!["codex", "claude-code", "kimi-code", "glm-coding"]
+        );
     }
 
     #[test]
     fn menubar_service_ids_includes_auto() {
-        assert_eq!(menubar_service_ids(), vec!["codex", "claude-code", "kimi-code", "glm-coding", "auto"]);
+        assert_eq!(
+            menubar_service_ids(),
+            vec!["codex", "claude-code", "kimi-code", "glm-coding", "auto"]
+        );
     }
 }

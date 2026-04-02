@@ -353,10 +353,7 @@ fn invalid_proxy_snapshot(source: String) -> ServiceSnapshot {
 // Public entry point
 // ---------------------------------------------------------------------------
 
-pub fn load_snapshot(
-    preferences: &UserPreferences,
-    refresh_kind: RefreshKind,
-) -> ServiceSnapshot {
+pub fn load_snapshot(preferences: &UserPreferences, refresh_kind: RefreshKind) -> ServiceSnapshot {
     let (token, source) = match read_oauth_token() {
         Some(pair) => pair,
         None => {
@@ -620,7 +617,10 @@ mod tests {
             None => panic!("expected cached dimensions"),
         };
 
-        assert!(matches!(snapshot.status, SnapshotStatus::TemporarilyUnavailable { .. }));
+        assert!(matches!(
+            snapshot.status,
+            SnapshotStatus::TemporarilyUnavailable { .. }
+        ));
         assert_eq!(snapshot.dimensions.len(), 1);
         assert_eq!(snapshot.dimensions[0].remaining_percent, Some(42));
         *stale_cache().lock().unwrap() = None;

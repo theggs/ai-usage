@@ -17,17 +17,13 @@ pub enum SnapshotStatus {
     /// Session invalid (HTTP 401); attempting automatic recovery.
     SessionRecovery,
     /// HTTP 429; automatic refresh paused.
-    RateLimited {
-        retry_after_minutes: u32,
-    },
+    RateLimited { retry_after_minutes: u32 },
     /// HTTP 403; automatic refresh paused.
     AccessDenied,
     /// Proxy configuration is invalid.
     ProxyInvalid,
     /// Transient server/network error.
-    TemporarilyUnavailable {
-        detail: String,
-    },
+    TemporarilyUnavailable { detail: String },
     /// Connected and authenticated but no quota dimensions returned.
     NoData,
     /// Service query is disabled by user preference.
