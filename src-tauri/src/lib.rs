@@ -1,5 +1,5 @@
-pub mod autostart;
 pub mod agent_activity;
+pub mod autostart;
 pub mod claude_code;
 pub mod codex;
 pub mod commands;
@@ -85,6 +85,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .plugin(tauri_plugin_shell::init())
         .manage(AppState::default())
         .setup(|app| {
             // Hide from Dock and Cmd+Tab on macOS (menu-bar-only agent).
