@@ -1,0 +1,10 @@
+{
+  "totalPackages": 825,
+  "npmPackageCount": 266,
+  "rustPackageCount": 559,
+  "npmAuditedCount": 266,
+  "rustAuditedCount": 556,
+  "copyleftCount": 21,
+  "unknownLicenseCount": 3,
+  "generatedAt": "2026-04-02T02:45:20.551Z"
+}
