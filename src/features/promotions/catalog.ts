@@ -1,7 +1,7 @@
 import type { PromotionCatalog } from "./types";
 
 export const promotionCatalog: PromotionCatalog = {
-  lastReviewedAt: "2026-03-24T00:00:00Z",
+  lastReviewedAt: "2026-04-02T00:00:00Z",
   campaigns: [
     {
       id: "claude-march-2026-usage-promotion",
@@ -38,7 +38,8 @@ export const promotionCatalog: PromotionCatalog = {
       benefitLabel: "2x",
       surfaces: ["codex"],
       startsAt: "2026-03-24T00:00:00Z",
-      lifecycle: "active",
+      endsAt: "2026-04-02T00:00:00Z",
+      lifecycle: "ended",
       sourceLabel: "OpenAI Help Center",
       sourceUrl: "https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan",
       eligibility: {
@@ -52,8 +53,8 @@ export const promotionCatalog: PromotionCatalog = {
           timeZone: "UTC"
         }
       ],
-      historyNote: "Current product policy treats the Codex promotion as a continuous promotion window.",
-      lastReviewedAt: "2026-03-24T00:00:00Z"
+      historyNote: "Codex limited-time 2x promotion ended as confirmed by user on 2026-04-02.",
+      lastReviewedAt: "2026-04-02T00:00:00Z"
     },
     {
       id: "claude-march-2026-usage-promotion-review-snapshot",
