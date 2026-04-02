@@ -190,6 +190,19 @@ export type CopyTree = {
   glmRegionLabel: string;
   glmRegionGlobal: string;
   glmRegionChina: string;
+  aboutTitle: string;
+  aboutLicenseLabel: string;
+  aboutBuildInfoLabel: string;
+  aboutGitHubLabel: string;
+  aboutDependenciesLabel: string;
+  aboutVersionUnavailable: string;
+  aboutDepsAllPermissive: string;
+  aboutDepsCopyleftFound: string;
+  aboutDepsUnknownFound: string;
+  aboutDepsMixedRisk: string;
+  aboutCopyleftBadge: string;
+  aboutUnknownBadge: string;
+  aboutLink: string;
 };
 
 const baseCopy: CopyTree = {
@@ -376,7 +389,20 @@ const baseCopy: CopyTree = {
   glmTokenPlaceholder: "(token)",
   glmRegionLabel: "Region",
   glmRegionGlobal: "Global (z.ai)",
-  glmRegionChina: "China (bigmodel.cn)"
+  glmRegionChina: "China (bigmodel.cn)",
+  aboutTitle: "About",
+  aboutLicenseLabel: "License",
+  aboutBuildInfoLabel: "Build",
+  aboutGitHubLabel: "GitHub",
+  aboutDependenciesLabel: "Dependencies",
+  aboutVersionUnavailable: "Version unavailable",
+  aboutDepsAllPermissive: "{count} packages / All reviewed licenses permissive",
+  aboutDepsCopyleftFound: "{count} packages / {copyleft} copyleft",
+  aboutDepsUnknownFound: "{count} packages / {unknown} unknown",
+  aboutDepsMixedRisk: "{count} packages / {copyleft} copyleft, {unknown} unknown",
+  aboutCopyleftBadge: "{count} copyleft",
+  aboutUnknownBadge: "{count} unknown",
+  aboutLink: "About AIUsage >"
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
@@ -564,7 +590,20 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     glmTokenPlaceholder: "(token)",
     glmRegionLabel: "区域",
     glmRegionGlobal: "国际 (z.ai)",
-    glmRegionChina: "国内 (bigmodel.cn)"
+    glmRegionChina: "国内 (bigmodel.cn)",
+    aboutTitle: "关于",
+    aboutLicenseLabel: "许可证",
+    aboutBuildInfoLabel: "构建信息",
+    aboutGitHubLabel: "GitHub",
+    aboutDependenciesLabel: "依赖项",
+    aboutVersionUnavailable: "版本不可用",
+    aboutDepsAllPermissive: "{count} 个包 / 已审查许可均为宽松许可",
+    aboutDepsCopyleftFound: "{count} 个包 / {copyleft} 个 Copyleft",
+    aboutDepsUnknownFound: "{count} 个包 / {unknown} 个未知许可证",
+    aboutDepsMixedRisk: "{count} 个包 / {copyleft} 个 Copyleft，{unknown} 个未知许可证",
+    aboutCopyleftBadge: "{count} 个 Copyleft",
+    aboutUnknownBadge: "{count} 个未知",
+    aboutLink: "关于 AIUsage >"
   }
   ,
   "en-US": baseCopy
