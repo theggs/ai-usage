@@ -97,7 +97,7 @@ export const AboutView = () => {
       ? copy.aboutVersionUnavailable
       : null;
   const buildInfo = `${productName} · ${identifier}`;
-  const hasAuditRisk = audit.copyleftCount > 0 || audit.unknownLicenseCount > 0;
+  const hasAuditRisk = audit.unknownLicenseCount > 0;
 
   return (
     <section className="pb-4">
@@ -158,11 +158,6 @@ export const AboutView = () => {
               <span className={`text-right text-[13px] ${hasAuditRisk ? "text-amber-700" : "text-slate-500"}`}>
                 {dependencyText}
               </span>
-              {audit.copyleftCount > 0 ? (
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                  {formatCopy(copy.aboutCopyleftBadge, { count: audit.copyleftCount })}
-                </span>
-              ) : null}
               {audit.unknownLicenseCount > 0 ? (
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
                   {formatCopy(copy.aboutUnknownBadge, { count: audit.unknownLicenseCount })}

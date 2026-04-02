@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **New providers** — Kimi Code and GLM Coding Plan support
 - **Burn-rate forecasting** — Pace-based projection engine with sample history persistence; panel rows show burn-rate warnings only when risky
 - **Smart severity alerts** — Quota health classifier combining remaining percentage and burn rate; tray icon color reflects most urgent provider
-- **About page** — App version, build metadata, license audit display, and navigation from settings footer
+- **About page** — App version, build metadata, license audit display, navigation from settings footer, and external browser handoff for links
 - **Multi-strategy extension point** — ProviderFetcher pipeline supports multiple fetch strategies per provider
 
 ### Changed
@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Provider-aware i18n copy and placeholder routing
 - Redesigned service order settings with drag affordances
 - Panel summary aligned with pace health severity
+- Codex promotion ended; promotion line hides automatically when no active promotions
 
 ### Fixed
 
@@ -33,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Claude promotion policy states refreshed correctly
 - Provider quota order normalized
 - About footer copy and license localization tightened
+- Interactive ETA tooltip now includes usage disclosure
 
 ## [v1.0.0] - 2026-03-31
 

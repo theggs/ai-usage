@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -69,6 +70,61 @@ function extractPackageJsonLicense(packageJson) {
       packageJson.licenseText ||
       null
   );
+}
+
+function detectLicenseFromFile(filePath) {
+  if (!fileExists(filePath)) {
+    return null;
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf8').slice(0, 2000);
+    const upper = content.toUpperCase();
+
+    if (upper.includes('APACHE LICENSE') && upper.includes('VERSION 2.0')) {
+      return 'Apache-2.0';
+    }
+
+    if (upper.includes('MIT LICENSE') || upper.includes('PERMISSION IS HEREBY GRANTED, FREE OF CHARGE')) {
+      return 'MIT';
+    }
+
+    if (upper.includes('BSD 2-CLAUSE') || (upper.includes('REDISTRIBUTION AND USE') && !upper.includes('3. NEITHER'))) {
+      return 'BSD-2-Clause';
+    }
+
+    if (upper.includes('BSD 3-CLAUSE') || (upper.includes('REDISTRIBUTION AND USE') && upper.includes('3. NEITHER'))) {
+      return 'BSD-3-Clause';
+    }
+
+    if (upper.includes('ISC LICENSE') || upper.includes('ISC-LICENSE')) {
+      return 'ISC';
+    }
+
+    if (upper.includes('MOZILLA PUBLIC LICENSE') && upper.includes('2.0')) {
+      return 'MPL-2.0';
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function findLicenseFile(dir) {
+  if (!fileExists(dir)) {
+    return null;
+  }
+
+  try {
+    const entries = fs.readdirSync(dir);
+    const licenseFile = entries.find((e) =>
+      /^(LICENSE|LICENCE|COPYING)([-.].*)?$/i.test(e)
+    );
+    return licenseFile ? path.join(dir, licenseFile) : null;
+  } catch {
+    return null;
+  }
 }
 
 function isCopyleftLicense(license) {
@@ -184,7 +240,8 @@ function parseCargoManifest(manifestPath) {
     name,
     version,
     license,
-    hasLicenseFile
+    hasLicenseFile,
+    dir: path.dirname(manifestPath)
   };
 }
 
@@ -278,6 +335,35 @@ function buildRegistryManifestIndex() {
   return index;
 }
 
+function buildCargoMetadataIndex() {
+  const index = new Map();
+
+  try {
+    const output = execSync('cargo metadata --format-version=1 2>/dev/null', {
+      cwd: repoRoot,
+      maxBuffer: 50 * 1024 * 1024,
+      encoding: 'utf8'
+    });
+    const meta = JSON.parse(output);
+
+    for (const pkg of meta.packages) {
+      if (pkg.license) {
+        const key = `${pkg.name}@${pkg.version}`;
+        index.set(key, {
+          name: pkg.name,
+          version: pkg.version,
+          license: normalizeLicense(pkg.license),
+          hasLicenseFile: false
+        });
+      }
+    }
+  } catch {
+    // cargo metadata unavailable; fall back to file-based resolution only.
+  }
+
+  return index;
+}
+
 function parseCargoLock() {
   const cargoLockPath = resolveCargoLockPath();
   const content = fs.readFileSync(cargoLockPath, 'utf8');
@@ -287,6 +373,7 @@ function parseCargoLock() {
     walkFiles(path.join(cargoHome, 'git', 'checkouts'), 'Cargo.toml')
   );
   const workspaceIndex = buildManifestIndex(walkFiles(repoRoot, 'Cargo.toml'));
+  const metadataIndex = buildCargoMetadataIndex();
   const crates = [];
 
   for (const block of packageBlocks) {
@@ -307,7 +394,21 @@ function parseCargoLock() {
     const key = `${name}@${version}`;
     const manifest =
       registryIndex.get(key) || gitIndex.get(key) || workspaceIndex.get(key) || null;
-    const license = manifest?.license || null;
+    let license = manifest?.license || null;
+
+    if (!license && manifest?.dir) {
+      const licenseFilePath = findLicenseFile(manifest.dir);
+      if (licenseFilePath) {
+        license = detectLicenseFromFile(licenseFilePath);
+      }
+    }
+
+    if (!license) {
+      const metaManifest = metadataIndex.get(key);
+      if (metaManifest) {
+        license = metaManifest.license;
+      }
+    }
 
     crates.push({
       ecosystem: 'rust',
