@@ -13,9 +13,10 @@ describe("promotionCatalog", () => {
       (campaign) => campaign.lifecycle === "ended" || campaign.lifecycle === "archived"
     );
 
-    expect(active.map((campaign) => campaign.serviceId).sort()).toEqual(["claude-code", "codex"]);
+    expect(active.map((campaign) => campaign.serviceId).sort()).toEqual(["claude-code"]);
     expect(historical.map((campaign) => campaign.serviceId).sort()).toEqual([
       "claude-code",
+      "codex",
       "codex"
     ]);
   });
@@ -28,7 +29,7 @@ describe("promotionCatalog", () => {
     }
   });
 
-  it("retains explicit benefit labels for the current Claude and Codex promotions", () => {
+  it("retains explicit benefit labels for the current Claude promotion", () => {
     const activeBenefits = Object.fromEntries(
       promotionCatalog.campaigns
         .filter((campaign) => campaign.lifecycle === "active")
@@ -36,7 +37,6 @@ describe("promotionCatalog", () => {
     );
 
     expect(activeBenefits).toMatchObject({
-      codex: "2x",
       "claude-code": "2x"
     });
   });

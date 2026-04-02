@@ -57,18 +57,18 @@ describe("promotions resolver", () => {
     expect(decision.fallbackState).toBe("none");
   });
 
-  it("treats the current Codex promotion as a continuous active window", () => {
+  it("treats the ended Codex promotion as status none", () => {
     const decision = resolvePromotionDisplayDecision({
-      now: new Date("2026-03-24T16:00:00Z"),
+      now: new Date("2026-04-02T16:00:00Z"),
       visibleServiceScope: visibleServiceScope(["codex"])
     });
 
-    expect(decision.inlineServices[0]?.status).toBe("active-window");
-    expect(decision.inlineServices[0]?.benefitLabel).toBe("2x");
-    expect(decision.allServices[0]?.status).toBe("active-window");
+    expect(decision.inlineServices).toEqual([]);
+    expect(decision.allServices[0]?.status).toBe("none");
     expect(decision.allServices[0]?.detailTiming).toEqual({
-      mode: "continuous"
+      mode: "none"
     });
+    expect(decision.fallbackState).toBe("none");
   });
 
   it("filters historical campaigns out of current UI decisions", () => {
@@ -91,7 +91,7 @@ describe("promotions resolver", () => {
 
   it("keeps hidden services out of inline pills but exposes them in all-services data", () => {
     const decision = resolvePromotionDisplayDecision({
-      now: new Date("2026-03-24T16:00:00Z"),
+      now: new Date("2026-03-24T01:00:00Z"),
       visibleServiceScope: visibleServiceScope(["codex", "claude-code"]),
       eligibilityByServiceId: {
         codex: "eligible",
@@ -99,7 +99,7 @@ describe("promotions resolver", () => {
       }
     });
 
-    expect(decision.inlineServices.map((service) => service.serviceId)).toEqual(["codex"]);
+    expect(decision.inlineServices.map((service) => service.serviceId)).toEqual(["claude-code"]);
     expect(decision.allServices.map((service) => service.serviceId)).toEqual([
       "codex",
       "claude-code"
