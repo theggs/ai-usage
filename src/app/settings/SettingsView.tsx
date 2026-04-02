@@ -53,7 +53,7 @@ type DragOverlayState = {
 const rowClassName = "px-5 py-3.5";
 
 export const SettingsView = () => {
-  const { preferences, savePreferences, setAutostart, refreshingProviders, isE2EMode, error } = useAppState();
+  const { preferences, savePreferences, setAutostart, refreshingProviders, isE2EMode, error, openAbout } = useAppState();
   const isRefreshing = refreshingProviders.size > 0;
   const base = preferences!;
   const [draft, setDraft] = useState<UserPreferences>(() => clonePreferences(base));
@@ -895,6 +895,17 @@ export const SettingsView = () => {
             ) : null}
           </div>
         </div>
+      </div>
+
+      {/* About page link footer */}
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={openAbout}
+          className="text-[13px] text-slate-400 transition-colors hover:text-slate-600 cursor-pointer"
+          type="button"
+        >
+          {copy.aboutLink}
+        </button>
       </div>
 
       {draggedService && dragOverlay && typeof document !== "undefined"
