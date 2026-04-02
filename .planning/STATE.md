@@ -3,40 +3,40 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-04-01T20:40:21.936Z"
-last_activity: 2026-04-02 -- Phase 05 completed; Phase 06 ready to execute
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-04-02T02:44:12.759Z"
+last_activity: 2026-04-02
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 20
-  completed_plans: 16
-  percent: 80
+  completed_plans: 17
+  percent: 85
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-01)
+See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Users always know whether their AI coding quota will last until reset — across all their active providers — without opening the app.
 **Current focus:** Phase 06 — about-page
 
 ## Current Position
 
-Phase: 06 (about-page) — READY
-Plan: 1 of 4
+Phase: 06 (about-page) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-04-02 -- Phase 05 completed; Phase 06 ready to execute
+Last activity: 2026-04-02 -- Completed 06-01 and advanced to 06-02
 
-Progress: [████████░░] 16/20 plans (80%)
+Progress: [█████████░] 17/20 plans (85%)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 17
 - Average duration: —
 - Total execution time: —
 
@@ -48,8 +48,8 @@ Progress: [████████░░] 16/20 plans (80%)
 
 **Recent Trend:**
 
-- Last 5 plans: —
-- Trend: —
+- Last 5 plans: Most recent completion is Phase 06-about-page P01
+- Trend: steady
 
 *Updated after each plan completion*
 | Phase 01 P01 | 9min | 2 tasks | 12 files |
@@ -63,6 +63,7 @@ Progress: [████████░░] 16/20 plans (80%)
 | Phase 05 P03 | 6 min | 2 tasks | 2 files |
 | Phase 05 P02 | 10 min | 3 tasks | 9 files |
 | Phase 05 P04 | 191 | 2 tasks | 4 files |
+| Phase 06-about-page P01 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,11 @@ Recent decisions affecting current work:
 - [Phase 05]: 05-02's live hover checkpoint was auto-approved after automated verification, so the remaining evidence gap is documented explicitly.
 - [Phase 05]: Phase 05 claims only ALERT-03 and ALERT-04; ALERT-05 remains mapped to Phase 4's visible burn-rate UI contract
 - [Phase 05]: The shipped risk-only UI remains authoritative, so the fix is documentation and history repair rather than UI rework
+- [Phase 06]: About page implemented as independent view with 3-view slide animation (panel/settings/about)
+- [Phase 06]: Build-time license audit script detects copyleft licenses (GPL, AGPL, LGPL, MPL, CDDL, EPL, CPL, CC-BY-SA)
+- [Phase 06]: GitHub link opens in default browser via Tauri shell plugin
+- [Phase 06]: Dependencies display shows copyleft warning badge when MPL-2.0 or other copyleft licenses detected
+- [Phase 06-about-page]: The About pane mounts only while active so later About content does not initialize during plan 06-01.
 
 ### Pending Todos
 
@@ -111,10 +117,10 @@ None yet.
 
 ### Blockers/Concerns
 
-None currently. Phase 05 plan 01 resolved the `resetsAt` fallback policy by reusing the validated Phase 4 burn-rate availability rules.
+None currently. Phase 06 is in progress with 06-01 completed and 06-02 next.
 
 ## Session Continuity
 
-Last session: 2026-04-01T20:40:21.933Z
-Stopped at: Completed 05-04-PLAN.md
+Last session: 2026-04-02T02:44:12.756Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

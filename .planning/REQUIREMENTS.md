@@ -36,7 +36,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### About Page
 
-- [ ] **ABOUT-01**: Independent About page accessible from the app (not a Settings tab)
+- [x] **ABOUT-01**: Independent About page accessible from the app (not a Settings tab)
 - [ ] **ABOUT-02**: Displays app version and build info (from Tauri package metadata)
 - [ ] **ABOUT-03**: Displays GitHub repository URL as a clickable link
 - [ ] **ABOUT-04**: Displays open-source license of the app itself
@@ -109,7 +109,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ALERT-03 | Phase 5 | Complete |
 | ALERT-04 | Phase 5 | Complete |
 | ALERT-05 | Phase 4 | Complete |
-| ABOUT-01 | Phase 6 | Pending |
+| ABOUT-01 | Phase 6 | Complete |
 | ABOUT-02 | Phase 6 | Pending |
 | ABOUT-03 | Phase 6 | Pending |
 | ABOUT-04 | Phase 6 | Pending |
@@ -123,4 +123,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-04-02 after Phase 5 plan 01 completion*
+*Last updated: 2026-04-02 after Phase 6 plan 01 completion*
