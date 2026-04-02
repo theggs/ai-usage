@@ -37,11 +37,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### About Page
 
 - [x] **ABOUT-01**: Independent About page accessible from the app (not a Settings tab)
-- [ ] **ABOUT-02**: Displays app version and build info (from Tauri package metadata)
-- [ ] **ABOUT-03**: Displays GitHub repository URL as a clickable link
-- [ ] **ABOUT-04**: Displays open-source license of the app itself
+- [x] **ABOUT-02**: Displays app version and build info (from Tauri package metadata)
+- [x] **ABOUT-03**: Displays GitHub repository URL as a clickable link
+- [x] **ABOUT-04**: Displays open-source license of the app itself
 - [x] **ABOUT-05**: Displays dependency license summary with copyleft/viral license audit results (generated at build time)
-- [ ] **ABOUT-06**: Layout is extensible for future fields (website, author email, etc.) via key-value list pattern
+- [x] **ABOUT-06**: Layout is extensible for future fields (website, author email, etc.) via key-value list pattern
 
 ## v2 Requirements
 
@@ -110,11 +110,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ALERT-04 | Phase 5 | Complete |
 | ALERT-05 | Phase 4 | Complete |
 | ABOUT-01 | Phase 6 | Complete |
-| ABOUT-02 | Phase 6 | Pending |
-| ABOUT-03 | Phase 6 | Pending |
-| ABOUT-04 | Phase 6 | Pending |
+| ABOUT-02 | Phase 6 | Complete |
+| ABOUT-03 | Phase 6 | Complete |
+| ABOUT-04 | Phase 6 | Complete |
 | ABOUT-05 | Phase 6 | Complete |
-| ABOUT-06 | Phase 6 | Pending |
+| ABOUT-06 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 24 total
