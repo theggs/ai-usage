@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 06-about-page
 source: [06-VERIFICATION.md]
 started: 2026-04-02T03:10:00Z
-updated: 2026-04-02T03:16:34Z
+updated: 2026-04-02T03:18:25Z
 ---
 
 ## Current Test
@@ -44,13 +44,15 @@ blocked: 0
   reason: "User reported: approve. but entrypoint `关于 AIUsage >` is ugly."
   severity: cosmetic
   test: 1
-  root_cause: "The footer entrypoint copy is hardcoded as a single localized string (`aboutLink`) that combines label, product name, and chevron. In zh-CN this renders as `关于 AIUsage >`, which reads awkwardly and looks visually clumsy in the footer."
+  root_cause: "The awkward entrypoint comes from a copy/structure decision: `aboutLink` is defined as a single localized string that combines wording, product name, and a literal chevron. `SettingsView` renders that raw string directly, so the label and disclosure chrome cannot be tuned independently."
   artifacts:
     - path: "src/app/shared/i18n.ts"
-      issue: "Localized footer copy uses awkward phrasing in zh-CN and includes the chevron in the string itself."
+      issue: "The `aboutLink` translation embeds both the label text and the chevron in one string, including the awkward `关于 AIUsage >` zh-CN variant."
     - path: "src/app/settings/SettingsView.tsx"
       issue: "Footer renders the raw localized string directly, so copy and visual treatment cannot be tuned independently."
+    - path: ".planning/phases/06-about-page/06-04-PLAN.md"
+      issue: "The phase plan itself prescribed the combined `About AIUsage >` / `关于 AIUsage >` strings."
   missing:
     - "Replace the footer entrypoint copy with a cleaner localized label that reads naturally in zh-CN."
     - "Render the chevron as UI chrome instead of baking `>` into the translation string."
-  debug_session: ""
+  debug_session: ".planning/debug/settings-about-entry-copy.md"
