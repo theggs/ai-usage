@@ -39,3 +39,4 @@ tests/e2e/.hover-button
 tests/e2e/.move-point
 tests/e2e/.press-key
 .claude/worktrees/
+.claude/settings.local.json
