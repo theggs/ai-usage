@@ -127,7 +127,7 @@ Source: Existing color system from globals.css (#102a43 text, #ffffff bg) and Se
 
 | Row | Label (zh-CN) | Label (en-US) | Value | Interaction |
 |-----|---------------|---------------|-------|-------------|
-| 1 | License | License | "Apache 2.0" | Static text |
+| 1 | 开源许可证 | License | "Apache 2.0" | Static text |
 | 2 | GitHub | GitHub | Repository URL | Clickable -- opens in browser via shell.open |
 | 3 | Dependencies | Dependencies | "{count} packages / {audit}" | Static text |
 
@@ -166,7 +166,7 @@ All copy is delivered through `i18n.ts` using the existing `getCopy()` pattern w
 |---------|-----|-------|-------|
 | About page title (header) | aboutTitle | "About" | "About" |
 | Settings footer link | aboutLink | "About AIUsage >" | "About AIUsage >" |
-| License row label | aboutLicenseLabel | "License" | "License" |
+| License row label | aboutLicenseLabel | "开源许可证" | "License" |
 | License row value | (static) | "Apache 2.0" | "Apache 2.0" |
 | GitHub row label | aboutGitHubLabel | "GitHub" | "GitHub" |
 | GitHub row value | (static) | "github.com/user/ai-usage" | "github.com/user/ai-usage" |
