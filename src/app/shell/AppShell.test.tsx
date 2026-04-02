@@ -223,12 +223,13 @@ describe("AppShell", () => {
     render(<AppShell />);
 
     await act(async () => {
+      vi.advanceTimersByTime(100);
       await Promise.resolve();
       await Promise.resolve();
     });
 
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
-    expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
+    expect(screen.queryByTestId("promotion-pill-codex")).toBeNull();
     expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("更少额度");
     expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
 
@@ -236,22 +237,20 @@ describe("AppShell", () => {
       fireEvent.mouseEnter(screen.getByTestId("promotion-status-trigger"));
     });
     expect(screen.getByTestId("promotion-popover-item-codex")).toHaveTextContent(
-      "Codex正在优惠时段2x"
+      "Codex无优惠活动"
     );
     expect(screen.getByTestId("promotion-popover-item-claude-code")).toHaveTextContent(
       "Claude Code高峰时段更少额度"
     );
     expect(screen.getByTestId("promotion-popover-status-codex")).toHaveTextContent(
-      "正在优惠时段"
+      "无优惠活动"
     );
-    expect(screen.getByTestId("promotion-popover-benefit-codex")).toHaveTextContent("2x");
+    expect(screen.queryByTestId("promotion-popover-benefit-codex")).toBeNull();
     expect(screen.getByTestId("promotion-popover-status-claude-code")).toHaveTextContent(
       "高峰时段更少额度"
     );
     expect(screen.queryByTestId("promotion-popover-benefit-claude-code")).toBeNull();
-    expect(screen.getByTestId("promotion-popover-detail-codex")).toHaveTextContent(
-      "全天优惠"
-    );
+    expect(screen.queryByTestId("promotion-popover-detail-codex")).toBeNull();
     expect(screen.getByTestId("promotion-popover-detail-claude-code")).toHaveTextContent(
       expectedClaudePromotionDetail
     );
@@ -265,7 +264,7 @@ describe("AppShell", () => {
       fireEvent.click(screen.getByTestId("promotion-status-trigger"));
     });
     expect(screen.getByTestId("promotion-popover-item-codex")).toHaveTextContent(
-      "Codex正在优惠时段2x"
+      "Codex无优惠活动"
     );
 
     act(() => {
@@ -304,7 +303,7 @@ describe("AppShell", () => {
     });
 
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
-    expect(screen.getByTestId("promotion-pill-codex")).toHaveTextContent("2x");
+    expect(screen.queryByTestId("promotion-pill-codex")).toBeNull();
     expect(screen.getByTestId("promotion-pill-claude-code")).toHaveTextContent("更少额度");
     expect(screen.queryByTestId("promotion-status-popover")).not.toBeInTheDocument();
   });
