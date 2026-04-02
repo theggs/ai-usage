@@ -4,6 +4,7 @@ import { AppStateContext, type AppStateValue } from "../shared/appState";
 import { SettingsView } from "./SettingsView";
 import { createDemoPanelState } from "../../features/demo-services/demoData";
 import { defaultPreferences } from "../../features/preferences/defaultPreferences";
+import type { UserPreferences } from "../../lib/tauri/contracts";
 
 const createState = (overrides: Partial<AppStateValue> = {}): AppStateValue => ({
   providerStates: { codex: createDemoPanelState() },
@@ -42,6 +43,8 @@ const createState = (overrides: Partial<AppStateValue> = {}): AppStateValue => (
   })),
   openSettings: vi.fn(),
   closeSettings: vi.fn(),
+  openAbout: vi.fn(),
+  closeAbout: vi.fn(),
   ...overrides
 });
 
@@ -55,7 +58,7 @@ const renderSettings = (overrides: Partial<AppStateValue> = {}) => {
   return state;
 };
 
-const fourProviderPreferences = {
+const fourProviderPreferences: UserPreferences = {
   ...defaultPreferences,
   claudeCodeUsageEnabled: true,
   providerEnabled: {
@@ -65,7 +68,7 @@ const fourProviderPreferences = {
     "glm-coding": true
   },
   serviceOrder: ["codex", "claude-code", "kimi-code", "glm-coding"]
-} as const;
+};
 
 describe("SettingsView", () => {
   it("renders the main settings card and a separate Claude Code query card", () => {

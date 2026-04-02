@@ -26,7 +26,9 @@ const createState = (panelState: CodexPanelState = createDemoPanelState()): AppS
   sendTestNotification: vi.fn(async () => null),
   setAutostart: vi.fn(async () => null),
   openSettings: vi.fn(),
-  closeSettings: vi.fn()
+  closeSettings: vi.fn(),
+  openAbout: vi.fn(),
+  closeAbout: vi.fn()
 });
 
 describe("PanelView", () => {
@@ -486,7 +488,7 @@ describe("PanelView", () => {
   it("renders both burn-rate outcomes in one card without losing the last refreshed line", () => {
     const state = createState(createDemoPanelState());
     state.preferences = {
-      ...state.preferences,
+      ...state.preferences!,
       language: "en-US"
     };
 

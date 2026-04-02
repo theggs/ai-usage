@@ -33,7 +33,7 @@ export const getBurnRateDisplay = ({
   resetsAt?: string;
   nowMs?: number;
 }): BurnRateDisplay | undefined => {
-  if (!Number.isFinite(remainingPercent)) {
+  if (remainingPercent == null || !Number.isFinite(remainingPercent)) {
     return undefined;
   }
 
