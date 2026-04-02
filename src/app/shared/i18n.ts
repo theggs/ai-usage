@@ -592,7 +592,7 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     glmRegionGlobal: "国际 (z.ai)",
     glmRegionChina: "国内 (bigmodel.cn)",
     aboutTitle: "关于",
-    aboutLicenseLabel: "许可证",
+    aboutLicenseLabel: "开源许可证",
     aboutBuildInfoLabel: "构建信息",
     aboutGitHubLabel: "GitHub",
     aboutDependenciesLabel: "依赖项",

@@ -43,6 +43,14 @@ describe("i18n fallback", () => {
     expect(zh.aboutLink).not.toContain(">");
   });
 
+  it("keeps the about license label localized through the shared copy tree", () => {
+    const zh = getCopy("zh-CN");
+    const en = getCopy("en-US");
+
+    expect(en.aboutLicenseLabel).toBe("License");
+    expect(zh.aboutLicenseLabel).toBe("开源许可证");
+  });
+
   it("keeps the english health-summary building blocks compact for the 360px header", () => {
     const en = getCopy("en-US");
     const dimension = localizeDimensionLabel(en, "codex / 5h");
