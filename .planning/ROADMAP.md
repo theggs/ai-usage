@@ -111,7 +111,7 @@ Plans:
   4. The app's open-source license text (or SPDX identifier) is displayed
   5. A dependency license summary is displayed, with any copyleft/viral licenses explicitly flagged; the list is generated at build time (not hard-coded)
   6. The About page layout uses a key-value list pattern that accommodates new fields (website, author email) without structural changes
-**Plans:** 5 plans
+**Plans:** 6 plans
 **UI hint**: yes
 Plans:
 - [x] 06-01-PLAN.md — Infrastructure: Extend view system from 2 views to 3 views (panel/settings/about)
@@ -119,6 +119,7 @@ Plans:
 - [x] 06-03-PLAN.md — AboutView Component: Create About page UI with hero, key-value list, version, GitHub link
 - [x] 06-04-PLAN.md — Settings Footer: Add "About AIUsage >" footer link in SettingsView
 - [x] 06-05-PLAN.md — Gap closure: split Settings footer About label from disclosure chrome
+- [ ] 06-06-PLAN.md — Gap closure: tighten zh-CN About license label contract
 
 ## Progress
 
@@ -133,7 +134,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 | 3. New Providers | 4/4 | Complete | 2026-04-01 |
 | 4. Burn Rate Engine | 2/2 | Complete | 2026-04-02 |
 | 5. Time-Aware Alert Thresholds | 4/4 | Complete | 2026-04-02 |
-| 6. About Page | 5/5 | Complete | 2026-04-02 |
+| 6. About Page | 5/6 | In Progress | - |
 
 ## Backlog
 
