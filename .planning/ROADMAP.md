@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: New Providers** - Add Kimi Code and GLM Coding Plan via the validated registry and pipeline
 - [x] **Phase 4: Burn Rate Engine** - Pure frontend burn rate calculation with depletion ETA display
 - [x] **Phase 5: Time-Aware Alert Thresholds** - Replace static percentage thresholds with time-relative quota health classification
-- [ ] **Phase 6: About Page** - Standalone About page with version, license, and dependency audit info
+- [x] **Phase 6: About Page** - Standalone About page with version, license, and dependency audit info
 
 ## Phase Details
 
@@ -117,7 +117,7 @@ Plans:
 - [x] 06-01-PLAN.md — Infrastructure: Extend view system from 2 views to 3 views (panel/settings/about)
 - [x] 06-02-PLAN.md — Build-time License Audit: Create audit script for Rust/npm dependencies with copyleft detection
 - [x] 06-03-PLAN.md — AboutView Component: Create About page UI with hero, key-value list, version, GitHub link
-- [ ] 06-04-PLAN.md — Settings Footer: Add "About AIUsage >" footer link in SettingsView
+- [x] 06-04-PLAN.md — Settings Footer: Add "About AIUsage >" footer link in SettingsView
 
 ## Progress
 
@@ -132,7 +132,7 @@ Note: Phase 3 is gated by Kimi Code and GLM Coding Plan API research. Phases 4 a
 | 3. New Providers | 4/4 | Complete | 2026-04-01 |
 | 4. Burn Rate Engine | 2/2 | Complete | 2026-04-02 |
 | 5. Time-Aware Alert Thresholds | 4/4 | Complete | 2026-04-02 |
-| 6. About Page | 3/4 | In Progress | - |
+| 6. About Page | 4/4 | Complete | 2026-04-02 |
 
 ## Backlog
 
