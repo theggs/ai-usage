@@ -23,6 +23,7 @@ export interface AppStateValue {
   openSettings: () => void;
   closeSettings: () => void;
   openAbout: () => void;
+  closeAbout: () => void;
 }
 
 export const AppStateContext = createContext<AppStateValue | null>(null);
