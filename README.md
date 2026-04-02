@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/anthropics/ai-usage/releases/latest"><img src="https://img.shields.io/github/v/release/anthropics/ai-usage?style=flat-square" alt="Latest Release" /></a>
+  <a href="https://github.com/theggs/ai-usage/releases/latest"><img src="https://img.shields.io/github/v/release/theggs/ai-usage?style=flat-square" alt="Latest Release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License" /></a>
 </p>
 
@@ -54,7 +54,7 @@ AIUsage is a **menubar desktop app** for macOS and Windows that tracks AI coding
 
 ## Install
 
-Download the latest release for your platform from the [GitHub Releases](https://github.com/anthropics/ai-usage/releases) page.
+Download the latest release for your platform from the [GitHub Releases](https://github.com/theggs/ai-usage/releases) page.
 
 | Platform | Asset | Instructions |
 |----------|-------|--------------|
@@ -89,7 +89,7 @@ Some regions may require a network proxy. The app auto-detects system proxy sett
 Requires: Node.js 24+, Rust stable, platform build tools (Xcode CLI on macOS, Visual Studio Build Tools on Windows).
 
 ```bash
-git clone https://github.com/anthropics/ai-usage.git
+git clone https://github.com/theggs/ai-usage.git
 cd ai-usage
 npm ci
 npm run tauri:dev    # development
