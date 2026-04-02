@@ -33,6 +33,16 @@ describe("i18n fallback", () => {
     expect(en.notificationActions).toBe("Notification");
   });
 
+  it("keeps the about footer copy label-only in both locales", () => {
+    const zh = getCopy("zh-CN");
+    const en = getCopy("en-US");
+
+    expect(en.aboutLink).toBe("About");
+    expect(zh.aboutLink).toBe("关于");
+    expect(en.aboutLink).not.toContain(">");
+    expect(zh.aboutLink).not.toContain(">");
+  });
+
   it("keeps the english health-summary building blocks compact for the 360px header", () => {
     const en = getCopy("en-US");
     const dimension = localizeDimensionLabel(en, "codex / 5h");

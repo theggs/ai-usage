@@ -402,7 +402,7 @@ const baseCopy: CopyTree = {
   aboutDepsMixedRisk: "{count} packages / {copyleft} copyleft, {unknown} unknown",
   aboutCopyleftBadge: "{count} copyleft",
   aboutUnknownBadge: "{count} unknown",
-  aboutLink: "About AIUsage >"
+  aboutLink: "About"
 };
 
 const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
@@ -603,7 +603,7 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     aboutDepsMixedRisk: "{count} 个包 / {copyleft} 个 Copyleft，{unknown} 个未知许可证",
     aboutCopyleftBadge: "{count} 个 Copyleft",
     aboutUnknownBadge: "{count} 个未知",
-    aboutLink: "关于 AIUsage >"
+    aboutLink: "关于"
   }
   ,
   "en-US": baseCopy
