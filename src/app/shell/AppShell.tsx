@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PanelView } from "../panel/PanelView";
 import { SettingsView } from "../settings/SettingsView";
+import { AboutView } from "../about/AboutView";
 import { AppStateContext } from "../shared/appState";
 import { getCopy, localizeDimensionLabel } from "../shared/i18n";
 import { PromotionStatusLine } from "../../components/panel/PromotionStatusLine";
@@ -662,11 +663,7 @@ export const AppShell = () => {
                   className="w-1/3 shrink-0 overflow-y-auto overflow-x-hidden pr-2"
                   onScroll={(event) => setIsScrolled(event.currentTarget.scrollTop > 4)}
                 >
-                  {currentView === "about" ? (
-                    <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-6 text-sm text-slate-500">
-                      About page placeholder
-                    </section>
-                  ) : null}
+                  {currentView === "about" ? <AboutView /> : null}
                 </div>
               </div>
             )}
