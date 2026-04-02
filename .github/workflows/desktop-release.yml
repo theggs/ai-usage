@@ -3,8 +3,7 @@ name: desktop-release
 on:
   workflow_dispatch:
   push:
-    branches: ["master"]
-    tags: ["*"]
+    tags: ["v*"]
 
 permissions:
   contents: write
@@ -21,7 +20,7 @@ jobs:
       release_suffix: ${{ steps.meta.outputs.release_suffix }}
       release_tag: ${{ steps.meta.outputs.release_tag }}
       release_title: ${{ steps.meta.outputs.release_title }}
-      prerelease: ${{ steps.meta.outputs.prerelease }}
+      release_body: ${{ steps.changelog.outputs.body }}
     steps:
       - uses: actions/checkout@v6
 
@@ -29,26 +28,42 @@ jobs:
         shell: bash
         run: |
           app_version="$(ruby -rjson -e 'puts JSON.parse(File.read("package.json"))["version"]')"
-          short_sha="${GITHUB_SHA::7}"
-
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            release_tag="${GITHUB_REF_NAME}"
-            release_title="AIUsage ${GITHUB_REF_NAME}"
-            release_suffix="${GITHUB_REF_NAME}"
-            prerelease=false
-          else
-            release_tag="nightly-${short_sha}"
-            release_title="AIUsage Nightly ${short_sha}"
-            release_suffix="nightly-${short_sha}"
-            prerelease=true
-          fi
+          release_tag="${GITHUB_REF_NAME}"
+          release_title="AIUsage ${GITHUB_REF_NAME}"
+          release_suffix="${GITHUB_REF_NAME}"
 
           {
             echo "app_version=${app_version}"
             echo "release_suffix=${release_suffix}"
             echo "release_tag=${release_tag}"
             echo "release_title=${release_title}"
-            echo "prerelease=${prerelease}"
+          } >> "$GITHUB_OUTPUT"
+
+      - id: changelog
+        shell: bash
+        run: |
+          # Extract the changelog section for this version tag
+          tag="${GITHUB_REF_NAME}"
+          notes=""
+          if [[ -f CHANGELOG.md ]]; then
+            # Extract content between ## [vX.Y.Z] and the next ## heading
+            notes="$(awk -v tag="$tag" '
+              BEGIN { found=0 }
+              /^## \[/ {
+                if (found) exit
+                if (index($0, tag)) { found=1; next }
+              }
+              found { print }
+            ' CHANGELOG.md)"
+          fi
+          if [[ -z "$notes" ]]; then
+            notes="Release ${tag}"
+          fi
+          # Write multiline output
+          {
+            echo "body<<CHANGELOG_EOF"
+            echo "$notes"
+            echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -130,7 +145,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
           RELEASE_TITLE: ${{ needs.prepare.outputs.release_title }}
-          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+          RELEASE_BODY: ${{ needs.prepare.outputs.release_body }}
         run: |
           shopt -s nullglob
           assets=(release-assets/*)
@@ -144,13 +159,7 @@ jobs:
             gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
             gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE"
           else
-            extra_args=()
-            if [[ "$PRERELEASE" == "true" ]]; then
-              extra_args+=(--prerelease)
-            fi
-
             gh release create "$RELEASE_TAG" "${assets[@]}" \
               --title "$RELEASE_TITLE" \
-              --generate-notes \
-              "${extra_args[@]}"
+              --notes "$RELEASE_BODY"
           fi

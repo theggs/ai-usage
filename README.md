@@ -1,185 +1,139 @@
-# AIUsage
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" width="128" height="128" alt="AIUsage icon" />
+</p>
 
-AIUsage shows Codex and Claude Code quotas in your tray or menu bar.
-It supports macOS (tested) and Windows (not yet tested; testing is welcome).
+<h1 align="center">AIUsage</h1>
 
-# NOTE: BE CAREFUL TO ENABLE CLAUDE CODE LIMITS WATCHING.
-According Anthropic Consumer Terms of Service 3.3, 3.7, any way to access claude code rate limits information via a 3rd party software may make the account be DISABLED.
+<p align="center">
+  Know if your AI coding quota will last — without opening the app.
+</p>
 
-This software is designed to not enalbe claude code by default.
+<p align="center">
+  <a href="https://github.com/anthropics/ai-usage/releases/latest"><img src="https://img.shields.io/github/v/release/anthropics/ai-usage?style=flat-square" alt="Latest Release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License" /></a>
+</p>
 
-Don't enable it if you warry about it.
+<p align="center">
+  <a href="README.zh-CN.md">简体中文</a> | English
+</p>
+
+---
+
+AIUsage is a **menubar desktop app** for macOS and Windows that tracks AI coding assistant usage quotas in real time. Glance at the menubar to see how much quota you have left across all providers — no context switching needed.
+
+<p align="center">
+  <img src="screenshots/menu-bar.png" alt="Menubar showing quota summary" />
+</p>
 
 ## Features
 
-- Check Codex and Claude Code quota status from one desktop panel
-- Quickly check quotas and promotions for supported services
-- Review remaining quota, reset timing, and severity at a glance
-- Keep the app in the tray or menu bar instead of a full desktop window
-- Refresh service status on demand
-- Automatically show the most recently active service in the menu bar, with its icon
-- Customize tray summary behavior, panel order, language, autostart, refresh interval, and proxy settings
-- See clear disconnected or missing-session states when a service is unavailable
-
-## Screenshots
+**Multi-provider quota tracking** — Monitor usage across Claude Code, Codex, Kimi Code, and GLM Coding Plan from one panel.
 
 <table>
   <tr>
-    <td align="center" colspan="2">
-      <strong>Menu bar</strong>
-      <br />
-      <img src="./screenshots/menu-bar.png" alt="AIUsage menu bar" width="560" />
-    </td>
+    <td align="center"><strong>Quota panel</strong></td>
+    <td align="center"><strong>Settings</strong></td>
   </tr>
   <tr>
     <td align="center">
-      <strong>Quota panel</strong>
+      <img src="screenshots/panel-en.png" alt="Panel view" width="320" />
     </td>
     <td align="center">
-      <strong>Settings</strong>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="./screenshots/panel-en.png" alt="AIUsage quota panel" width="320" />
-    </td>
-    <td align="center">
-      <img src="./screenshots/setting-en.png" alt="AIUsage settings" width="320" />
+      <img src="screenshots/setting-en.png" alt="Settings view" width="320" />
     </td>
   </tr>
 </table>
 
-## Get the App
+**Burn-rate forecasting** — See whether your current usage pace will exhaust the quota before it resets. Warnings appear only when the pace is risky.
 
-Download the package for your platform from the [GitHub Releases page](https://github.com/theggs/ai-usage/releases).
+**Smart severity alerts** — Quota health is classified by both remaining percentage and burn rate. The tray icon color reflects the most urgent provider.
 
-macOS:
+**Auto menubar service** — Detects which coding assistant you're actively using and highlights its quota in the menubar automatically.
 
-1. Download the latest `AIUsage_*_macos.zip` file.
-2. Unzip the file to get `AIUsage.app`.
-3. Move `AIUsage.app` to `/Applications`.
-4. Open `AIUsage.app`.
+**Configurable & localized** — Refresh interval, panel order, proxy settings, language (English / 中文), and per-provider toggles — all from the settings panel.
 
-Because the current macOS app is not signed, macOS may block it from opening. If that happens, remove the quarantine attribute:
+## Install
 
-```bash
-sudo xattr -d com.apple.quarantine "/Applications/AIUsage.app"
-```
+Download the latest release for your platform from the [GitHub Releases](https://github.com/anthropics/ai-usage/releases) page.
 
-Windows:
+| Platform | Asset | Instructions |
+|----------|-------|--------------|
+| macOS    | `AIUsage_<version>_macos.zip` | Extract and move `AIUsage.app` to `/Applications` |
+| Windows  | `AIUsage_<version>_x64-setup.exe` | Run the installer |
 
-1. Download the latest Windows `.exe` installer.
-2. Run the installer.
-3. Launch `AIUsage` from the Start menu or installed location.
+> **macOS note:** The app is not yet code-signed. If macOS blocks it, run:
+> ```bash
+> sudo xattr -d com.apple.quarantine "/Applications/AIUsage.app"
+> ```
 
-## Usage
+## Getting Started
 
-- Open the tray or menu bar panel to inspect the current service status
-- Review remaining quota, reset timing, and severity for each supported service
-- Open Settings to adjust tray summary behavior, service order, language, autostart, refresh interval, and proxy settings
-- Refresh the panel when you want to sync with the latest local CLI state
-
-For live data, make sure the relevant local CLI is installed and already signed in on your machine.
+1. **Launch AIUsage** — it lives in your menubar (no dock icon).
+2. **Enable providers** in Settings — toggle the services you use.
+3. **Authenticate** each provider via its standard method:
+   - **Codex** — run `codex login` in your terminal
+   - **Claude Code** — credentials are read from macOS Keychain or `~/.claude/.credentials.json`
+   - **Kimi Code / GLM Coding Plan** — enter your API token in Settings
+4. **Done** — quota cards auto-refresh on your chosen interval (default 15 min).
 
 ## Claude Code Query Notice
 
-AIUsage reads the Claude Code credential already available on your device and uses it only to query quota status from Claude official APIs.
+AIUsage reads the Claude Code credential already on your device to query quota status from Claude official APIs only. It will **not** store, modify, or forward that credential to any non-official endpoint.
 
-AIUsage will not store, modify, or manage that credential, or proactively send it to AIUsage services or other non-official endpoints.
+> **Note:** According to Anthropic Consumer Terms of Service (sections 3.3, 3.7), accessing Claude Code rate limit information via third-party software may risk account action. Claude Code is **disabled by default** — enable it only if you accept this risk.
 
-Some regions may require a network proxy to retrieve Claude Code quota information. The app automatically detects and uses available proxy settings.
+Some regions may require a network proxy. The app auto-detects system proxy settings.
 
-## Development
+## Build from Source
 
-Build from source only if you want to contribute, test, or run the project locally during development.
+Requires: Node.js 24+, Rust stable, platform build tools (Xcode CLI on macOS, Visual Studio Build Tools on Windows).
 
-Requirements:
+```bash
+git clone https://github.com/anthropics/ai-usage.git
+cd ai-usage
+npm ci
+npm run tauri:dev    # development
+npm run tauri:build  # production
+```
 
-- Node.js 24 LTS (`.nvmrc` is set to `24`)
-- Rust stable toolchain
-- A local Codex CLI installation with an active `codex login` session
-- Tauri desktop build prerequisites for your platform
-
-Project structure:
+<details>
+<summary>Project structure</summary>
 
 ```text
-src/                          React frontend
-src-tauri/                    Rust backend and Tauri shell
-tests/                        E2E and integration tests
-screenshots/                  UI reference screenshots
-doc/                          Engineering notes and maintenance guides
-specs/                        Feature specs (historical archive)
+src/              React frontend (views, components, features)
+src-tauri/        Rust backend (commands, state, tray, providers)
+tests/            E2E and integration tests
+screenshots/      UI reference screenshots
+doc/              Engineering notes
 ```
 
-Documentation notes:
+</details>
 
-- Promotion campaign maintenance is documented in [doc/promotion-update-guide.md](./doc/promotion-update-guide.md)
-
-Useful commands:
+<details>
+<summary>Testing</summary>
 
 ```bash
-nvm install
-nvm use
-npm install
-npm run dev           # Vite frontend
-npm run tauri:dev     # Tauri desktop app
-npm run tauri:dev:onboarding  # Tauri app in first-run onboarding mode
-npm run build         # Frontend production build
-npm run tauri:build   # Desktop production build
+npm test                                    # Vitest unit tests
+npm run lint                                # TypeScript type check
+cargo test --manifest-path src-tauri/Cargo.toml  # Rust tests
+npm run test:e2e                            # Playwright E2E
+npm run tauri:build                         # Full production build
 ```
 
-## Architecture Notes
-
-- Codex data is read from the local logged-in Codex CLI session.
-- Claude Code data depends on local Claude Code credentials being available on the machine.
-- Promotion campaign maintenance is documented in [doc/promotion-update-guide.md](./doc/promotion-update-guide.md).
-- The frontend renders normalized payloads returned by the host layer rather than parsing raw CLI output directly.
-- The host prefers `codex app-server` plus `account/rateLimits/read` for live Codex limits.
-- `AI_USAGE_CODEX_STATUS_TEXT` and `AI_USAGE_CODEX_STATUS_FILE` exist only as test or debug fallbacks.
-
-## Development Workflow
-
-Features are developed through a phase-driven workflow managed by GSD.
-Historical planning artifacts from earlier iterations live in `specs/<feature-id>/` for reference.
-
-## Testing
-
-Run the main validation commands:
-
-```bash
-npm test
-npm run lint
-npm run test:e2e
-cargo test --manifest-path src-tauri/Cargo.toml
-npm run tauri:build
-```
-
-Additional desktop verification commands:
-
-```bash
-npm run test:e2e:tauri
-npm run test:e2e:screenshots
-npm run verify:build-stability ./artifacts/build-metadata/*.json
-```
-
-The screenshot and Tauri-specific end-to-end checks are especially important for UI or tray behavior because desktop interaction details cannot be validated by JSDOM alone.
-
-## Troubleshooting
-
-- If Codex data is unavailable, run `codex login` again in your shell.
-- If Claude Code data is unavailable, verify that Claude Code is installed and signed in on the machine.
-- If `npm run tauri:dev` fails on a fresh machine, verify the native prerequisites required by Tauri for your operating system.
+</details>
 
 ## Contributing
 
-Contributions are welcome. For substantial changes, open an issue first so the implementation approach can be aligned before work starts.
+Contributions are welcome. For substantial changes, open an issue first to align on the approach.
 
-Before submitting a pull request:
+- Run tests before submitting a PR
+- Follow `type: lowercase description` commit format
+- Preserve real-runtime verification for desktop UI changes
 
-- Run the relevant test commands from the `Testing` section
-- Keep commit messages in the `type: lowercase description` format
-- Preserve real-runtime verification for desktop UI changes instead of relying only on unit tests
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## License
 
-This project is licensed under the Apache License 2.0. See [LICENSE](./LICENSE) for details.
+[Apache-2.0](LICENSE)
