@@ -104,7 +104,18 @@ export const AppShell = () => {
           getPreferences(),
           tauriClient.getRuntimeFlags()
         ]);
+        setPreferences(prefs);
+        setIsE2EMode(runtimeFlags.isE2E);
+        setIsLoading(false);
+
         const enabledIds = getVisibleServiceScope(prefs).visiblePanelServiceOrder;
+        for (const id of enabledIds) {
+          setProviderStates((prev) => ({
+            ...prev,
+            [id]: markPanelStateRefreshing(prev[id] ?? null)
+          }));
+        }
+
         const results = await Promise.all(
           enabledIds.map(async (id) => [id, await loadProviderState(id)] as const)
         );
@@ -112,10 +123,11 @@ export const AppShell = () => {
         for (const [id, state] of results) {
           states[id] = state;
         }
-        setProviderStates(states);
-        lastStableProviderStates.current = states;
-        setPreferences(prefs);
-        setIsE2EMode(runtimeFlags.isE2E);
+        setProviderStates((prev) => ({ ...prev, ...states }));
+        lastStableProviderStates.current = {
+          ...lastStableProviderStates.current,
+          ...states
+        };
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to initialize app");
       } finally {

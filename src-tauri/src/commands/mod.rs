@@ -592,8 +592,7 @@ pub fn refresh_provider_state(
         }
     }
     save_to_snapshot_cache(&provider_id, &result);
-    let accounts = state.codex_accounts.lock().unwrap().clone();
-    let items = build_tray_items(&preferences, &accounts, &result.last_successful_refresh_at);
+    let items = build_cached_tray_items(&preferences);
     refresh_auto_menubar_selection(&state, &preferences, &items, now_unix_secs());
     apply_display_mode(&app, &preferences, &items);
     result
