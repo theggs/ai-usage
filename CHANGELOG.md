@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [v1.1.1] - 2026-04-23
+
+### Fixed
+
+- Reduced menu bar panel white-screen delays by rendering the shell before provider loads complete
+- Reduced manual refresh stalls by rebuilding tray state from cached snapshots after single-provider refreshes
+- Added a Codex usage toggle in Settings and unified provider usage copy across settings surfaces
+
 ## [v1.1.0] - 2026-04-02
 
 ### Added
@@ -63,6 +71,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Promotion test timezone safety
 - Claude Code shared-state test serialization
 
-[Unreleased]: https://github.com/anthropics/ai-usage/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/anthropics/ai-usage/compare/v1.1.1...HEAD
+[v1.1.1]: https://github.com/anthropics/ai-usage/compare/v1.1.0...v1.1.1
 [v1.1.0]: https://github.com/anthropics/ai-usage/compare/nightly-c6a486b...v1.1.0
 [v1.0.0]: https://github.com/anthropics/ai-usage/releases/tag/v1.0.0
