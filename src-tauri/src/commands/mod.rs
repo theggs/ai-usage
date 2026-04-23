@@ -233,9 +233,6 @@ fn normalize_dimensions(
 }
 
 fn is_provider_enabled(preferences: &UserPreferences, provider_id: &str) -> bool {
-    if provider_id == "codex" {
-        return true; // Codex always enabled
-    }
     if provider_id == "claude-code" {
         return is_claude_code_usage_enabled(preferences);
     }

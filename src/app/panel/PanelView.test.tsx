@@ -161,7 +161,7 @@ describe("PanelView", () => {
     );
 
     expect(screen.getByText("先连接第一个 AI 服务")).toBeInTheDocument();
-    expect(screen.getByText("Claude Code 查询")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code 用量")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "前往设置" }).length).toBeGreaterThan(0);
   });
 
@@ -228,7 +228,7 @@ describe("PanelView", () => {
       </AppStateContext.Provider>
     );
 
-    expect(screen.getByText("Claude Code query")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code Usage")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "I understand" })).toBeInTheDocument();
   });
 

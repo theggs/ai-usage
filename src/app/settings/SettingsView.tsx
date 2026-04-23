@@ -702,6 +702,47 @@ export const SettingsView = () => {
         </div>
       </div>
 
+      <div className="settings-surface overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.2)]">
+        <div className={rowClassName}>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+              <div className="min-w-0 text-[15px] font-semibold leading-6 text-slate-900">
+                {copy.codexUsageInfoTitle}
+              </div>
+              <div className="flex justify-end">
+                <button
+                  aria-checked={draft.providerEnabled?.codex ?? false}
+                  aria-label={copy.codexUsageToggleAriaLabel}
+                  className={`inline-flex w-14 items-center rounded-full p-1 shadow-sm transition-colors ${
+                    draft.providerEnabled?.codex ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                  onClick={() =>
+                    void applyImmediatePatch(
+                      { providerEnabled: { ...draft.providerEnabled, codex: !(draft.providerEnabled?.codex ?? false) } },
+                      draft
+                    )
+                  }
+                  role="switch"
+                  title={copy.codexUsageToggleAriaLabel}
+                  type="button"
+                >
+                  <span className="sr-only">{copy.codexUsageToggleAriaLabel}</span>
+                  <span
+                    className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      draft.providerEnabled?.codex ? "translate-x-7" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[13px] leading-6 text-slate-500 whitespace-pre-line">
+              {copy.codexUsageInfoBody}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="settings-surface overflow-hidden rounded-2xl border border-sky-200/80 bg-linear-to-br from-sky-50/90 via-white to-slate-50 shadow-[0_18px_40px_-28px_rgba(14,116,144,0.26)]">
         <div className={rowClassName}>
           <div className="grid gap-3">

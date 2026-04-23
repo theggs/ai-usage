@@ -197,7 +197,7 @@ describe("AppShell", () => {
     await screen.findByRole("button", { name: "设置" });
     await userEvent.click(screen.getByRole("button", { name: "设置" }));
 
-    await userEvent.click(screen.getByRole("switch", { name: "启用 Claude Code 查询" }));
+    await userEvent.click(screen.getByRole("switch", { name: "启用 Claude Code 用量显示" }));
 
     await waitFor(() =>
       expect(persistPreferences).toHaveBeenCalledWith(

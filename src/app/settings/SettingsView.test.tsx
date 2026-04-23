@@ -71,7 +71,7 @@ const fourProviderPreferences: UserPreferences = {
 };
 
 describe("SettingsView", () => {
-  it("renders the main settings card and a separate Claude Code query card", () => {
+  it("renders the main settings card plus provider usage cards", () => {
     renderSettings();
 
     expect(screen.queryByText("显示")).not.toBeInTheDocument();
@@ -87,15 +87,18 @@ describe("SettingsView", () => {
     expect(screen.getByRole("switch", { name: "开机自启" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "刷新间隔" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "代理模式" })).toBeInTheDocument();
-    expect(screen.getByText("Claude Code 查询")).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "启用 Claude Code 查询" })).toBeInTheDocument();
+    expect(screen.getByText("Codex 用量")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "启用 Codex 用量显示" })).toBeInTheDocument();
+    expect(screen.getByText("Claude Code 用量")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "启用 Claude Code 用量显示" })).toBeInTheDocument();
 
     const surfaces = document.querySelectorAll(".settings-surface");
-    expect(surfaces).toHaveLength(4);
+    expect(surfaces).toHaveLength(5);
     expect(screen.getByRole("combobox", { name: "菜单栏数值" }).closest(".settings-surface")).toBe(
       surfaces[0]
     );
-    expect(screen.getByText("Claude Code 查询").closest(".settings-surface")).toBe(surfaces[1]);
+    expect(screen.getByText("Codex 用量").closest(".settings-surface")).toBe(surfaces[1]);
+    expect(screen.getByText("Claude Code 用量").closest(".settings-surface")).toBe(surfaces[2]);
   });
 
   it("keeps standard settings rows in an inline two-column layout at shell width", () => {
@@ -292,6 +295,29 @@ describe("SettingsView", () => {
     expect((screen.getByRole("combobox", { name: "菜单栏服务" }) as HTMLSelectElement).value).toBe("auto");
   });
 
+  it("saves the Codex usage toggle directly without a confirm step", async () => {
+    const savePreferences = vi.fn(async (patch) => ({
+      ...defaultPreferences,
+      ...patch,
+      lastSavedAt: new Date().toISOString()
+    }));
+    renderSettings({
+      savePreferences,
+      preferences: {
+        ...defaultPreferences,
+        providerEnabled: { codex: true, "claude-code": false }
+      }
+    });
+
+    await userEvent.click(screen.getByRole("switch", { name: "启用 Codex 用量显示" }));
+
+    await waitFor(() =>
+      expect(savePreferences).toHaveBeenCalledWith(
+        expect.objectContaining({ providerEnabled: expect.objectContaining({ codex: false }) })
+      )
+    );
+  });
+
   it("saves the Claude Code usage toggle directly without a confirm step", async () => {
     const savePreferences = vi.fn(async (patch) => ({
       ...defaultPreferences,
@@ -307,7 +333,7 @@ describe("SettingsView", () => {
       }
     });
 
-    await userEvent.click(screen.getByRole("switch", { name: "启用 Claude Code 查询" }));
+    await userEvent.click(screen.getByRole("switch", { name: "启用 Claude Code 用量显示" }));
 
     await waitFor(() =>
       expect(savePreferences).toHaveBeenCalledWith(
@@ -316,7 +342,7 @@ describe("SettingsView", () => {
     );
   });
 
-  it("renders the Claude Code disclosure row and toggle in English", () => {
+  it("renders the Codex and Claude Code usage rows in English", () => {
     renderSettings({
       preferences: {
         ...defaultPreferences,
@@ -326,8 +352,10 @@ describe("SettingsView", () => {
       }
     });
 
-    expect(screen.getByText("Claude Code query")).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Enable Claude Code query" })).toBeInTheDocument();
+    expect(screen.getByText("Codex Usage")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Enable Codex usage display" })).toBeInTheDocument();
+    expect(screen.getByText("Claude Code Usage")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Enable Claude Code usage display" })).toBeInTheDocument();
   });
 
   it("persists pointer reordering immediately", async () => {

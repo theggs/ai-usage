@@ -105,6 +105,9 @@ export type CopyTree = {
   networkProxyUrl: string;
   networkProxyUrlHint: string;
   networkProxyUrlInvalid: string;
+  codexUsageInfoTitle: string;
+  codexUsageInfoBody: string;
+  codexUsageToggleAriaLabel: string;
   claudeCodeUsageInfoTitle: string;
   claudeCodeUsageInfoBody: string;
   claudeCodeUsageEyebrow: string;
@@ -303,14 +306,18 @@ const baseCopy: CopyTree = {
   networkProxyUrl: "Proxy URL",
   networkProxyUrlHint: "Use a full URL such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080",
   networkProxyUrlInvalid: "Enter a full proxy URL before saving.",
-  claudeCodeUsageInfoTitle: "Claude Code query",
+  codexUsageInfoTitle: "Codex Usage",
+  codexUsageInfoBody:
+    "Display your Codex usage quota.\nUses the readable local Codex CLI session on this device. No extra token is required.",
+  codexUsageToggleAriaLabel: "Enable Codex usage display",
+  claudeCodeUsageInfoTitle: "Claude Code Usage",
   claudeCodeUsageInfoBody:
     "The app uses the Claude Code credential already available on this device.\nThat credential is only used to query quota status from Claude official APIs.\nThe app will not store or modify that credential, or proactively send it to AIUsage or other non-official endpoints.",
-  claudeCodeUsageEyebrow: "Claude Code query",
+  claudeCodeUsageEyebrow: "Claude Code Usage",
   claudeCodeUsageEnabledLabel: "Enable",
-  claudeCodeUsageEnabledAriaLabel: "Enable Claude Code query",
+  claudeCodeUsageEnabledAriaLabel: "Enable Claude Code usage display",
   claudeCodeUsageEnabledHint: "",
-  claudeCodeUsageDisclosureTitle: "Claude Code query",
+  claudeCodeUsageDisclosureTitle: "Claude Code Usage",
   claudeCodeUsageDisclosureBody:
     "The app uses the Claude Code credential already available on this device.\nThat credential is only used to query quota status from Claude official APIs.\nThe app will not store or modify that credential, or proactively send it to AIUsage or other non-official endpoints.",
   claudeCodeUsageDisclosureButton: "I understand",
@@ -504,14 +511,18 @@ const localeCopy: Record<UserPreferences["language"], Partial<CopyTree>> = {
     networkProxyUrl: "代理地址",
     networkProxyUrlHint: "请输入完整 URL，例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080",
     networkProxyUrlInvalid: "请先填写完整代理 URL 再保存。",
-    claudeCodeUsageInfoTitle: "Claude Code 查询",
+    codexUsageInfoTitle: "Codex 用量",
+    codexUsageInfoBody:
+      "显示 Codex 用量。\n使用本机当前可读取的 Codex CLI 登录会话，不需要额外配置 Token。",
+    codexUsageToggleAriaLabel: "启用 Codex 用量显示",
+    claudeCodeUsageInfoTitle: "Claude Code 用量",
     claudeCodeUsageInfoBody:
       "程序会使用本机现有的 Claude Code 登录凭证。\nClaude Code 登录凭证仅用于向 Claude 官方接口查询额度状态。\n程序不会存储或修改该凭证，也不会主动将其发送到 AIUsage 或其他非官方接口。",
-    claudeCodeUsageEyebrow: "Claude Code 查询",
+    claudeCodeUsageEyebrow: "Claude Code 用量",
     claudeCodeUsageEnabledLabel: "启用",
-    claudeCodeUsageEnabledAriaLabel: "启用 Claude Code 查询",
+    claudeCodeUsageEnabledAriaLabel: "启用 Claude Code 用量显示",
     claudeCodeUsageEnabledHint: "",
-    claudeCodeUsageDisclosureTitle: "Claude Code 查询",
+    claudeCodeUsageDisclosureTitle: "Claude Code 用量",
     claudeCodeUsageDisclosureBody:
       "程序会使用本机现有的 Claude Code 登录凭证。\nClaude Code 登录凭证仅用于向 Claude 官方接口查询额度状态。\n程序不会存储或修改该凭证，也不会主动将其发送到 AIUsage 或其他非官方接口。",
     claudeCodeUsageDisclosureButton: "我知道了",

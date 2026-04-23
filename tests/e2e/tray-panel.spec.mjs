@@ -475,7 +475,7 @@ async function toggleClaudeCodeUsage(ctx) {
 
   return (
     (await clickAnyButton(
-      ["E2E Toggle Claude Code Usage", "启用 Claude Code 查询", "Enable Claude Code query"],
+      ["E2E Toggle Claude Code Usage", "启用 Claude Code 用量显示", "Enable Claude Code usage display"],
       ctx
     )) ||
     (await clickWindowPoint(290, 554, ctx)) ||
